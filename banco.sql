@@ -2,6 +2,7 @@ CREATE TABLE IF NOT EXISTS "clientes" (
 	"id_responsavel" UUID NOT NULL UNIQUE,
 	"nome" VARCHAR(255) NOT NULL,
 	"cpf" VARCHAR(255) NOT NULL,
+	"cargo" VARCHAR(255),
 	PRIMARY KEY("id_responsavel")
 );
 
