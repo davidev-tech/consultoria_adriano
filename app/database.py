@@ -3,23 +3,16 @@ from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-# Carrega as senhas do arquivo .env
-load_dotenv()
+# Localiza o arquivo .env subindo um nível a partir da pasta 'app'
+load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 
-# Busca a URL do banco que você salvou lá
 SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL")
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
-
-# ... o resto do código continua igual ...
-
-# Fábrica de sessões para realizar operações (queries, inserts)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-# Classe base para a criação dos futuros modelos (tabelas)
 Base = declarative_base()
 
-# Dependência para o FastAPI gerir o ciclo de vida das sessões
+# Gerenciador de conexão para as rotas
 def get_db():
     db = SessionLocal()
     try:
