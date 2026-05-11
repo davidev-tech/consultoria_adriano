@@ -1,10 +1,10 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional, List
 from uuid import UUID
 from datetime import date, datetime
 
 # ==========================================
-# MÓDULO: EMPRESA CLIENTE
+# 1. MÓDULO: EMPRESA CLIENTE
 # ==========================================
 class EmpresaBase(BaseModel):
     nome_empresa: str
@@ -17,11 +17,11 @@ class EmpresaCreate(EmpresaBase):
 
 class EmpresaResponse(EmpresaBase):
     id_cliente: UUID
-    class Config:
-        from_attributes = True
+    
+    model_config = ConfigDict(from_attributes=True)
 
 # ==========================================
-# MÓDULO: RESPONSÁVEL (Contatos)
+# 2. MÓDULO: RESPONSÁVEL (Contatos)
 # ==========================================
 class ResponsavelBase(BaseModel):
     id_cliente: UUID
@@ -34,11 +34,11 @@ class ResponsavelCreate(ResponsavelBase):
 
 class ResponsavelResponse(ResponsavelBase):
     id_responsavel: UUID
-    class Config:
-        from_attributes = True
+    
+    model_config = ConfigDict(from_attributes=True)
 
 # ==========================================
-# MÓDULO: MODELO DE CONTRATO
+# 3. MÓDULO: MODELO DE CONTRATO
 # ==========================================
 class ModeloContratoBase(BaseModel):
     nome_modelo: str
@@ -50,11 +50,11 @@ class ModeloContratoCreate(ModeloContratoBase):
 
 class ModeloContratoResponse(ModeloContratoBase):
     id_modelo: UUID
-    class Config:
-        from_attributes = True
+    
+    model_config = ConfigDict(from_attributes=True)
 
 # ==========================================
-# MÓDULO: PACIENTE (Beneficiário)
+# 4. MÓDULO: PACIENTE (Beneficiário)
 # ==========================================
 class PacienteBase(BaseModel):
     id_cliente: UUID
@@ -66,54 +66,73 @@ class PacienteCreate(PacienteBase):
 
 class PacienteResponse(PacienteBase):
     id_paciente: UUID
-    class Config:
-        from_attributes = True
+    
+    model_config = ConfigDict(from_attributes=True)
 
 # ==========================================
-# MÓDULO: CONTRATO
+# 5. MÓDULO: CONTRATO
 # ==========================================
 class ContratoBase(BaseModel):
     id_cliente: UUID
     id_modelo: UUID
+    valor_acordado: float
+    status_contrato: Optional[str] = "Ativo"
     data_inicio: date
     data_fim: Optional[date] = None
-    valor_mensal: float
-    status: Optional[str] = "Ativo"
 
 class ContratoCreate(ContratoBase):
     pass
 
 class ContratoResponse(ContratoBase):
     id_contrato: UUID
-    class Config:
-        from_attributes = True
+    
+    model_config = ConfigDict(from_attributes=True)
 
 # ==========================================
-# MÓDULO: HISTÓRICO DE INTERAÇÕES (Visitas)
+# 6. MÓDULO: HISTÓRICO DE INTERAÇÕES
 # ==========================================
 class HistoricoInteracaoBase(BaseModel):
-    id_contrato: UUID
-    id_paciente: Optional[UUID] = None
-    data_interacao: datetime = datetime.now()
-    descricao: str
-    tipo_interacao: Optional[str] = "Visita" # Visita, Reunião, Auditoria
+    id_cliente: UUID
+    tipo_interacao: Optional[str] = "Visita"
+    data_hora: Optional[datetime] = None
+    coordenadas_geo: Optional[str] = None
+    feedback_anotacoes: Optional[str] = None
 
 class HistoricoInteracaoCreate(HistoricoInteracaoBase):
     pass
 
 class HistoricoInteracaoResponse(HistoricoInteracaoBase):
     id_interacao: UUID
-    class Config:
-        from_attributes = True
+    
+    model_config = ConfigDict(from_attributes=True)
 
 # ==========================================
-# MÓDULO: PAGAMENTOS
+# 7. MÓDULO: ENTREGAS E PRAZOS
+# ==========================================
+class EntregaPrazoBase(BaseModel):
+    id_contrato: UUID
+    descricao_entrega: str
+    data_prazo_limite: date
+    data_conclusao: Optional[date] = None
+    status_entrega: Optional[str] = "Pendente"
+
+class EntregaPrazoCreate(EntregaPrazoBase):
+    pass
+
+class EntregaPrazoResponse(EntregaPrazoBase):
+    id_entrega: UUID
+    
+    model_config = ConfigDict(from_attributes=True)
+
+# ==========================================
+# 8. MÓDULO: PAGAMENTOS
 # ==========================================
 class PagamentoBase(BaseModel):
     id_contrato: UUID
-    id_interacao: Optional[UUID] = None
-    valor_pago: float
-    data_pagamento: date
+    id_visita: Optional[UUID] = None
+    valor: float
+    data_pagamento: Optional[datetime] = None
+    forma_pagamento: Optional[str] = None
     status_pagamento: Optional[str] = "Pendente"
 
 class PagamentoCreate(PagamentoBase):
@@ -121,5 +140,5 @@ class PagamentoCreate(PagamentoBase):
 
 class PagamentoResponse(PagamentoBase):
     id_pagamento: UUID
-    class Config:
-        from_attributes = True
+    
+    model_config = ConfigDict(from_attributes=True)

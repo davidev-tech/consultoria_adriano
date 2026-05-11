@@ -1,104 +1,118 @@
-import uuid
-from sqlalchemy import Column, String, Text, ForeignKey, TIMESTAMP, DATE, Numeric
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import relationship
+from fastapi import FastAPI, Depends, HTTPException
+from sqlalchemy.orm import Session
 from .database import engine, get_db
-from . import models, schemas # <-- Isso aqui é o que liga os arquivos
-from .database import Base
+from . import models, schemas
+from uuid import UUID
+from fastapi.middleware.cors import CORSMiddleware
 
-class EmpresaCliente(Base):
-    __tablename__ = "empresa_cliente"
-    id_cliente = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    nome_empresa = Column(String(255), nullable=False)
-    cnpj = Column(String(20), unique=True)
-    localizacao = Column(Text)
-    servico_prestado = Column(Text)
-    
-    responsaveis = relationship("Responsavel", back_populates="empresa")
-    contratos = relationship("Contrato", back_populates="empresa")
-    pacientes = relationship("PacienteBeneficiario", back_populates="empresa")
-    interacoes = relationship("HistoricoInteracoes", back_populates="empresa")
+# 1. INICIALIZAÇÃO DO BANCO
+# Cria as tabelas no Supabase caso elas ainda não existam
+models.Base.metadata.create_all(bind=engine)
 
-class ModeloContrato(Base):
-    __tablename__ = "modelo_contrato"
-    id_modelo = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    nome_modelo = Column(String(255), nullable=False)
-    periodicidade_cobranca = Column(String(50))
-    descricao_padrao = Column(Text)
-    contratos = relationship("Contrato", back_populates="modelo")
+app = FastAPI(
+    title="API - Gestão do Cuidado", 
+    version="1.2.0",
+    description="Backend para consultoria de gestão de cuidados de saúde."
+)
 
-class Responsavel(Base):
-    __tablename__ = "responsavel"
-    id_responsavel = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    id_cliente = Column(UUID(as_uuid=True), ForeignKey("empresa_cliente.id_cliente", ondelete="CASCADE"))
-    nome = Column(String(255), nullable=False)
-    cpf = Column(String(14), unique=True)
-    cargo = Column(String(100))
-    empresa = relationship("EmpresaCliente", back_populates="responsaveis")
+# 2. CONFIGURAÇÃO DE SEGURANÇA (CORS)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], # No futuro, substitua pelo domínio do seu Lovable
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-class HistoricoInteracoes(Base):
-    __tablename__ = "historico_interacoes"
-    id_interacao = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    id_cliente = Column(UUID(as_uuid=True), ForeignKey("empresa_cliente.id_cliente", ondelete="CASCADE"))
-    tipo_interacao = Column(String(100))
-    data_hora = Column(TIMESTAMP)
-    coordenadas_geo = Column(String(100))
-    feedback_anotacoes = Column(Text)
-    empresa = relationship("EmpresaCliente", back_populates="interacoes")
+# 3. ROTAS GERAIS
+@app.get("/")
+def read_root():
+    return {
+        "status": "online", 
+        "projeto": "Gestão do Cuidado - Adriano",
+        "docs": "/docs"
+    }
 
-class PacienteBeneficiario(Base):
-    __tablename__ = "paciente_beneficiario"
-    id_paciente = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    id_cliente = Column(UUID(as_uuid=True), ForeignKey("empresa_cliente.id_cliente", ondelete="CASCADE"))
-    nome = Column(String(255), nullable=False)
-    historico_cuidados = Column(Text)
-    empresa = relationship("EmpresaCliente", back_populates="pacientes")
-    visitas = relationship("VisitaAtendimento", back_populates="paciente")
+# --- MÓDULO: EMPRESAS ---
+@app.post("/empresas", response_model=schemas.EmpresaResponse)
+def criar_empresa(empresa: schemas.EmpresaCreate, db: Session = Depends(get_db)):
+    db_empresa = models.EmpresaCliente(**empresa.model_dump())
+    db.add(db_empresa)
+    db.commit()
+    db.refresh(db_empresa)
+    return db_empresa
 
-class Contrato(Base):
-    __tablename__ = "contrato"
-    id_contrato = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    id_cliente = Column(UUID(as_uuid=True), ForeignKey("empresa_cliente.id_cliente"))
-    id_modelo = Column(UUID(as_uuid=True), ForeignKey("modelo_contrato.id_modelo"))
-    valor_acordado = Column(Numeric(15, 2))
-    status_contrato = Column(String(50))
-    data_inicio = Column(DATE)
-    data_fim = Column(DATE)
-    empresa = relationship("EmpresaCliente", back_populates="contratos")
-    modelo = relationship("ModeloContrato", back_populates="contratos")
-    visitas = relationship("VisitaAtendimento", back_populates="contrato")
-    entregas = relationship("EntregasPrazos", back_populates="contrato")
+@app.get("/empresas", response_model=list[schemas.EmpresaResponse])
+def listar_empresas(db: Session = Depends(get_db)):
+    return db.query(models.EmpresaCliente).all()
 
-class EntregasPrazos(Base):
-    __tablename__ = "entregas_prazos"
-    id_entrega = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    id_contrato = Column(UUID(as_uuid=True), ForeignKey("contrato.id_contrato", ondelete="CASCADE"))
-    descricao_entrega = Column(Text, nullable=False)
-    data_prazo_limite = Column(DATE)
-    data_conclusao = Column(DATE)
-    status_entrega = Column(String(50))
-    contrato = relationship("Contrato", back_populates="entregas")
+# --- MÓDULO: RESPONSÁVEIS ---
+@app.post("/responsaveis", response_model=schemas.ResponsavelResponse)
+def criar_responsavel(obj_in: schemas.ResponsavelCreate, db: Session = Depends(get_db)):
+    novo_obj = models.Responsavel(**obj_in.model_dump())
+    db.add(novo_obj)
+    db.commit()
+    db.refresh(novo_obj)
+    return novo_obj
 
-class VisitaAtendimento(Base):
-    __tablename__ = "visita_atendimento"
-    id_visita = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    id_contrato = Column(UUID(as_uuid=True), ForeignKey("contrato.id_contrato"))
-    id_paciente = Column(UUID(as_uuid=True), ForeignKey("paciente_beneficiario.id_paciente"))
-    data_hora = Column(TIMESTAMP)
-    grau_urgencia = Column(String(50))
-    feedback_anotacoes = Column(Text)
-    contrato = relationship("Contrato", back_populates="visitas")
-    paciente = relationship("PacienteBeneficiario", back_populates="visitas")
-    pagamentos = relationship("Pagamento", back_populates="visita")
+@app.get("/responsaveis/{id_cliente}", response_model=list[schemas.ResponsavelResponse])
+def listar_responsaveis_por_cliente(id_cliente: UUID, db: Session = Depends(get_db)):
+    return db.query(models.Responsavel).filter(models.Responsavel.id_cliente == id_cliente).all()
 
-class Pagamento(Base):
-    __tablename__ = "pagamento"
-    id_pagamento = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    id_contrato = Column(UUID(as_uuid=True), ForeignKey("contrato.id_contrato"))
-    id_visita = Column(UUID(as_uuid=True), ForeignKey("visita_atendimento.id_visita"))
-    data_pagamento = Column(TIMESTAMP)
-    valor = Column(Numeric(15, 2))
-    forma_pagamento = Column(String(50))
-    condicao_pagamento = Column(Text)
-    status_pagamento = Column(String(50))
-    visita = relationship("VisitaAtendimento", back_populates="pagamentos")
+# --- MÓDULO: MODELOS DE CONTRATO ---
+@app.post("/modelos-contrato", response_model=schemas.ModeloContratoResponse)
+def criar_modelo(obj_in: schemas.ModeloContratoCreate, db: Session = Depends(get_db)):
+    novo_obj = models.ModeloContrato(**obj_in.model_dump())
+    db.add(novo_obj)
+    db.commit()
+    db.refresh(novo_obj)
+    return novo_obj
+
+@app.get("/modelos-contrato", response_model=list[schemas.ModeloContratoResponse])
+def listar_modelos(db: Session = Depends(get_db)):
+    return db.query(models.ModeloContrato).all()
+
+# --- MÓDULO: PACIENTES ---
+@app.post("/pacientes", response_model=schemas.PacienteResponse)
+def criar_paciente(obj_in: schemas.PacienteCreate, db: Session = Depends(get_db)):
+    novo_obj = models.PacienteBeneficiario(**obj_in.model_dump())
+    db.add(novo_obj)
+    db.commit()
+    db.refresh(novo_obj)
+    return novo_obj
+
+# --- MÓDULO: CONTRATOS ---
+@app.post("/contratos", response_model=schemas.ContratoResponse)
+def criar_contrato(obj_in: schemas.ContratoCreate, db: Session = Depends(get_db)):
+    novo_obj = models.Contrato(**obj_in.model_dump())
+    db.add(novo_obj)
+    db.commit()
+    db.refresh(novo_obj)
+    return novo_obj
+
+@app.get("/contratos/{id_cliente}", response_model=list[schemas.ContratoResponse])
+def listar_contratos_por_empresa(id_cliente: UUID, db: Session = Depends(get_db)):
+    return db.query(models.Contrato).filter(models.Contrato.id_cliente == id_cliente).all()
+
+# --- MÓDULO: HISTÓRICO DE INTERAÇÕES ---
+@app.post("/interacoes", response_model=schemas.HistoricoInteracaoResponse)
+def registrar_interacao(obj_in: schemas.HistoricoInteracaoCreate, db: Session = Depends(get_db)):
+    # Usando o nome da classe do models.py (plural)
+    novo_obj = models.HistoricoInteracoes(**obj_in.model_dump()) 
+    db.add(novo_obj)
+    db.commit()
+    db.refresh(novo_obj)
+    return novo_obj
+
+# --- MÓDULO: PAGAMENTOS ---
+@app.post("/pagamentos", response_model=schemas.PagamentoResponse)
+def registrar_pagamento(obj_in: schemas.PagamentoCreate, db: Session = Depends(get_db)):
+    novo_obj = models.Pagamento(**obj_in.model_dump())
+    db.add(novo_obj)
+    db.commit()
+    db.refresh(novo_obj)
+    return novo_obj
+
+@app.get("/pagamentos/contrato/{id_contrato}", response_model=list[schemas.PagamentoResponse])
+def listar_pagamentos_contrato(id_contrato: UUID, db: Session = Depends(get_db)):
+    return db.query(models.Pagamento).filter(models.Pagamento.id_contrato == id_contrato).all()
