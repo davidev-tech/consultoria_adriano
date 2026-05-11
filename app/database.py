@@ -1,18 +1,19 @@
 import os
-from dotenv import load_dotenv
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
 
-# Localiza o arquivo .env subindo um nível a partir da pasta 'app'
-load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
-
+# O código lê a variável que você configurou no Render
 SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL")
+
+# Se por acaso a variável estiver vazia, o Status 1 acontece aqui
+if not SQLALCHEMY_DATABASE_URL:
+    raise ValueError("A variável DATABASE_URL não foi encontrada!")
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
-# Gerenciador de conexão para as rotas
 def get_db():
     db = SessionLocal()
     try:
