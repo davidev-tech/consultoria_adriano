@@ -2,6 +2,8 @@ import uuid
 from sqlalchemy import Column, String, Text, ForeignKey, TIMESTAMP, DATE, Numeric
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
+from .database import engine, get_db
+from . import models, schemas # <-- Isso aqui é o que liga os arquivos
 from .database import Base
 
 class EmpresaCliente(Base):
