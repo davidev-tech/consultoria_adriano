@@ -1,10 +1,9 @@
+import uuid
 from sqlalchemy import Column, String, Text, ForeignKey, TIMESTAMP, DATE, Numeric
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from .database import Base
-import uuid
 
-# --- TABELAS BASE ---
 class EmpresaCliente(Base):
     __tablename__ = "empresa_cliente"
     id_cliente = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -12,7 +11,7 @@ class EmpresaCliente(Base):
     cnpj = Column(String(20), unique=True)
     localizacao = Column(Text)
     servico_prestado = Column(Text)
-
+    
     responsaveis = relationship("Responsavel", back_populates="empresa")
     contratos = relationship("Contrato", back_populates="empresa")
     pacientes = relationship("PacienteBeneficiario", back_populates="empresa")
@@ -26,7 +25,6 @@ class ModeloContrato(Base):
     descricao_padrao = Column(Text)
     contratos = relationship("Contrato", back_populates="modelo")
 
-# --- PRIMEIRO NÍVEL ---
 class Responsavel(Base):
     __tablename__ = "responsavel"
     id_responsavel = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -69,7 +67,6 @@ class Contrato(Base):
     visitas = relationship("VisitaAtendimento", back_populates="contrato")
     entregas = relationship("EntregasPrazos", back_populates="contrato")
 
-# --- SEGUNDO E TERCEIRO NÍVEL ---
 class EntregasPrazos(Base):
     __tablename__ = "entregas_prazos"
     id_entrega = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
