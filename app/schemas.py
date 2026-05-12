@@ -147,7 +147,6 @@ class ContratoBase(BaseModel):
     @field_validator("status_contrato")
     @classmethod
     def check_status(cls, v):
-        # Pequeno ajuste para aceitar minúsculas/maiúsculas no banco
         return validate_enum_choice(v.title(), ["Ativo", "Pausado", "Encerrado"])
 
 class ContratoCreate(ContratoBase):
@@ -182,7 +181,8 @@ class HistoricoInteracaoBase(BaseModel):
     @field_validator("tipo_interacao")
     @classmethod
     def check_tipo(cls, v):
-        return validate_enum_choice(v.title(), ["Visita", "Reunião", "Ligação", "E-mail"])
+        # Blindagem extra adicionada aqui!
+        return validate_enum_choice(v.title(), ["Visita", "Reunião", "Reunião Presencial", "Ligação", "E-mail"])
 
     @field_validator("coordenadas_geo")
     @classmethod
@@ -222,7 +222,8 @@ class EntregaPrazoBase(BaseModel):
     @field_validator("status_entrega")
     @classmethod
     def check_status(cls, v):
-        return validate_enum_choice(v, ["Pendente", "Em Andamento", "Concluído", "Atrasado"])
+        # Correção aplicada: .title() adicionado
+        return validate_enum_choice(v.title(), ["Pendente", "Em Andamento", "Concluído", "Atrasado"])
 
 class EntregaPrazoCreate(EntregaPrazoBase):
     @field_validator("data_prazo_limite")
@@ -253,7 +254,8 @@ class PagamentoBase(BaseModel):
     @field_validator("status_pagamento")
     @classmethod
     def check_status(cls, v):
-        return validate_enum_choice(v, ["Pendente", "Pago", "Atrasado", "Cancelado"])
+        # Correção aplicada: .title() adicionado
+        return validate_enum_choice(v.title(), ["Pendente", "Pago", "Atrasado", "Cancelado"])
 
 class PagamentoCreate(PagamentoBase):
     @field_validator("data_pagamento")
