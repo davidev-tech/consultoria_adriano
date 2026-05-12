@@ -4,7 +4,7 @@ from uuid import UUID
 from datetime import date, datetime
 
 # Importação das regras de validação atualizadas e completas
-from app.validators import (
+from .validators import (
     validate_cpf, 
     validate_cnpj, 
     validate_not_past_date, 
