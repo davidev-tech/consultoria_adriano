@@ -3,7 +3,7 @@ from typing import Optional, List
 from uuid import UUID
 from datetime import date, datetime
 
-# Importação das regras de validação atualizadas e completas
+# Importação relativa das regras de validação atualizadas e completas
 from .validators import (
     validate_cpf, 
     validate_cnpj, 
@@ -87,6 +87,11 @@ class ResponsavelBase(BaseModel):
     def check_text(cls, v):
         return validate_string_content(v)
 
+class ResponsavelCreate(ResponsavelBase): pass
+class ResponsavelResponse(ResponsavelBase):
+    id_responsavel: UUID
+    model_config = ConfigDict(from_attributes=True)
+
 # ==========================================
 # 3. MÓDULO: MODELO DE CONTRATO
 # ==========================================
@@ -100,6 +105,11 @@ class ModeloContratoBase(BaseModel):
     def check_text(cls, v):
         return validate_string_content(v)
 
+class ModeloContratoCreate(ModeloContratoBase): pass
+class ModeloContratoResponse(ModeloContratoBase):
+    id_modelo: UUID
+    model_config = ConfigDict(from_attributes=True)
+
 # ==========================================
 # 4. MÓDULO: PACIENTE (Beneficiário)
 # ==========================================
@@ -112,6 +122,11 @@ class PacienteBase(BaseModel):
     @classmethod
     def check_text(cls, v):
         return validate_string_content(v)
+
+class PacienteCreate(PacienteBase): pass
+class PacienteResponse(PacienteBase):
+    id_paciente: UUID
+    model_config = ConfigDict(from_attributes=True)
 
 # ==========================================
 # 5. MÓDULO: CONTRATO
@@ -148,6 +163,11 @@ class ContratoBase(BaseModel):
                 raise ValueError("A data de término deve ser posterior à data de início.")
         return v
 
+class ContratoCreate(ContratoBase): pass
+class ContratoResponse(ContratoBase):
+    id_contrato: UUID
+    model_config = ConfigDict(from_attributes=True)
+
 # ==========================================
 # 6. MÓDULO: HISTÓRICO DE INTERAÇÕES
 # ==========================================
@@ -178,10 +198,15 @@ class HistoricoInteracaoBase(BaseModel):
     def check_text(cls, v):
         return validate_string_content(v, min_length=1, max_length=1000)
 
+class HistoricoInteracaoCreate(HistoricoInteracaoBase): pass
+class HistoricoInteracaoResponse(HistoricoInteracaoBase):
+    id_interacao: UUID
+    model_config = ConfigDict(from_attributes=True)
+
 # ==========================================
 # 7. MÓDULO: ENTREGAS E PRAZOS
 # ==========================================
-class EntregaPrazoBase(BaseModel): # Corrigido de 'Entreza' para 'Entrega'
+class EntregaPrazoBase(BaseModel):
     id_contrato: UUID
     descricao_entrega: str
     data_prazo_limite: date
@@ -202,6 +227,11 @@ class EntregaPrazoBase(BaseModel): # Corrigido de 'Entreza' para 'Entrega'
     @classmethod
     def check_prazo_limite(cls, v):
         return validate_not_past_date(v)
+
+class EntregaPrazoCreate(EntregaPrazoBase): pass
+class EntregaPrazoResponse(EntregaPrazoBase):
+    id_entrega: UUID
+    model_config = ConfigDict(from_attributes=True)
 
 # ==========================================
 # 8. MÓDULO: PAGAMENTOS
@@ -228,39 +258,6 @@ class PagamentoBase(BaseModel):
     @classmethod
     def check_data_pagamento(cls, v):
         return validate_not_past_datetime(v)
-
-# --- CLASSES DE CREATE E RESPONSE ---
-# (Herdam automaticamente as validações das classes Base)
-
-class ResponsavelCreate(ResponsavelBase): pass
-class ResponsavelResponse(ResponsavelBase):
-    id_responsavel: UUID
-    model_config = ConfigDict(from_attributes=True)
-
-class ModeloContratoCreate(ModeloContratoBase): pass
-class ModeloContratoResponse(ModeloContratoBase):
-    id_modelo: UUID
-    model_config = ConfigDict(from_attributes=True)
-
-class PacienteCreate(PacienteBase): pass
-class PacienteResponse(PacienteBase):
-    id_paciente: UUID
-    model_config = ConfigDict(from_attributes=True)
-
-class ContratoCreate(ContratoBase): pass
-class ContratoResponse(ContratoBase):
-    id_contrato: UUID
-    model_config = ConfigDict(from_attributes=True)
-
-class HistoricoInteracaoCreate(HistoricoInteracaoBase): pass
-class HistoricoInteracaoResponse(HistoricoInteracaoBase):
-    id_interacao: UUID
-    model_config = ConfigDict(from_attributes=True)
-
-class EntregaPrazoCreate(EntregaPrazoBase): pass
-class EntregaPrazoResponse(EntregaPrazoBase):
-    id_entrega: UUID
-    model_config = ConfigDict(from_attributes=True)
 
 class PagamentoCreate(PagamentoBase): pass
 class PagamentoResponse(PagamentoBase):

@@ -76,7 +76,7 @@ class Contrato(Base):
     __tablename__ = "contrato"
     
     id_contrato = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    id_cliente = Column(UUID(as_uuid=True), ForeignKey("empresa_cliente.id_cliente"))
+    id_cliente = Column(UUID(as_uuid=True), ForeignKey("empresa_cliente.id_cliente", ondelete="CASCADE"))
     id_modelo = Column(UUID(as_uuid=True), ForeignKey("modelo_contrato.id_modelo"))
     valor_acordado = Column(Numeric(15, 2))
     status_contrato = Column(String(50))
@@ -122,7 +122,7 @@ class Pagamento(Base):
     __tablename__ = "pagamento"
     
     id_pagamento = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    id_contrato = Column(UUID(as_uuid=True), ForeignKey("contrato.id_contrato"))
+    id_contrato = Column(UUID(as_uuid=True), ForeignKey("contrato.id_contrato", ondelete="CASCADE"))
     id_visita = Column(UUID(as_uuid=True), ForeignKey("visita_atendimento.id_visita"))
     data_pagamento = Column(TIMESTAMP)
     valor = Column(Numeric(15, 2))
