@@ -3,7 +3,7 @@ from typing import Optional, List
 from uuid import UUID
 from datetime import date, datetime
 
-# Importação relativa das regras de validação atualizadas e completas
+# Importação relativa das regras de validação
 from .validators import (
     validate_cpf, 
     validate_cnpj, 
@@ -24,8 +24,8 @@ from .validators import (
 class EmpresaBase(BaseModel):
     nome_empresa: str
     cnpj: Optional[str] = None
-    email: Optional[str] = None  # Novo campo
-    cep: Optional[str] = None    # Novo campo para logística
+    email: Optional[str] = None
+    cep: Optional[str] = None
     localizacao: Optional[str] = None
     servico_prestado: Optional[str] = None
 
@@ -63,8 +63,8 @@ class ResponsavelBase(BaseModel):
     id_cliente: UUID
     nome: str
     cpf: Optional[str] = None
-    telefone: Optional[str] = None # Novo campo
-    email: Optional[str] = None    # Novo campo
+    telefone: Optional[str] = None
+    email: Optional[str] = None
     cargo: Optional[str] = None
 
     @field_validator("cpf")
@@ -147,8 +147,10 @@ class ContratoBase(BaseModel):
     @field_validator("status_contrato")
     @classmethod
     def check_status(cls, v):
-        return validate_enum_choice(v, ["Ativo", "Pausado", "Encerrado"])
+        # Pequeno ajuste para aceitar minúsculas/maiúsculas no banco
+        return validate_enum_choice(v.title(), ["Ativo", "Pausado", "Encerrado"])
 
+class ContratoCreate(ContratoBase):
     @field_validator("data_inicio")
     @classmethod
     def check_data_inicio(cls, v):
@@ -163,7 +165,6 @@ class ContratoBase(BaseModel):
                 raise ValueError("A data de término deve ser posterior à data de início.")
         return v
 
-class ContratoCreate(ContratoBase): pass
 class ContratoResponse(ContratoBase):
     id_contrato: UUID
     model_config = ConfigDict(from_attributes=True)
@@ -181,12 +182,7 @@ class HistoricoInteracaoBase(BaseModel):
     @field_validator("tipo_interacao")
     @classmethod
     def check_tipo(cls, v):
-        return validate_enum_choice(v, ["Visita", "Reunião", "Ligação", "E-mail"])
-
-    @field_validator("data_hora")
-    @classmethod
-    def check_data_hora(cls, v):
-        return validate_not_past_datetime(v)
+        return validate_enum_choice(v.title(), ["Visita", "Reunião", "Ligação", "E-mail"])
 
     @field_validator("coordenadas_geo")
     @classmethod
@@ -198,7 +194,12 @@ class HistoricoInteracaoBase(BaseModel):
     def check_text(cls, v):
         return validate_string_content(v, min_length=1, max_length=1000)
 
-class HistoricoInteracaoCreate(HistoricoInteracaoBase): pass
+class HistoricoInteracaoCreate(HistoricoInteracaoBase):
+    @field_validator("data_hora")
+    @classmethod
+    def check_data_hora(cls, v):
+        return validate_not_past_datetime(v)
+
 class HistoricoInteracaoResponse(HistoricoInteracaoBase):
     id_interacao: UUID
     model_config = ConfigDict(from_attributes=True)
@@ -223,12 +224,12 @@ class EntregaPrazoBase(BaseModel):
     def check_status(cls, v):
         return validate_enum_choice(v, ["Pendente", "Em Andamento", "Concluído", "Atrasado"])
 
+class EntregaPrazoCreate(EntregaPrazoBase):
     @field_validator("data_prazo_limite")
     @classmethod
     def check_prazo_limite(cls, v):
         return validate_not_past_date(v)
 
-class EntregaPrazoCreate(EntregaPrazoBase): pass
 class EntregaPrazoResponse(EntregaPrazoBase):
     id_entrega: UUID
     model_config = ConfigDict(from_attributes=True)
@@ -254,12 +255,12 @@ class PagamentoBase(BaseModel):
     def check_status(cls, v):
         return validate_enum_choice(v, ["Pendente", "Pago", "Atrasado", "Cancelado"])
 
+class PagamentoCreate(PagamentoBase):
     @field_validator("data_pagamento")
     @classmethod
     def check_data_pagamento(cls, v):
         return validate_not_past_datetime(v)
 
-class PagamentoCreate(PagamentoBase): pass
 class PagamentoResponse(PagamentoBase):
     id_pagamento: UUID
     model_config = ConfigDict(from_attributes=True)
