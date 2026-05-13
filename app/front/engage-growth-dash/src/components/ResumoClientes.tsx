@@ -13,6 +13,7 @@ import {
   useEntregasMulti,
   useInteracoesMulti,
 } from "@/lib/api/hooks";
+import { useSearch } from "@/hooks/useSearch"; // 1. Importamos a busca global
 import type { Empresa, Entrega, HistoricoInteracao } from "@/lib/api/types";
 
 interface Props {
@@ -37,13 +38,25 @@ const relativeDays = (iso?: string | null) => {
 };
 
 export function ResumoClientes({ empresas, isLoading, limit = 6 }: Props) {
-  const visibles = empresas.slice(0, limit);
+  // 2. Conectamos com o que o usuário digita no Header
+  const { searchTerm } = useSearch();
+
+  // 3. Filtramos a lista de empresas ANTES de mostrar na tela
+  const empresasFiltradas = useMemo(() => {
+    if (!searchTerm) return empresas;
+    return empresas.filter(e => 
+      e.nome_empresa.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (e.cnpj && e.cnpj.includes(searchTerm))
+    );
+  }, [empresas, searchTerm]);
+
+  // 4. Agora usamos a lista filtrada para definir quem aparece
+  const visibles = empresasFiltradas.slice(0, limit);
   const ids = visibles.map((e) => e.id_cliente);
 
   const interacoesQ = useInteracoesMulti(ids);
   const contratosQ = useContratosMulti(ids);
 
-  // Flatten contracts to fetch entregas in parallel
   const contratoIds = useMemo(
     () =>
       contratosQ
@@ -73,9 +86,9 @@ export function ResumoClientes({ empresas, isLoading, limit = 6 }: Props) {
             Acompanhe visitas, entregas e pendências em aberto.
           </p>
         </div>
-        {empresas.length > limit && (
+        {empresasFiltradas.length > limit && (
           <span className="text-xs text-muted-foreground">
-            mostrando {limit} de {empresas.length}
+            mostrando {limit} de {empresasFiltradas.length}
           </span>
         )}
       </div>
@@ -93,23 +106,20 @@ export function ResumoClientes({ empresas, isLoading, limit = 6 }: Props) {
           const interacoes = (interacoesQ[i]?.data ?? []) as HistoricoInteracao[];
           const contratos = contratosQ[i]?.data ?? [];
 
-          // Última visita
           const visitas = interacoes
             .filter((it) => (it.tipo_interacao ?? "").toLowerCase().includes("visita"))
             .sort((a, b) => (b.data_hora ?? "").localeCompare(a.data_hora ?? ""));
           const ultimaVisita = visitas[0];
 
-          // Último contato importante (com feedback ou tipo != visita)
-          const contatos = interacoes
+          const contatosFiltrados = interacoes
             .filter(
               (it) =>
                 !!it.feedback_anotacoes ||
                 !(it.tipo_interacao ?? "").toLowerCase().includes("visita"),
             )
             .sort((a, b) => (b.data_hora ?? "").localeCompare(a.data_hora ?? ""));
-          const ultimoContato = contatos[0] ?? interacoes[0];
+          const ultimoContato = contatosFiltrados[0] ?? interacoes[0];
 
-          // Entregas dos contratos da empresa
           const entregas = contratos.flatMap(
             (c) => entregasByContrato.get(c.id_contrato) ?? [],
           );
@@ -117,11 +127,11 @@ export function ResumoClientes({ empresas, isLoading, limit = 6 }: Props) {
           const proxima = entregas
             .filter((e) => !e.data_conclusao && e.data_prazo_limite >= hoje)
             .sort((a, b) => a.data_prazo_limite.localeCompare(b.data_prazo_limite))[0];
+          
           const pendencias = entregas.filter(
-            (e) =>
-              !e.data_conclusao &&
-              (e.status_entrega ?? "").toLowerCase() !== "concluído",
+            (e) => !e.data_conclusao && (e.status_entrega ?? "").toLowerCase() !== "concluído",
           ).length;
+          
           const atrasadas = entregas.filter(
             (e) => !e.data_conclusao && e.data_prazo_limite < hoje,
           ).length;
@@ -151,45 +161,23 @@ export function ResumoClientes({ empresas, isLoading, limit = 6 }: Props) {
               </header>
 
               <div className="grid grid-cols-2 gap-2 text-xs">
-                <Stat
-                  icon={CalendarCheck}
-                  label="Última visita"
-                  value={fmtDate(ultimaVisita?.data_hora)}
+                <Stat icon={CalendarCheck} label="Última visita" value={fmtDate(ultimaVisita?.data_hora)} />
+                <Stat 
+                   icon={PackageCheck} 
+                   label="Próxima entrega" 
+                   value={proxima ? `${fmtDate(proxima.data_prazo_limite)}${proxDias !== null && proxDias <= 7 ? ` · ${proxDias}d` : ""}` : "—"}
+                   highlight={proxDias !== null && proxDias <= 3}
                 />
-                <Stat
-                  icon={PackageCheck}
-                  label="Próxima entrega"
-                  value={
-                    proxima
-                      ? `${fmtDate(proxima.data_prazo_limite)}${
-                          proxDias !== null && proxDias <= 7 ? ` · ${proxDias}d` : ""
-                        }`
-                      : "—"
-                  }
-                  highlight={proxDias !== null && proxDias <= 3}
+                <Stat 
+                   icon={AlertTriangle} 
+                   label="Pendências" 
+                   value={pendencias ? `${pendencias}${atrasadas ? ` (${atrasadas} atrasada${atrasadas > 1 ? "s" : ""})` : ""}` : "0"}
+                   warning={atrasadas > 0}
                 />
-                <Stat
-                  icon={AlertTriangle}
-                  label="Pendências"
-                  value={
-                    pendencias
-                      ? `${pendencias}${atrasadas ? ` (${atrasadas} atrasada${atrasadas > 1 ? "s" : ""})` : ""}`
-                      : "0"
-                  }
-                  warning={atrasadas > 0}
-                />
-                <Stat
-                  icon={MessageSquare}
-                  label="Último contato"
-                  value={
-                    ultimoContato
-                      ? `${fmtDate(ultimoContato.data_hora)}${
-                          ultimoContato.tipo_interacao
-                            ? ` · ${ultimoContato.tipo_interacao}`
-                            : ""
-                        }`
-                      : "—"
-                  }
+                <Stat 
+                   icon={MessageSquare} 
+                   label="Último contato" 
+                   value={ultimoContato ? `${fmtDate(ultimoContato.data_hora)}${ultimoContato.tipo_interacao ? ` · ${ultimoContato.tipo_interacao}` : ""}` : "—"}
                 />
               </div>
 
@@ -206,45 +194,14 @@ export function ResumoClientes({ empresas, isLoading, limit = 6 }: Props) {
   );
 }
 
-function Stat({
-  icon: Icon,
-  label,
-  value,
-  highlight,
-  warning,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  value: string;
-  highlight?: boolean;
-  warning?: boolean;
-}) {
+// Componente auxiliar Stat (mantido igual)
+function Stat({ icon: Icon, label, value, highlight, warning }: any) {
   return (
     <div className="flex items-start gap-2 rounded-md border border-border/60 bg-background/40 p-2">
-      <Icon
-        className={
-          warning
-            ? "mt-0.5 h-3.5 w-3.5 shrink-0 text-destructive"
-            : highlight
-              ? "mt-0.5 h-3.5 w-3.5 shrink-0 text-primary"
-              : "mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground"
-        }
-      />
+      <Icon className={warning ? "mt-0.5 h-3.5 w-3.5 shrink-0 text-destructive" : highlight ? "mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" : "mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground"} />
       <div className="min-w-0">
-        <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-          {label}
-        </p>
-        <p
-          className={
-            warning
-              ? "truncate text-xs font-medium text-destructive"
-              : highlight
-                ? "truncate text-xs font-medium text-primary"
-                : "truncate text-xs font-medium text-foreground"
-          }
-        >
-          {value}
-        </p>
+        <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
+        <p className={warning ? "truncate text-xs font-medium text-destructive" : highlight ? "truncate text-xs font-medium text-primary" : "truncate text-xs font-medium text-foreground"}>{value}</p>
       </div>
     </div>
   );
