@@ -44,4 +44,4 @@ O banco de dados foi modelado para garantir integridade referencial e escalabili
    ```bash
    git clone [https://github.com/seu-usuario/nome-do-repositorio.git](https://github.com/seu-usuario/nome-do-repositorio.git)
    cd nome-do-repositorio
-  instale as bibliotecas necessarias abra o terminal e digite: pip install -r requerimentos.txt
+  instale as bibliotecas necessarias abra o terminal e digite: pip install -r requiriments.txt
