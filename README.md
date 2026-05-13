@@ -42,14 +42,31 @@ O banco de dados foi modelado para garantir integridade referencial e escalabili
 
 1. **Clone o repositório:**
    ```bash
-   git clone https://github.com/davidev-tech/consultoria_adriano.git
-back end:
-cd consultoria_adriano
-python -m venv venv
-source venv/Scripts/activate obs: windows
-source venv/bin/activate obs: Linux
-pip install -r requirements.txt
-crie um arquivo .env na pasta raiz consultoria Adriano, em seguida dentro dele cole: DATABASE_URL=postgresql://postgres.erubhkiwdkotwmgqezca:cyberseguro10@aws-1-sa-east-1.pooler.supabase.com:6543/postgres
-cd app
-cd back
-python -m uvicorn main:app --reload
+   git clone [https://github.com/seu-usuario/nome-do-repositorio.git](https://github.com/seu-usuario/nome-do-repositorio.git)
+   cd nome-do-repositorio
+   pip install -r requirements.txt
+   ```
+
+2. **Configure o banco:** defina `DATABASE_URL` no `.env` antes de subir o backend.
+
+3. **Se precisar ajustar os endpoints locais:**
+   - `VITE_API_BASE` no frontend para trocar a URL da API.
+   - `CORS_ALLOW_ORIGINS` no backend para liberar uma ou mais origens separadas por vírgula.
+
+## 🧭 Estrutura prática do projeto
+
+- `app/back/`: API FastAPI, modelos SQLAlchemy, schemas Pydantic e validações.
+- `app/front/`: interface TanStack Start/React com hooks de API e dashboard.
+- `scripts/dev.sh`: cria/usa o `venv/` da raiz para o backend e prepara as dependências do frontend quando necessário.
+
+## ▶️ Inicialização rápida
+
+```bash
+chmod +x scripts/dev.sh
+./scripts/dev.sh
+```
+
+- Na primeira execução, o script cria `venv/` na raiz, instala as dependências do backend e prepara o frontend se `node_modules` não existir.
+- O backend sobe em `http://localhost:8000` por padrão.
+- O frontend sobe em `http://localhost:8080` por padrão.
+- Se quiser mudar portas, use `BACKEND_PORT=...` e `FRONT_PORT=...`.

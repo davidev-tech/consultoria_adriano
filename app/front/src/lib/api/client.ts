@@ -1,7 +1,15 @@
 // API client para o backend FastAPI "Gestão do Cuidado" (Render)
 // Lida com cold-start emitindo eventos para um Spinner global.
 
-export const API_BASE = "https://consultoria-adriano.onrender.com";
+const DEFAULT_API_BASE = "http://localhost:8000";
+
+function resolveApiBase() {
+  const viteBase = import.meta.env.VITE_API_BASE?.trim();
+  const serverBase = globalThis.process?.env?.API_BASE?.trim();
+  return (viteBase || serverBase || DEFAULT_API_BASE).replace(/\/$/, "");
+}
+
+export const API_BASE = resolveApiBase();
 
 type Json = unknown;
 

@@ -5,12 +5,16 @@ export interface Empresa {
   id_cliente: UUID;
   nome_empresa: string;
   cnpj?: string | null;
+  email?: string | null;
+  cep?: string | null;
   localizacao?: string | null;
   servico_prestado?: string | null;
 }
 export interface EmpresaCreate {
   nome_empresa: string;
   cnpj?: string | null;
+  email?: string | null;
+  cep?: string | null;
   localizacao?: string | null;
   servico_prestado?: string | null;
 }
