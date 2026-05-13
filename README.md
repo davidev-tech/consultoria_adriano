@@ -44,4 +44,29 @@ O banco de dados foi modelado para garantir integridade referencial e escalabili
    ```bash
    git clone [https://github.com/seu-usuario/nome-do-repositorio.git](https://github.com/seu-usuario/nome-do-repositorio.git)
    cd nome-do-repositorio
-  instale as bibliotecas necessarias abra o terminal e digite: pip install -r requerimentos.txt
+   pip install -r requirements.txt
+   ```
+
+2. **Configure o banco:** defina `DATABASE_URL` no `.env` antes de subir o backend.
+
+3. **Se precisar ajustar os endpoints locais:**
+   - `VITE_API_BASE` no frontend para trocar a URL da API.
+   - `CORS_ALLOW_ORIGINS` no backend para liberar uma ou mais origens separadas por vírgula.
+
+## 🧭 Estrutura prática do projeto
+
+- `app/back/`: API FastAPI, modelos SQLAlchemy, schemas Pydantic e validações.
+- `app/front/`: interface TanStack Start/React com hooks de API e dashboard.
+- `scripts/dev.sh`: cria/usa o `venv/` da raiz para o backend e prepara as dependências do frontend quando necessário.
+
+## ▶️ Inicialização rápida
+
+```bash
+chmod +x scripts/dev.sh
+./scripts/dev.sh
+```
+
+- Na primeira execução, o script cria `venv/` na raiz, instala as dependências do backend e prepara o frontend se `node_modules` não existir.
+- O backend sobe em `http://localhost:8000` por padrão.
+- O frontend sobe em `http://localhost:8080` por padrão.
+- Se quiser mudar portas, use `BACKEND_PORT=...` e `FRONT_PORT=...`.

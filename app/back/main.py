@@ -1,5 +1,8 @@
+import os
+
 from fastapi import FastAPI, Depends, HTTPException, status, Request, Query
 from fastapi.responses import JSONResponse
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import func, or_
@@ -13,6 +16,43 @@ from typing import Optional, List
 # 1. INICIALIZAÇÃO E DOCUMENTAÇÃO
 models.Base.metadata.create_all(bind=engine)
 
+
+def ensure_empresa_cliente_columns() -> None:
+    """Cria colunas novas em `empresa_cliente` quando o banco já existe.
+
+    Isso evita que versões antigas do banco que tenham sido criadas antes
+    dos campos `email` e `cep` continuem quebrando leituras e gravações.
+    """
+
+    dialect = engine.dialect.name
+    statements = []
+
+    if dialect == "postgresql":
+        statements = [
+            "ALTER TABLE empresa_cliente ADD COLUMN IF NOT EXISTS email VARCHAR(255)",
+            "ALTER TABLE empresa_cliente ADD COLUMN IF NOT EXISTS cep VARCHAR(8)",
+        ]
+    elif dialect == "sqlite":
+        # SQLite não suporta ADD COLUMN IF NOT EXISTS, então checamos antes.
+        with engine.connect() as conn:
+            existing = {
+                row[1] for row in conn.execute(text("PRAGMA table_info('empresa_cliente')"))
+            }
+            if "email" not in existing:
+                statements.append("ALTER TABLE empresa_cliente ADD COLUMN email VARCHAR(255)")
+            if "cep" not in existing:
+                statements.append("ALTER TABLE empresa_cliente ADD COLUMN cep VARCHAR(8)")
+
+    if not statements:
+        return
+
+    with engine.begin() as conn:
+        for statement in statements:
+            conn.execute(text(statement))
+
+
+ensure_empresa_cliente_columns()
+
 app = FastAPI(
     title="API - Gestão do Cuidado", 
     version="1.6.0",
@@ -20,9 +60,20 @@ app = FastAPI(
 )
 
 # 2. CONFIGURAÇÃO DE SEGURANÇA (CORS)
+cors_origins = [
+    origin.strip()
+    for origin in os.getenv("CORS_ALLOW_ORIGINS", "").split(",")
+    if origin.strip()
+]
+cors_origin_regex = os.getenv(
+    "CORS_ALLOW_ORIGIN_REGEX",
+    r"https?://(localhost|127\.0\.0\.1)(:\d+)?",
+)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=cors_origins or ["http://localhost:8080", "http://127.0.0.1:8080"],
+    allow_origin_regex=None if cors_origins else cors_origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -54,7 +105,7 @@ def criar_empresa(empresa: schemas.EmpresaCreate, db: Session = Depends(get_db))
         if existente:
             raise HTTPException(status_code=400, detail="Este CNPJ já está cadastrado.")
             
-    db_obj = models.EmpresaCliente(**empresa.model_dump())
+    db_obj = models.EmpresaCliente(**empresa.model_dump(exclude_none=True))
     db.add(db_obj)
     db.commit()
     db.refresh(db_obj)

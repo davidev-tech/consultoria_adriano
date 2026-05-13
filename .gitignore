@@ -2,6 +2,8 @@ venv/
 .env
 __pycache__/
 *.pyc
+/package-lock.json
+**/bun.lock
 # Logs
 logs
 *.log
@@ -10,6 +12,7 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+AGENTS.md
 
 node_modules
 dist
