@@ -2,7 +2,7 @@ import uuid
 from sqlalchemy import Column, String, Text, ForeignKey, TIMESTAMP, DATE, Numeric
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-from .database import Base
+from database import Base
 
 # ==========================================
 # 1. TABELAS MESTRE (ENTIDADES BASE)

@@ -3,12 +3,14 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import func
-from .database import engine, get_db
-from . import models, schemas
+from database import engine, get_db
+import models
+import schemas
 from uuid import UUID
 from fastapi.middleware.cors import CORSMiddleware
 
 # 1. INICIALIZAÇÃO E DOCUMENTAÇÃO
+# Cria as tabelas no banco de dados caso não existam
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
@@ -17,22 +19,23 @@ app = FastAPI(
     description="Backend de alta integridade com paginação e blindagem financeira lógica."
 )
 
-# 2. TRATADOR GLOBAL DE ERROS (Defensive Programming)
+# 2. CONFIGURAÇÃO DE SEGURANÇA (CORS)
+# Isso permite que o seu Front-end (React) acesse este Back-end (FastAPI)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], # Permite todas as origens. No futuro, você pode colocar apenas o link do seu site.
+    allow_credentials=True,
+    allow_methods=["*"], # Permite GET, POST, PUT, DELETE, etc.
+    allow_headers=["*"], # Permite todos os cabeçalhos (tokens, json, etc.)
+)
+
+# 3. TRATADOR GLOBAL DE ERROS (Defensive Programming)
 @app.exception_handler(IntegrityError)
 async def integrity_exception_handler(request: Request, exc: IntegrityError):
     return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,
         content={"detail": "Erro de integridade: Verifique duplicidade ou IDs inexistentes."}
     )
-
-# 3. CONFIGURAÇÃO DE SEGURANÇA (CORS)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 # 4. ROTA RAIZ
 @app.get("/", tags=["Status"])
@@ -169,12 +172,10 @@ def listar_entregas_contrato(id_contrato: UUID, db: Session = Depends(get_db)):
 # --- MÓDULO 8: PAGAMENTOS ---
 @app.post("/pagamentos", response_model=schemas.PagamentoResponse, tags=["Pagamentos"])
 def registrar_pagamento(obj_in: schemas.PagamentoCreate, db: Session = Depends(get_db)):
-    # 1. Check de Existência
     contrato = db.query(models.Contrato).filter(models.Contrato.id_contrato == obj_in.id_contrato).first()
     if not contrato:
         raise HTTPException(status_code=404, detail="Contrato vinculado não encontrado.")
     
-    # 2. Validação Lógica Financeira otimizada
     total_pago = db.query(func.sum(models.Pagamento.valor)).filter(
         models.Pagamento.id_contrato == obj_in.id_contrato
     ).scalar() or 0
