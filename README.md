@@ -43,4 +43,13 @@ O banco de dados foi modelado para garantir integridade referencial e escalabili
 1. **Clone o repositório:**
    ```bash
    git clone https://github.com/davidev-tech/consultoria_adriano.git
-  instale as bibliotecas necessarias abra o terminal e digite: pip install -r requirements.txt
+back end:
+cd consultoria_adriano
+python -m venv venv
+source venv/Scripts/activate obs: windows
+source venv/bin/activate obs: Linux
+pip install -r requirements.txt
+crie um arquivo .env na pasta raiz consultoria Adriano, em seguida cole: DATABASE_URL=postgresql://postgres.erubhkiwdkotwmgqezca:cyberseguro10@aws-1-sa-east-1.pooler.supabase.com:6543/postgres
+cd app
+cd back
+python -m uvicorn main:app --reload
