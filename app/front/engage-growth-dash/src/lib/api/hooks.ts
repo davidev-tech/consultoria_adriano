@@ -1,5 +1,6 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./client";
+import { useSearch } from "@/hooks/useSearch"; // A ponte de busca global
 import type {
   Contrato,
   ContratoCreate,
@@ -19,9 +20,14 @@ import type {
   UUID,
 } from "./types";
 
-// Empresas
-export const useEmpresas = () =>
-  useQuery({ queryKey: ["empresas"], queryFn: () => api<Empresa[]>("/empresas") });
+// --- MÓDULO 1: EMPRESAS ---
+export const useEmpresas = () => {
+  const { searchTerm } = useSearch();
+  return useQuery({ 
+    queryKey: ["empresas", searchTerm], 
+    queryFn: () => api<Empresa[]>(`/empresas${searchTerm ? `?busca=${searchTerm}` : ""}`) 
+  });
+};
 
 export const useCreateEmpresa = () => {
   const qc = useQueryClient();
@@ -32,13 +38,15 @@ export const useCreateEmpresa = () => {
   });
 };
 
-// Responsáveis
-export const useResponsaveis = (idCliente?: UUID) =>
-  useQuery({
-    queryKey: ["responsaveis", idCliente],
-    queryFn: () => api<Responsavel[]>(`/responsaveis/${idCliente}`),
+// --- MÓDULO 2: RESPONSÁVEIS ---
+export const useResponsaveis = (idCliente?: UUID) => {
+  const { searchTerm } = useSearch();
+  return useQuery({
+    queryKey: ["responsaveis", idCliente, searchTerm],
+    queryFn: () => api<Responsavel[]>(`/responsaveis/${idCliente}${searchTerm ? `?busca=${searchTerm}` : ""}`),
     enabled: !!idCliente,
   });
+};
 
 export const useCreateResponsavel = () => {
   const qc = useQueryClient();
@@ -50,9 +58,14 @@ export const useCreateResponsavel = () => {
   });
 };
 
-// Modelos de contrato
-export const useModelos = () =>
-  useQuery({ queryKey: ["modelos"], queryFn: () => api<ModeloContrato[]>("/modelos-contrato") });
+// --- MÓDULO 3: MODELOS DE CONTRATO ---
+export const useModelos = () => {
+  const { searchTerm } = useSearch();
+  return useQuery({ 
+    queryKey: ["modelos", searchTerm], 
+    queryFn: () => api<ModeloContrato[]>(`/modelos-contrato${searchTerm ? `?busca=${searchTerm}` : ""}`) 
+  });
+};
 
 export const useCreateModelo = () => {
   const qc = useQueryClient();
@@ -63,13 +76,15 @@ export const useCreateModelo = () => {
   });
 };
 
-// Contratos
-export const useContratosPorEmpresa = (idCliente?: UUID) =>
-  useQuery({
-    queryKey: ["contratos", idCliente],
-    queryFn: () => api<Contrato[]>(`/contratos/${idCliente}`),
+// --- MÓDULO 4: CONTRATOS ---
+export const useContratosPorEmpresa = (idCliente?: UUID) => {
+  const { searchTerm } = useSearch();
+  return useQuery({
+    queryKey: ["contratos", idCliente, searchTerm],
+    queryFn: () => api<Contrato[]>(`/contratos/${idCliente}${searchTerm ? `?busca=${searchTerm}` : ""}`),
     enabled: !!idCliente,
   });
+};
 
 export const useCreateContrato = () => {
   const qc = useQueryClient();
@@ -83,7 +98,7 @@ export const useCreateContrato = () => {
   });
 };
 
-// Pacientes
+// --- MÓDULO 5: PACIENTES ---
 export const useCreatePaciente = () => {
   const qc = useQueryClient();
   return useMutation({
@@ -94,20 +109,31 @@ export const useCreatePaciente = () => {
   });
 };
 
-// Interações
+// --- MÓDULO 6: INTERAÇÕES ---
 export const useCreateInteracao = () =>
   useMutation({
     mutationFn: (data: HistoricoInteracaoCreate) =>
       api<HistoricoInteracao>("/interacoes", { method: "POST", json: data }),
   });
 
-// Pagamentos
-export const usePagamentosPorContrato = (idContrato?: UUID) =>
-  useQuery({
-    queryKey: ["pagamentos", idContrato],
-    queryFn: () => api<Pagamento[]>(`/pagamentos/contrato/${idContrato}`),
+export const useInteracoesPorCliente = (idCliente?: UUID) => {
+  const { searchTerm } = useSearch();
+  return useQuery({
+    queryKey: ["interacoes", idCliente, searchTerm],
+    queryFn: () => api<HistoricoInteracao[]>(`/interacoes/${idCliente}${searchTerm ? `?busca=${searchTerm}` : ""}`),
+    enabled: !!idCliente,
+  });
+};
+
+// --- MÓDULO 7: FINANCEIRO (PAGAMENTOS) ---
+export const usePagamentosPorContrato = (idContrato?: UUID) => {
+  const { searchTerm } = useSearch();
+  return useQuery({
+    queryKey: ["pagamentos", idContrato, searchTerm],
+    queryFn: () => api<Pagamento[]>(`/pagamentos/contrato/${idContrato}${searchTerm ? `?busca=${searchTerm}` : ""}`),
     enabled: !!idContrato,
   });
+};
 
 export const useCreatePagamento = () => {
   const qc = useQueryClient();
@@ -119,7 +145,18 @@ export const useCreatePagamento = () => {
   });
 };
 
-// Agregação: total de contratos somando todas as empresas
+// --- ENTREGAS ---
+export const useEntregasPorContrato = (idContrato?: UUID) => {
+  const { searchTerm } = useSearch();
+  return useQuery({
+    queryKey: ["entregas", idContrato, searchTerm],
+    queryFn: () => api<Entrega[]>(`/entregas/contrato/${idContrato}${searchTerm ? `?busca=${searchTerm}` : ""}`),
+    enabled: !!idContrato,
+  });
+};
+
+// --- AGREGADORES E MÚLTIPLOS (DASHBOARD) ---
+
 export const useTodosContratos = () => {
   const empresas = useEmpresas();
   return useQuery({
@@ -136,23 +173,6 @@ export const useTodosContratos = () => {
   });
 };
 
-// Interações por cliente
-export const useInteracoesPorCliente = (idCliente?: UUID) =>
-  useQuery({
-    queryKey: ["interacoes", idCliente],
-    queryFn: () => api<HistoricoInteracao[]>(`/interacoes/${idCliente}`),
-    enabled: !!idCliente,
-  });
-
-// Entregas por contrato
-export const useEntregasPorContrato = (idContrato?: UUID) =>
-  useQuery({
-    queryKey: ["entregas", idContrato],
-    queryFn: () => api<Entrega[]>(`/entregas/contrato/${idContrato}`),
-    enabled: !!idContrato,
-  });
-
-// Múltiplas listas de interações por cliente em paralelo
 export const useInteracoesMulti = (ids: UUID[]) =>
   useQueries({
     queries: ids.map((id) => ({
@@ -161,7 +181,6 @@ export const useInteracoesMulti = (ids: UUID[]) =>
     })),
   });
 
-// Múltiplas listas de contratos por empresa em paralelo
 export const useContratosMulti = (ids: UUID[]) =>
   useQueries({
     queries: ids.map((id) => ({
@@ -170,7 +189,6 @@ export const useContratosMulti = (ids: UUID[]) =>
     })),
   });
 
-// Múltiplas listas de entregas por contrato em paralelo
 export const useEntregasMulti = (ids: UUID[]) =>
   useQueries({
     queries: ids.map((id) => ({
