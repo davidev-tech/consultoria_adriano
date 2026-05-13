@@ -49,7 +49,7 @@ python -m venv venv
 source venv/Scripts/activate obs: windows
 source venv/bin/activate obs: Linux
 pip install -r requirements.txt
-crie um arquivo .env na pasta raiz consultoria Adriano, em seguida cole: DATABASE_URL=postgresql://postgres.erubhkiwdkotwmgqezca:cyberseguro10@aws-1-sa-east-1.pooler.supabase.com:6543/postgres
+crie um arquivo .env na pasta raiz consultoria Adriano, em seguida dentro dele cole: DATABASE_URL=postgresql://postgres.erubhkiwdkotwmgqezca:cyberseguro10@aws-1-sa-east-1.pooler.supabase.com:6543/postgres
 cd app
 cd back
 python -m uvicorn main:app --reload
