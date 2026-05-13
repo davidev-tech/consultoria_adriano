@@ -2,34 +2,33 @@ from fastapi import FastAPI, Depends, HTTPException, status, Request, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy import func
+from sqlalchemy import func, or_ # Adicionado or_ para buscas complexas
 from database import engine, get_db
 import models
 import schemas
 from uuid import UUID
 from fastapi.middleware.cors import CORSMiddleware
+from typing import Optional, List # Adicionado Optional para os parâmetros de busca
 
 # 1. INICIALIZAÇÃO E DOCUMENTAÇÃO
-# Cria as tabelas no banco de dados caso não existam
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="API - Gestão do Cuidado", 
-    version="1.5.0",
-    description="Backend de alta integridade com paginação e blindagem financeira lógica."
+    version="1.5.1", # Incremento de versão pela nova feature
+    description="Backend de alta integridade com busca dinâmica e blindagem lógica."
 )
 
 # 2. CONFIGURAÇÃO DE SEGURANÇA (CORS)
-# Isso permite que o seu Front-end (React) acesse este Back-end (FastAPI)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Permite todas as origens. No futuro, você pode colocar apenas o link do seu site.
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"], # Permite GET, POST, PUT, DELETE, etc.
-    allow_headers=["*"], # Permite todos os cabeçalhos (tokens, json, etc.)
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
-# 3. TRATADOR GLOBAL DE ERROS (Defensive Programming)
+# 3. TRATADOR GLOBAL DE ERROS
 @app.exception_handler(IntegrityError)
 async def integrity_exception_handler(request: Request, exc: IntegrityError):
     return JSONResponse(
@@ -43,11 +42,11 @@ def read_root():
     return {
         "status": "online", 
         "projeto": "Gestão do Cuidado",
-        "versao": "1.5.0",
+        "versao": "1.5.1",
         "docs": "/docs"
     }
 
-# --- MÓDULO 1: EMPRESAS ---
+# --- MÓDULO 1: EMPRESAS (Com Busca) ---
 @app.post("/empresas", response_model=schemas.EmpresaResponse, tags=["Empresas"])
 def criar_empresa(empresa: schemas.EmpresaCreate, db: Session = Depends(get_db)):
     if empresa.cnpj:
@@ -61,13 +60,25 @@ def criar_empresa(empresa: schemas.EmpresaCreate, db: Session = Depends(get_db))
     db.refresh(db_obj)
     return db_obj
 
-@app.get("/empresas", response_model=list[schemas.EmpresaResponse], tags=["Empresas"])
+@app.get("/empresas", response_model=List[schemas.EmpresaResponse], tags=["Empresas"])
 def listar_empresas(
     skip: int = Query(0, description="Registros a pular"),
     limit: int = Query(10, description="Registros a retornar (max 100)", le=100),
+    busca: Optional[str] = Query(None, description="Busca por nome ou CNPJ"), # Novo parâmetro de busca
     db: Session = Depends(get_db)
 ):
-    return db.query(models.EmpresaCliente).offset(skip).limit(limit).all()
+    query = db.query(models.EmpresaCliente)
+    
+    if busca:
+        # Filtra por nome OU cnpj usando ILIKE (case-insensitive)
+        query = query.filter(
+            or_(
+                models.EmpresaCliente.nome_empresa.ilike(f"%{busca}%"),
+                models.EmpresaCliente.cnpj.ilike(f"%{busca}%")
+            )
+        )
+    
+    return query.offset(skip).limit(limit).all()
 
 # --- MÓDULO 2: RESPONSÁVEIS ---
 @app.post("/responsaveis", response_model=schemas.ResponsavelResponse, tags=["Responsáveis"])
@@ -86,7 +97,7 @@ def criar_responsavel(obj_in: schemas.ResponsavelCreate, db: Session = Depends(g
     db.refresh(novo_obj)
     return novo_obj
 
-@app.get("/responsaveis/{id_cliente}", response_model=list[schemas.ResponsavelResponse], tags=["Responsáveis"])
+@app.get("/responsaveis/{id_cliente}", response_model=List[schemas.ResponsavelResponse], tags=["Responsáveis"])
 def listar_responsaveis_por_cliente(id_cliente: UUID, db: Session = Depends(get_db)):
     return db.query(models.Responsavel).filter(models.Responsavel.id_cliente == id_cliente).all()
 
@@ -99,7 +110,7 @@ def criar_modelo(obj_in: schemas.ModeloContratoCreate, db: Session = Depends(get
     db.refresh(novo_obj)
     return novo_obj
 
-@app.get("/modelos-contrato", response_model=list[schemas.ModeloContratoResponse], tags=["Modelos de Contrato"])
+@app.get("/modelos-contrato", response_model=List[schemas.ModeloContratoResponse], tags=["Modelos de Contrato"])
 def listar_modelos(db: Session = Depends(get_db)):
     return db.query(models.ModeloContrato).all()
 
@@ -115,7 +126,7 @@ def criar_paciente(obj_in: schemas.PacienteCreate, db: Session = Depends(get_db)
     db.refresh(novo_obj)
     return novo_obj
 
-@app.get("/pacientes/{id_cliente}", response_model=list[schemas.PacienteResponse], tags=["Pacientes"])
+@app.get("/pacientes/{id_cliente}", response_model=List[schemas.PacienteResponse], tags=["Pacientes"])
 def listar_pacientes_por_empresa(id_cliente: UUID, db: Session = Depends(get_db)):
     return db.query(models.PacienteBeneficiario).filter(models.PacienteBeneficiario.id_cliente == id_cliente).all()
 
@@ -133,7 +144,7 @@ def criar_contrato(obj_in: schemas.ContratoCreate, db: Session = Depends(get_db)
     db.refresh(novo_obj)
     return novo_obj
 
-@app.get("/contratos/{id_cliente}", response_model=list[schemas.ContratoResponse], tags=["Contratos"])
+@app.get("/contratos/{id_cliente}", response_model=List[schemas.ContratoResponse], tags=["Contratos"])
 def listar_contratos_por_empresa(id_cliente: UUID, db: Session = Depends(get_db)):
     return db.query(models.Contrato).filter(models.Contrato.id_cliente == id_cliente).all()
 
@@ -149,7 +160,7 @@ def registrar_interacao(obj_in: schemas.HistoricoInteracaoCreate, db: Session = 
     db.refresh(novo_obj)
     return novo_obj
 
-@app.get("/interacoes/{id_cliente}", response_model=list[schemas.HistoricoInteracaoResponse], tags=["Interações"])
+@app.get("/interacoes/{id_cliente}", response_model=List[schemas.HistoricoInteracaoResponse], tags=["Interações"])
 def listar_interacoes_cliente(id_cliente: UUID, db: Session = Depends(get_db)):
     return db.query(models.HistoricoInteracoes).filter(models.HistoricoInteracoes.id_cliente == id_cliente).all()
 
@@ -165,7 +176,7 @@ def criar_entrega(obj_in: schemas.EntregaPrazoCreate, db: Session = Depends(get_
     db.refresh(novo_obj)
     return novo_obj
 
-@app.get("/entregas/contrato/{id_contrato}", response_model=list[schemas.EntregaPrazoResponse], tags=["Entregas"])
+@app.get("/entregas/contrato/{id_contrato}", response_model=List[schemas.EntregaPrazoResponse], tags=["Entregas"])
 def listar_entregas_contrato(id_contrato: UUID, db: Session = Depends(get_db)):
     return db.query(models.EntregasPrazos).filter(models.EntregasPrazos.id_contrato == id_contrato).all()
 
@@ -192,6 +203,6 @@ def registrar_pagamento(obj_in: schemas.PagamentoCreate, db: Session = Depends(g
     db.refresh(novo_obj)
     return novo_obj
 
-@app.get("/pagamentos/contrato/{id_contrato}", response_model=list[schemas.PagamentoResponse], tags=["Pagamentos"])
+@app.get("/pagamentos/contrato/{id_contrato}", response_model=List[schemas.PagamentoResponse], tags=["Pagamentos"])
 def listar_pagamentos_contrato(id_contrato: UUID, db: Session = Depends(get_db)):
     return db.query(models.Pagamento).filter(models.Pagamento.id_contrato == id_contrato).all()
