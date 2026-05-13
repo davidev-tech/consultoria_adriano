@@ -43,4 +43,4 @@ O banco de dados foi modelado para garantir integridade referencial e escalabili
 1. **Clone o repositório:**
    ```bash
    git clone https://github.com/davidev-tech/consultoria_adriano.git
-  instale as bibliotecas necessarias abra o terminal e digite: pip install -r requiriments.txt
+  instale as bibliotecas necessarias abra o terminal e digite: pip install -r requirements.txt
