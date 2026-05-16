@@ -1,11 +1,9 @@
 import os
-
 from fastapi import FastAPI, Depends, HTTPException, status, Request, Query
 from fastapi.responses import JSONResponse
-from sqlalchemy import text
+from sqlalchemy import text, func, or_
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy import func, or_
 from database import engine, get_db
 import models
 import schemas
@@ -16,14 +14,8 @@ from typing import Optional, List
 # 1. INICIALIZAÇÃO E DOCUMENTAÇÃO
 models.Base.metadata.create_all(bind=engine)
 
-
 def ensure_empresa_cliente_columns() -> None:
-    """Cria colunas novas em `empresa_cliente` quando o banco já existe.
-
-    Isso evita que versões antigas do banco que tenham sido criadas antes
-    dos campos `email` e `cep` continuem quebrando leituras e gravações.
-    """
-
+    """Cria colunas novas em `empresa_cliente` quando o banco já existe."""
     dialect = engine.dialect.name
     statements = []
 
@@ -33,7 +25,6 @@ def ensure_empresa_cliente_columns() -> None:
             "ALTER TABLE empresa_cliente ADD COLUMN IF NOT EXISTS cep VARCHAR(8)",
         ]
     elif dialect == "sqlite":
-        # SQLite não suporta ADD COLUMN IF NOT EXISTS, então checamos antes.
         with engine.connect() as conn:
             existing = {
                 row[1] for row in conn.execute(text("PRAGMA table_info('empresa_cliente')"))
@@ -50,13 +41,12 @@ def ensure_empresa_cliente_columns() -> None:
         for statement in statements:
             conn.execute(text(statement))
 
-
 ensure_empresa_cliente_columns()
 
 app = FastAPI(
-    title="API - Gestão do Cuidado", 
-    version="1.6.0",
-    description="Backend de alta integridade com Busca Universal e Blindagem Lógica."
+    title="API - Gestão do Cuidado (PSA)", 
+    version="2.0.0",
+    description="Backend PSA focado em consultoria B2B, com tracking de visitas e auditoria financeira."
 )
 
 # 2. CONFIGURAÇÃO DE SEGURANÇA (CORS)
@@ -72,8 +62,7 @@ cors_origin_regex = os.getenv(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=cors_origins or ["http://localhost:8080", "http://127.0.0.1:8080"],
-    allow_origin_regex=None if cors_origins else cors_origin_regex,
+    allow_origins=cors_origins or ["http://localhost:8080", "http://127.0.0.1:8080", "http://localhost:5173"], # Adicionado 5173 do Vite comum
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -87,17 +76,31 @@ async def integrity_exception_handler(request: Request, exc: IntegrityError):
         content={"detail": "Erro de integridade: Verifique duplicidade ou IDs inexistentes."}
     )
 
-# 4. ROTA RAIZ
+# 4. ROTA RAIZ / STATUS
 @app.get("/", tags=["Status"])
 def read_root():
     return {
         "status": "online", 
-        "projeto": "Gestão do Cuidado",
-        "versao": "1.6.0",
+        "projeto": "Gestão do Cuidado - PSA",
+        "versao": "2.0.0",
         "docs": "/docs"
     }
 
-# --- MÓDULO 1: EMPRESAS ---
+# --- MÓDULO 1: DASHBOARD METRICS ---
+@app.get("/dashboard/kpis", tags=["Dashboard"])
+def obter_kpis_dashboard(db: Session = Depends(get_db)):
+    """Retorna os dados consolidados para os 3 cards superiores do Dashboard."""
+    total_empresas = db.query(models.EmpresaCliente).count()
+    total_ativos = db.query(models.Contrato).filter(models.Contrato.status_contrato == "Ativo").count()
+    soma_receita = db.query(func.sum(models.Contrato.valor_acordado)).filter(models.Contrato.status_contrato == "Ativo").scalar() or 0
+    
+    return {
+        "total_empresas": total_empresas,
+        "contratos_ativos": total_ativos,
+        "receita_acordada": float(soma_receita)
+    }
+
+# --- MÓDULO 2: EMPRESAS ---
 @app.post("/empresas", response_model=schemas.EmpresaResponse, tags=["Empresas"])
 def criar_empresa(empresa: schemas.EmpresaCreate, db: Session = Depends(get_db)):
     if empresa.cnpj:
@@ -126,7 +129,15 @@ def listar_empresas(
         ))
     return query.offset(skip).limit(limit).all()
 
-# --- MÓDULO 2: RESPONSÁVEIS ---
+@app.get("/empresas/{id_cliente}", response_model=schemas.EmpresaResponse, tags=["Empresas"])
+def obter_empresa_por_id(id_cliente: UUID, db: Session = Depends(get_db)):
+    """Retorna os dados de uma única empresa para abrir a subtela de histórico CRM."""
+    empresa = db.query(models.EmpresaCliente).filter(models.EmpresaCliente.id_cliente == id_cliente).first()
+    if not empresa:
+        raise HTTPException(status_code=404, detail="Empresa cliente não encontrada.")
+    return empresa
+
+# --- MÓDULO 3: RESPONSÁVEIS (Contatos das Empresas) ---
 @app.post("/responsaveis", response_model=schemas.ResponsavelResponse, tags=["Responsáveis"])
 def criar_responsavel(obj_in: schemas.ResponsavelCreate, db: Session = Depends(get_db)):
     if not db.query(models.EmpresaCliente).filter(models.EmpresaCliente.id_cliente == obj_in.id_cliente).first():
@@ -157,7 +168,7 @@ def listar_responsaveis_por_cliente(
         ))
     return query.all()
 
-# --- MÓDULO 3: MODELOS DE CONTRATO ---
+# --- MÓDULO 4: MODELOS DE CONTRATO ---
 @app.post("/modelos-contrato", response_model=schemas.ModeloContratoResponse, tags=["Modelos de Contrato"])
 def criar_modelo(obj_in: schemas.ModeloContratoCreate, db: Session = Depends(get_db)):
     novo_obj = models.ModeloContrato(**obj_in.model_dump())
@@ -176,30 +187,7 @@ def listar_modelos(
         query = query.filter(models.ModeloContrato.nome_modelo.ilike(f"%{busca}%"))
     return query.all()
 
-# --- MÓDULO 4: PACIENTES ---
-@app.post("/pacientes", response_model=schemas.PacienteResponse, tags=["Pacientes"])
-def criar_paciente(obj_in: schemas.PacienteCreate, db: Session = Depends(get_db)):
-    if not db.query(models.EmpresaCliente).filter(models.EmpresaCliente.id_cliente == obj_in.id_cliente).first():
-        raise HTTPException(status_code=404, detail="Empresa cliente não encontrada.")
-        
-    novo_obj = models.PacienteBeneficiario(**obj_in.model_dump())
-    db.add(novo_obj)
-    db.commit()
-    db.refresh(novo_obj)
-    return novo_obj
-
-@app.get("/pacientes/{id_cliente}", response_model=List[schemas.PacienteResponse], tags=["Pacientes"])
-def listar_pacientes_por_empresa(
-    id_cliente: UUID, 
-    busca: Optional[str] = Query(None, description="Busca por nome do paciente"),
-    db: Session = Depends(get_db)
-):
-    query = db.query(models.PacienteBeneficiario).filter(models.PacienteBeneficiario.id_cliente == id_cliente)
-    if busca:
-        query = query.filter(models.PacienteBeneficiario.nome.ilike(f"%{busca}%"))
-    return query.all()
-
-# --- MÓDULO 5: CONTRATOS ---
+# --- MÓDULO 5: CONTRATOS MESTRE ---
 @app.post("/contratos", response_model=schemas.ContratoResponse, tags=["Contratos"])
 def criar_contrato(obj_in: schemas.ContratoCreate, db: Session = Depends(get_db)):
     if not db.query(models.EmpresaCliente).filter(models.EmpresaCliente.id_cliente == obj_in.id_cliente).first():
@@ -213,18 +201,21 @@ def criar_contrato(obj_in: schemas.ContratoCreate, db: Session = Depends(get_db)
     db.refresh(novo_obj)
     return novo_obj
 
-@app.get("/contratos/{id_cliente}", response_model=List[schemas.ContratoResponse], tags=["Contratos"])
-def listar_contratos_por_empresa(
-    id_cliente: UUID, 
-    busca: Optional[str] = Query(None, description="Busca por status (Ativo, Encerrado)"),
+@app.get("/contratos", response_model=List[schemas.ContratoResponse], tags=["Contratos"])
+def listar_todos_contratos(
+    id_cliente: Optional[UUID] = Query(None, description="Filtrar por empresa específica"),
+    busca_status: Optional[str] = Query(None, description="Filtrar por status do contrato"),
     db: Session = Depends(get_db)
 ):
-    query = db.query(models.Contrato).filter(models.Contrato.id_cliente == id_cliente)
-    if busca:
-        query = query.filter(models.Contrato.status_contrato.ilike(f"%{busca}%"))
+    """Listagem Geral de Contratos. Suporta o filtro 'Todas as empresas' da tabela do front."""
+    query = db.query(models.Contrato)
+    if id_cliente:
+        query = query.filter(models.Contrato.id_cliente == id_cliente)
+    if busca_status:
+        query = query.filter(models.Contrato.status_contrato.ilike(f"%{busca_status}%"))
     return query.all()
 
-# --- MÓDULO 6: HISTÓRICO DE INTERAÇÕES ---
+# --- MÓDULO 6: HISTÓRICO DE INTERAÇÕES (CRM / Feed do Dashboard) ---
 @app.post("/interacoes", response_model=schemas.HistoricoInteracaoResponse, tags=["Interações"])
 def registrar_interacao(obj_in: schemas.HistoricoInteracaoCreate, db: Session = Depends(get_db)):
     if not db.query(models.EmpresaCliente).filter(models.EmpresaCliente.id_cliente == obj_in.id_cliente).first():
@@ -236,7 +227,12 @@ def registrar_interacao(obj_in: schemas.HistoricoInteracaoCreate, db: Session = 
     db.refresh(novo_obj)
     return novo_obj
 
-@app.get("/interacoes/{id_cliente}", response_model=List[schemas.HistoricoInteracaoResponse], tags=["Interações"])
+@app.get("/interacoes/recentes", response_model=List[schemas.HistoricoInteracaoResponse], tags=["Interações"])
+def listar_interacoes_globais_recentes(limit: int = Query(5, le=20), db: Session = Depends(get_db)):
+    """Alimenta o Feed em Tempo Real da página inicial do Dashboard."""
+    return db.query(models.HistoricoInteracoes).order_by(models.HistoricoInteracoes.data_hora.desc()).limit(limit).all()
+
+@app.get("/interacoes/cliente/{id_cliente}", response_model=List[schemas.HistoricoInteracaoResponse], tags=["Interações"])
 def listar_interacoes_cliente(
     id_cliente: UUID, 
     busca: Optional[str] = Query(None, description="Busca por tipo ou anotações"),
@@ -250,7 +246,23 @@ def listar_interacoes_cliente(
         ))
     return query.all()
 
-# --- MÓDULO 7: ENTREGAS E PRAZOS ---
+# --- MÓDULO 7: VISITAS DE ATENDIMENTO / AUDITORIA ---
+@app.post("/visitas", response_model=schemas.VisitaAtendimentoResponse, tags=["Visitas / Auditorias"])
+def registrar_visita_campo(obj_in: schemas.VisitaAtendimentoCreate, db: Session = Depends(get_db)):
+    if not db.query(models.EmpresaCliente).filter(models.EmpresaCliente.id_cliente == obj_in.id_cliente).first():
+        raise HTTPException(status_code=404, detail="Empresa cliente destino não encontrada.")
+    
+    novo_obj = models.VisitaAtendimento(**obj_in.model_dump())
+    db.add(novo_obj)
+    db.commit()
+    db.refresh(novo_obj)
+    return novo_obj
+
+@app.get("/visitas/cliente/{id_cliente}", response_model=List[schemas.VisitaAtendimentoResponse], tags=["Visitas / Auditorias"])
+def listar_visitas_por_cliente(id_cliente: UUID, db: Session = Depends(get_db)):
+    return db.query(models.VisitaAtendimento).filter(models.VisitaAtendimento.id_cliente == id_cliente).all()
+
+# --- MÓDULO 8: ENTREGAS E PRAZOS (Milestones do Contrato) ---
 @app.post("/entregas", response_model=schemas.EntregaPrazoResponse, tags=["Entregas"])
 def criar_entrega(obj_in: schemas.EntregaPrazoCreate, db: Session = Depends(get_db)):
     if not db.query(models.Contrato).filter(models.Contrato.id_contrato == obj_in.id_contrato).first():
@@ -276,7 +288,7 @@ def listar_entregas_contrato(
         ))
     return query.all()
 
-# --- MÓDULO 8: PAGAMENTOS ---
+# --- MÓDULO 9: PAGAMENTOS ---
 @app.post("/pagamentos", response_model=schemas.PagamentoResponse, tags=["Pagamentos"])
 def registrar_pagamento(obj_in: schemas.PagamentoCreate, db: Session = Depends(get_db)):
     contrato = db.query(models.Contrato).filter(models.Contrato.id_contrato == obj_in.id_contrato).first()

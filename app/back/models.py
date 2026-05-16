@@ -19,11 +19,12 @@ class EmpresaCliente(Base):
     localizacao = Column(Text)
     servico_prestado = Column(Text)
 
-    # Relacionamentos
+    # Relacionamentos corrigidos (Removido 'pacientes', adicionado 'visitas')
     responsaveis = relationship("Responsavel", back_populates="empresa", cascade="all, delete-orphan")
-    contratos = relationship("Contrato", back_populates="empresa")
-    pacientes = relationship("PacienteBeneficiario", back_populates="empresa")
-    interacoes = relationship("HistoricoInteracoes", back_populates="empresa")
+    contratos = relationship("Contrato", back_populates="empresa", cascade="all, delete-orphan")
+    interacoes = relationship("HistoricoInteracoes", back_populates="empresa", cascade="all, delete-orphan")
+    visitas = relationship("VisitaAtendimento", back_populates="empresa", cascade="all, delete-orphan")
+
 
 class ModeloContrato(Base):
     __tablename__ = "modelo_contrato"
@@ -35,6 +36,7 @@ class ModeloContrato(Base):
     
     # Relacionamentos
     contratos = relationship("Contrato", back_populates="modelo")
+
 
 # ==========================================
 # 2. PRIMEIRO NÍVEL DE DEPENDÊNCIA
@@ -51,6 +53,7 @@ class Responsavel(Base):
     
     empresa = relationship("EmpresaCliente", back_populates="responsaveis")
 
+
 class HistoricoInteracoes(Base):
     __tablename__ = "historico_interacoes"
     
@@ -63,16 +66,6 @@ class HistoricoInteracoes(Base):
     
     empresa = relationship("EmpresaCliente", back_populates="interacoes")
 
-class PacienteBeneficiario(Base):
-    __tablename__ = "paciente_beneficiario"
-    
-    id_paciente = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    id_cliente = Column(UUID(as_uuid=True), ForeignKey("empresa_cliente.id_cliente", ondelete="CASCADE"))
-    nome = Column(String(255), nullable=False)
-    historico_cuidados = Column(Text)
-    
-    empresa = relationship("EmpresaCliente", back_populates="pacientes")
-    visitas = relationship("VisitaAtendimento", back_populates="paciente")
 
 class Contrato(Base):
     __tablename__ = "contrato"
@@ -87,8 +80,9 @@ class Contrato(Base):
     
     empresa = relationship("EmpresaCliente", back_populates="contratos")
     modelo = relationship("ModeloContrato", back_populates="contratos")
-    visitas = relationship("VisitaAtendimento", back_populates="contrato")
-    entregas = relationship("EntregasPrazos", back_populates="contrato")
+    visitas = relationship("VisitaAtendimento", back_populates="contrato", cascade="all, delete-orphan")
+    entregas = relationship("EntregasPrazos", back_populates="contrato", cascade="all, delete-orphan")
+
 
 # ==========================================
 # 3. SEGUNDO E TERCEIRO NÍVEL (DETALHES)
@@ -106,19 +100,21 @@ class EntregasPrazos(Base):
     
     contrato = relationship("Contrato", back_populates="entregas")
 
+
 class VisitaAtendimento(Base):
     __tablename__ = "visita_atendimento"
     
     id_visita = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     id_contrato = Column(UUID(as_uuid=True), ForeignKey("contrato.id_contrato"))
-    id_paciente = Column(UUID(as_uuid=True), ForeignKey("paciente_beneficiario.id_paciente"))
+    id_cliente = Column(UUID(as_uuid=True), ForeignKey("empresa_cliente.id_cliente", ondelete="CASCADE"))
     data_hora = Column(TIMESTAMP)
     grau_urgencia = Column(String(50))
     feedback_anotacoes = Column(Text)
     
     contrato = relationship("Contrato", back_populates="visitas")
-    paciente = relationship("PacienteBeneficiario", back_populates="visitas")
-    pagamentos = relationship("Pagamento", back_populates="visita")
+    empresa = relationship("EmpresaCliente", back_populates="visitas") # <- Corrigido para EmpresaCliente
+    pagamentos = relationship("Pagamento", back_populates="visita", cascade="all, delete-orphan")
+
 
 class Pagamento(Base):
     __tablename__ = "pagamento"

@@ -111,25 +111,7 @@ class ModeloContratoResponse(ModeloContratoBase):
     model_config = ConfigDict(from_attributes=True)
 
 # ==========================================
-# 4. MÓDULO: PACIENTE (Beneficiário)
-# ==========================================
-class PacienteBase(BaseModel):
-    id_cliente: UUID
-    nome: str
-    historico_cuidados: Optional[str] = None
-
-    @field_validator("nome", "historico_cuidados")
-    @classmethod
-    def check_text(cls, v):
-        return validate_string_content(v)
-
-class PacienteCreate(PacienteBase): pass
-class PacienteResponse(PacienteBase):
-    id_paciente: UUID
-    model_config = ConfigDict(from_attributes=True)
-
-# ==========================================
-# 5. MÓDULO: CONTRATO
+# 4. MÓDULO: CONTRATO
 # ==========================================
 class ContratoBase(BaseModel):
     id_cliente: UUID
@@ -169,22 +151,21 @@ class ContratoResponse(ContratoBase):
     model_config = ConfigDict(from_attributes=True)
 
 # ==========================================
-# 6. MÓDULO: HISTÓRICO DE INTERAÇÕES
+# 5. MÓDULO: HISTÓRICO DE INTERAÇÕES (CRM / Prazos rápidos)
 # ==========================================
 class HistoricoInteracaoBase(BaseModel):
     id_cliente: UUID
     tipo_interacao: Optional[str] = "Visita"
     data_hora: Optional[datetime] = None
-    coordenadas_geo: Optional[str] = None
+    coordinates_geo: Optional[str] = None
     feedback_anotacoes: Optional[str] = None
 
     @field_validator("tipo_interacao")
     @classmethod
     def check_tipo(cls, v):
-        # Blindagem extra adicionada aqui!
         return validate_enum_choice(v.title(), ["Visita", "Reunião", "Reunião Presencial", "Ligação", "E-mail"])
 
-    @field_validator("coordenadas_geo")
+    @field_validator("coordinates_geo")
     @classmethod
     def check_coords(cls, v):
         return validate_coordinates(v)
@@ -205,6 +186,31 @@ class HistoricoInteracaoResponse(HistoricoInteracaoBase):
     model_config = ConfigDict(from_attributes=True)
 
 # ==========================================
+# 6. MÓDULO: VISITAS DE ATENDIMENTO / AUDITORIA (B2B)
+# ==========================================
+class VisitaAtendimentoBase(BaseModel):
+    id_contrato: UUID
+    id_cliente: UUID  # Substituiu o id_paciente, alinhado com o models.py
+    data_hora: Optional[datetime] = None
+    grau_urgencia: Optional[str] = None
+    feedback_anotacoes: Optional[str] = None
+
+    @field_validator("feedback_anotacoes")
+    @classmethod
+    def check_text(cls, v):
+        return validate_string_content(v)
+
+class VisitaAtendimentoCreate(VisitaAtendimentoBase):
+    @field_validator("data_hora")
+    @classmethod
+    def check_data_hora(cls, v):
+        return validate_not_past_datetime(v)
+
+class VisitaAtendimentoResponse(VisitaAtendimentoBase):
+    id_visita: UUID
+    model_config = ConfigDict(from_attributes=True)
+
+# ==========================================
 # 7. MÓDULO: ENTREGAS E PRAZOS
 # ==========================================
 class EntregaPrazoBase(BaseModel):
@@ -222,7 +228,6 @@ class EntregaPrazoBase(BaseModel):
     @field_validator("status_entrega")
     @classmethod
     def check_status(cls, v):
-        # Correção aplicada: .title() adicionado
         return validate_enum_choice(v.title(), ["Pendente", "Em Andamento", "Concluído", "Atrasado"])
 
 class EntregaPrazoCreate(EntregaPrazoBase):
@@ -254,7 +259,6 @@ class PagamentoBase(BaseModel):
     @field_validator("status_pagamento")
     @classmethod
     def check_status(cls, v):
-        # Correção aplicada: .title() adicionado
         return validate_enum_choice(v.title(), ["Pendente", "Pago", "Atrasado", "Cancelado"])
 
 class PagamentoCreate(PagamentoBase):
