@@ -17,6 +17,7 @@ class EmpresaCliente(Base):
     email = Column(String(255))
     cep = Column(String(8))
     localizacao = Column(Text)
+    coordenadas_geo = Column(String(100))
     servico_prestado = Column(Text)
 
     # Relacionamentos corrigidos (Removido 'pacientes', adicionado 'visitas')
@@ -61,7 +62,6 @@ class HistoricoInteracoes(Base):
     id_cliente = Column(UUID(as_uuid=True), ForeignKey("empresa_cliente.id_cliente", ondelete="CASCADE"))
     tipo_interacao = Column(String(100))
     data_hora = Column(TIMESTAMP)
-    coordenadas_geo = Column(String(100))
     feedback_anotacoes = Column(Text)
     
     empresa = relationship("EmpresaCliente", back_populates="interacoes")

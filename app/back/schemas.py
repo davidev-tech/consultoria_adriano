@@ -21,6 +21,9 @@ from validators import (
 # ==========================================
 # 1. MÓDULO: EMPRESA CLIENTE
 # ==========================================
+# ==========================================
+# 1. MÓDULO: EMPRESA CLIENTE
+# ==========================================
 class EmpresaBase(BaseModel):
     nome_empresa: str
     cnpj: Optional[str] = None
@@ -28,6 +31,7 @@ class EmpresaBase(BaseModel):
     cep: Optional[str] = None
     localizacao: Optional[str] = None
     servico_prestado: Optional[str] = None
+    coordenadas_geo: Optional[str] = None  # <-- CAMPO ADICIONADO AQUI
 
     @field_validator("cnpj")
     @classmethod
@@ -44,10 +48,22 @@ class EmpresaBase(BaseModel):
     def check_cep(cls, v):
         return validate_cep(v)
 
+    @field_validator("coordenadas_geo")  # <-- VALIDADOR ADICIONADO AQUI
+    @classmethod
+    def check_coords(cls, v):
+        return validate_coordinates(v)
+
     @field_validator("nome_empresa", "localizacao", "servico_prestado")
     @classmethod
     def check_text(cls, v):
         return validate_string_content(v)
+
+class EmpresaCreate(EmpresaBase):
+    pass
+
+class EmpresaResponse(EmpresaBase):
+    id_cliente: UUID
+    model_config = ConfigDict(from_attributes=True)
 
 class EmpresaCreate(EmpresaBase):
     pass
@@ -165,10 +181,7 @@ class HistoricoInteracaoBase(BaseModel):
     def check_tipo(cls, v):
         return validate_enum_choice(v.title(), ["Visita", "Reunião", "Reunião Presencial", "Ligação", "E-mail"])
 
-    @field_validator("coordinates_geo")
-    @classmethod
-    def check_coords(cls, v):
-        return validate_coordinates(v)
+
 
     @field_validator("feedback_anotacoes")
     @classmethod
