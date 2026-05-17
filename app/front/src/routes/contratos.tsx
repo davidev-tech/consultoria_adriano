@@ -101,6 +101,7 @@ function ContratosPage() {
                   <th className="px-4 py-3">Empresa</th>
                   <th className="px-4 py-3">Modelo</th>
                   <th className="px-4 py-3">Início</th>
+                  <th className="px-4 py-3">fim</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3 text-right">Valor</th>
                 </tr>

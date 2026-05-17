@@ -35,8 +35,8 @@ export function AppHeader() {
             </AvatarFallback>
           </Avatar>
           <div className="hidden sm:flex flex-col leading-tight">
-            <span className="text-xs font-medium">Marina Costa</span>
-            <span className="text-[10px] text-muted-foreground">Consultora Sênior</span>
+            <span className="text-xs font-medium">Adriano</span>
+            <span className="text-[10px] text-muted-foreground">Consultor Sênior</span>
           </div>
         </div>
       </div>

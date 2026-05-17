@@ -9,7 +9,6 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as PacientesRouteImport } from './routes/pacientes'
 import { Route as InteracoesRouteImport } from './routes/interacoes'
 import { Route as FinanceiroRouteImport } from './routes/financeiro'
 import { Route as EmpresasRouteImport } from './routes/empresas'
@@ -18,11 +17,6 @@ import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as EmpresasIdRouteImport } from './routes/empresas.$id'
 
-const PacientesRoute = PacientesRouteImport.update({
-  id: '/pacientes',
-  path: '/pacientes',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const InteracoesRoute = InteracoesRouteImport.update({
   id: '/interacoes',
   path: '/interacoes',
@@ -66,7 +60,6 @@ export interface FileRoutesByFullPath {
   '/empresas': typeof EmpresasRouteWithChildren
   '/financeiro': typeof FinanceiroRoute
   '/interacoes': typeof InteracoesRoute
-  '/pacientes': typeof PacientesRoute
   '/empresas/$id': typeof EmpresasIdRoute
 }
 export interface FileRoutesByTo {
@@ -76,7 +69,6 @@ export interface FileRoutesByTo {
   '/empresas': typeof EmpresasRouteWithChildren
   '/financeiro': typeof FinanceiroRoute
   '/interacoes': typeof InteracoesRoute
-  '/pacientes': typeof PacientesRoute
   '/empresas/$id': typeof EmpresasIdRoute
 }
 export interface FileRoutesById {
@@ -87,7 +79,6 @@ export interface FileRoutesById {
   '/empresas': typeof EmpresasRouteWithChildren
   '/financeiro': typeof FinanceiroRoute
   '/interacoes': typeof InteracoesRoute
-  '/pacientes': typeof PacientesRoute
   '/empresas/$id': typeof EmpresasIdRoute
 }
 export interface FileRouteTypes {
@@ -99,7 +90,6 @@ export interface FileRouteTypes {
     | '/empresas'
     | '/financeiro'
     | '/interacoes'
-    | '/pacientes'
     | '/empresas/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -109,7 +99,6 @@ export interface FileRouteTypes {
     | '/empresas'
     | '/financeiro'
     | '/interacoes'
-    | '/pacientes'
     | '/empresas/$id'
   id:
     | '__root__'
@@ -119,7 +108,6 @@ export interface FileRouteTypes {
     | '/empresas'
     | '/financeiro'
     | '/interacoes'
-    | '/pacientes'
     | '/empresas/$id'
   fileRoutesById: FileRoutesById
 }
@@ -130,18 +118,10 @@ export interface RootRouteChildren {
   EmpresasRoute: typeof EmpresasRouteWithChildren
   FinanceiroRoute: typeof FinanceiroRoute
   InteracoesRoute: typeof InteracoesRoute
-  PacientesRoute: typeof PacientesRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/pacientes': {
-      id: '/pacientes'
-      path: '/pacientes'
-      fullPath: '/pacientes'
-      preLoaderRoute: typeof PacientesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/interacoes': {
       id: '/interacoes'
       path: '/interacoes'
@@ -213,7 +193,6 @@ const rootRouteChildren: RootRouteChildren = {
   EmpresasRoute: EmpresasRouteWithChildren,
   FinanceiroRoute: FinanceiroRoute,
   InteracoesRoute: InteracoesRoute,
-  PacientesRoute: PacientesRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

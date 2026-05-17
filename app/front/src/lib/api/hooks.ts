@@ -98,16 +98,6 @@ export const useCreateContrato = () => {
   });
 };
 
-// --- MÓDULO 5: PACIENTES ---
-export const useCreatePaciente = () => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (data: PacienteCreate) =>
-      api<Paciente>("/pacientes", { method: "POST", json: data }),
-    onSuccess: (_d, vars) =>
-      qc.invalidateQueries({ queryKey: ["pacientes", vars.id_cliente] }),
-  });
-};
 
 // --- MÓDULO 6: INTERAÇÕES ---
 export const useCreateInteracao = () =>

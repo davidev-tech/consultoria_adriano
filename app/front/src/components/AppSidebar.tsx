@@ -25,7 +25,6 @@ const items = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard, group: "Inteligência" },
   { title: "Empresas", url: "/empresas", icon: Building2, group: "Cadastros" },
   { title: "Contratos", url: "/contratos", icon: FileText, group: "Cadastros" },
-  { title: "Pacientes", url: "/pacientes", icon: HeartPulse, group: "Operacional" },
   { title: "Interações", url: "/interacoes", icon: ClipboardList, group: "Operacional" },
   { title: "Financeiro", url: "/financeiro", icon: Wallet, group: "Financeiro" },
   { title: "Configurações", url: "/configuracoes", icon: Cog, group: "Sistema" },

@@ -127,22 +127,6 @@ function InteracoesPage() {
                 onChange={(e) => setDataHora(e.target.value)}
               />
             </div>
-
-            <div className="space-y-1.5 md:col-span-2">
-              <Label className="text-xs">Coordenadas (lat,lng)</Label>
-              <div className="flex gap-2">
-                <Input
-                  value={coords}
-                  onChange={(e) => setCoords(e.target.value)}
-                  placeholder="-23.5505,-46.6333"
-                  className="font-mono"
-                />
-                <Button type="button" variant="outline" onClick={captureGeo} className="gap-1.5">
-                  <MapPin className="h-4 w-4" /> Capturar
-                </Button>
-              </div>
-            </div>
-
             <div className="space-y-1.5 md:col-span-2">
               <Label className="text-xs">Feedback / Anotações</Label>
               <Textarea
