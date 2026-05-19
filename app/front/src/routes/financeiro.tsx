@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Wallet, Loader2, Plus } from "lucide-react";
+import { Wallet, Loader2, Plus, Pencil, Trash2 } from "lucide-react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,8 @@ import {
   useEmpresas,
   usePagamentosPorContrato,
   useTodosContratos,
+  useUpdatePagamento,
+  useDeletePagamento,
 } from "@/lib/api/hooks";
 import { toast } from "sonner";
 
@@ -37,9 +39,14 @@ export const Route = createFileRoute("/financeiro")({
 function FinanceiroPage() {
   const empresas = useEmpresas();
   const contratos = useTodosContratos();
+  const remove = useDeletePagamento();
+  
   const [idContrato, setIdContrato] = useState("");
   const pagamentos = usePagamentosPorContrato(idContrato || undefined);
   const [open, setOpen] = useState(false);
+  
+  // Estado para armazenar qual pagamento estamos editando no momento
+  const [editingPagamento, setEditingPagamento] = useState<any>(null);
 
   const empresaNome = (id: string) =>
     empresas.data?.find((e) => e.id_cliente === id)?.nome_empresa ?? "—";
@@ -62,6 +69,23 @@ function FinanceiroPage() {
     };
   }, [pagamentos.data]);
 
+  const handleEditClick = (pagamento: any) => {
+    setEditingPagamento(pagamento);
+    setOpen(true);
+  };
+
+  const handleDeleteClick = async (id: string | undefined) => {
+    if (!id) return;
+    if (window.confirm("Deseja excluir permanentemente este registro de pagamento?")) {
+      try {
+        await remove.mutateAsync(id);
+        toast.success("Pagamento removido com sucesso.");
+      } catch (err) {
+        toast.error("Erro ao deletar o pagamento.");
+      }
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="mx-auto flex max-w-6xl flex-col gap-6">
@@ -75,11 +99,22 @@ function FinanceiroPage() {
           </div>
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-              <Button className="gap-2" disabled={!idContrato}>
+              <Button 
+                className="gap-2" 
+                disabled={!idContrato}
+                onClick={() => setEditingPagamento(null)} // Garante que abra em branco
+              >
                 <Plus className="h-4 w-4" /> Novo pagamento
               </Button>
             </DialogTrigger>
-            <NovoPagamentoDialog idContrato={idContrato} onClose={() => setOpen(false)} />
+            
+            {/* O modal agora lida tanto com criação quanto com edição. Usamos a 'key' para limpar o estado ao trocar */}
+            <PagamentoDialog 
+              key={editingPagamento?.id_pagamento || "novo"} 
+              idContrato={idContrato} 
+              pagamento={editingPagamento}
+              onClose={() => setOpen(false)} 
+            />
           </Dialog>
         </div>
 
@@ -114,13 +149,14 @@ function FinanceiroPage() {
                     <th className="px-4 py-3">Forma</th>
                     <th className="px-4 py-3">Status</th>
                     <th className="px-4 py-3 text-right">Valor</th>
+                    <th className="px-4 py-3 w-20"></th> {/* Coluna fantasma para botões de ação */}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {pagamentos.isLoading && (
                     <tr>
-                      <td colSpan={4} className="p-6 text-center text-xs text-muted-foreground">
-                        Carregando…
+                      <td colSpan={5} className="p-6 text-center text-xs text-muted-foreground">
+                        <Loader2 className="h-5 w-5 animate-spin mx-auto opacity-50" />
                       </td>
                     </tr>
                   )}
@@ -128,7 +164,7 @@ function FinanceiroPage() {
                     const status = (p.status_pagamento ?? "Pendente").toLowerCase();
                     const isPago = status === "pago";
                     return (
-                      <tr key={p.id_pagamento ?? i} className="hover:bg-muted/20">
+                      <tr key={p.id_pagamento ?? i} className="group hover:bg-muted/20 transition-colors">
                         <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
                           {p.data_pagamento
                             ? new Date(p.data_pagamento).toLocaleDateString("pt-BR")
@@ -155,12 +191,34 @@ function FinanceiroPage() {
                             currency: "BRL",
                           })}
                         </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                              onClick={() => handleEditClick(p)}
+                              title="Editar pagamento"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                              onClick={() => handleDeleteClick(p.id_pagamento)}
+                              title="Deletar pagamento"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </td>
                       </tr>
                     );
                   })}
                   {!pagamentos.isLoading && (pagamentos.data?.length ?? 0) === 0 && (
                     <tr>
-                      <td colSpan={4} className="p-6 text-center text-xs text-muted-foreground">
+                      <td colSpan={5} className="p-6 text-center text-xs text-muted-foreground">
                         Nenhum pagamento registrado neste contrato.
                       </td>
                     </tr>
@@ -208,37 +266,64 @@ function KpiCard({
   );
 }
 
-function NovoPagamentoDialog({
+// O Componente foi rebatizado e agora aceita um 'pagamento' opcional para edição
+function PagamentoDialog({
   idContrato,
+  pagamento,
   onClose,
 }: {
   idContrato: string;
+  pagamento?: any;
   onClose: () => void;
 }) {
   const create = useCreatePagamento();
-  const [valor, setValor] = useState("");
-  const [forma, setForma] = useState("PIX");
-  const [status, setStatus] = useState("Pago");
-  const [data, setData] = useState(() => new Date().toISOString().slice(0, 16));
+  const update = useUpdatePagamento();
+  const isEditing = !!pagamento;
+
+  // Se tiver um pagamento, preenche os states. Se não, começa em branco.
+  const [valor, setValor] = useState(pagamento ? String(pagamento.valor) : "");
+  const [forma, setForma] = useState(pagamento?.forma_pagamento || "PIX");
+  const [status, setStatus] = useState(pagamento?.status_pagamento || "Pago");
+  const [data, setData] = useState(() => {
+    if (pagamento?.data_pagamento) {
+      return new Date(pagamento.data_pagamento).toISOString().slice(0, 16);
+    }
+    return new Date().toISOString().slice(0, 16);
+  });
+
+  const isLoading = create.isPending || update.isPending;
+  const currentError = create.error || update.error;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!valor) return;
-    await create.mutateAsync({
+
+    const payload = {
       id_contrato: idContrato,
       valor: Number(valor),
       forma_pagamento: forma,
       status_pagamento: status,
       data_pagamento: new Date(data).toISOString(),
-    });
-    toast.success("Pagamento registrado");
-    onClose();
+    };
+
+    try {
+      if (isEditing) {
+        await update.mutateAsync({ id: pagamento.id_pagamento, data: payload });
+        toast.success("Pagamento atualizado com sucesso!");
+      } else {
+        await create.mutateAsync(payload);
+        toast.success("Pagamento registrado com sucesso!");
+      }
+      onClose();
+    } catch (error) {
+      toast.error("Ocorreu um erro ao processar o pagamento.");
+    }
   };
 
   return (
     <DialogContent>
       <DialogHeader>
-        <DialogTitle>Novo pagamento</DialogTitle>
+        <DialogTitle>{isEditing ? "Editar pagamento" : "Novo pagamento"}</DialogTitle>
       </DialogHeader>
       <form onSubmit={submit} className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
@@ -286,15 +371,16 @@ function NovoPagamentoDialog({
             </Select>
           </div>
         </div>
-        {create.error && (
-          <p className="text-xs text-destructive">{(create.error as Error).message}</p>
+        {currentError && (
+          <p className="text-xs text-destructive">{(currentError as Error).message}</p>
         )}
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={onClose}>
+          <Button type="button" variant="outline" onClick={onClose} disabled={isLoading}>
             Cancelar
           </Button>
-          <Button type="submit" disabled={create.isPending} className="gap-2">
-            {create.isPending && <Loader2 className="h-4 w-4 animate-spin" />}Registrar
+          <Button type="submit" disabled={isLoading} className="gap-2">
+            {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+            {isEditing ? "Salvar alterações" : "Registrar"}
           </Button>
         </DialogFooter>
       </form>

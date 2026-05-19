@@ -28,7 +28,6 @@ Este projeto foi desenvolvido para atender às dores específicas de um consulto
 O banco de dados foi modelado para garantir integridade referencial e escalabilidade. Os principais módulos incluem:
 - **CRM:** Cadastro de empresas, responsáveis e pacientes.
 - **Contratos:** Gestão de modelos (mensais/avulsos) e vigência.
-- **Operação:** Registro de visitas com geolocalização e histórico de feedback.
 - **Financeiro:** Controle automático de faturamento e status de pagamento.
 
 

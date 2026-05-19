@@ -11,8 +11,6 @@ import type {
   HistoricoInteracaoCreate,
   ModeloContrato,
   ModeloContratoCreate,
-  Paciente,
-  PacienteCreate,
   Pagamento,
   PagamentoCreate,
   Responsavel,
@@ -34,6 +32,26 @@ export const useCreateEmpresa = () => {
   return useMutation({
     mutationFn: (data: EmpresaCreate) =>
       api<Empresa>("/empresas", { method: "POST", json: data }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["empresas"] }),
+  });
+};
+export const useUpdateEmpresa = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (args: { id: string, data: EmpresaCreate }) =>
+      api<Empresa>(`/empresas/${args.id}`, { 
+        method: "PUT", 
+        json: args.data 
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["empresas"] }),
+  });
+};
+
+export const useDeleteEmpresa = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      api(`/empresas/${id}`, { method: "DELETE" }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["empresas"] }),
   });
 };
@@ -100,11 +118,15 @@ export const useCreateContrato = () => {
 
 
 // --- MÓDULO 6: INTERAÇÕES ---
-export const useCreateInteracao = () =>
-  useMutation({
+export const useCreateInteracao = () => {
+  const qc = useQueryClient();
+  return useMutation({
     mutationFn: (data: HistoricoInteracaoCreate) =>
       api<HistoricoInteracao>("/interacoes", { method: "POST", json: data }),
+    // Atualiza o histórico na tela assim que cria uma nova
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["interacoes"] }),
   });
+};
 
 export const useInteracoesPorCliente = (idCliente?: UUID) => {
   const { searchTerm } = useSearch();
@@ -112,6 +134,29 @@ export const useInteracoesPorCliente = (idCliente?: UUID) => {
     queryKey: ["interacoes", idCliente, searchTerm],
     queryFn: () => api<HistoricoInteracao[]>(`/interacoes/${idCliente}${searchTerm ? `?busca=${searchTerm}` : ""}`),
     enabled: !!idCliente,
+  });
+};
+
+export const useUpdateInteracao = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (args: { id: string; data: any }) =>
+      api<{ mensagem: string }>(`/interacoes/${args.id}`, { 
+        method: "PUT", 
+        json: args.data 
+      }),
+    // Força a atualização do histórico após editar
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["interacoes"] }),
+  });
+};
+
+export const useDeleteInteracao = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      api<{ mensagem: string }>(`/interacoes/${id}`, { method: "DELETE" }),
+    // Força a atualização do histórico após deletar
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["interacoes"] }),
   });
 };
 
@@ -132,6 +177,26 @@ export const useCreatePagamento = () => {
       api<Pagamento>("/pagamentos", { method: "POST", json: data }),
     onSuccess: (_d, vars) =>
       qc.invalidateQueries({ queryKey: ["pagamentos", vars.id_contrato] }),
+  });
+};
+export const useUpdatePagamento = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (args: { id: string; data: any }) =>
+      api<{ mensagem: string }>(`/pagamentos/${args.id}`, { 
+        method: "PUT", 
+        json: args.data 
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["pagamentos"] }),
+  });
+};
+
+export const useDeletePagamento = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      api<{ mensagem: string }>(`/pagamentos/${id}`, { method: "DELETE" }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["pagamentos"] }),
   });
 };
 
@@ -186,3 +251,39 @@ export const useEntregasMulti = (ids: UUID[]) =>
       queryFn: () => api<Entrega[]>(`/entregas/contrato/${id}`).catch(() => [] as Entrega[]),
     })),
   });
+
+  // 1. Hook para arquivar o Modelo
+export function useArquivarModelo() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      // Ajuste a URL base se você usar uma instância do axios
+      const response = await fetch(`http://localhost:8000/modelos-contrato/${id}/arquivar`, {
+        method: "PATCH",
+      });
+      if (!response.ok) throw new Error("Erro ao arquivar modelo");
+      return response.json();
+    },
+    onSuccess: () => {
+      // Isso faz a tela recarregar a lista automaticamente após arquivar!
+      queryClient.invalidateQueries({ queryKey: ["modelos"] });
+    },
+  });
+}
+
+// 2. Hook para arquivar o Contrato
+export function useArquivarContrato() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const response = await fetch(`http://localhost:8000/contratos/${id}/arquivar`, {
+        method: "PATCH",
+      });
+      if (!response.ok) throw new Error("Erro ao arquivar contrato");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["contratos"] });
+    },
+  });
+}

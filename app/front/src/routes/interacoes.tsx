@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { ClipboardList, Loader2, MapPin } from "lucide-react";
+import { ClipboardList, Loader2, Pencil, Trash2, X } from "lucide-react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useCreateInteracao, useEmpresas } from "@/lib/api/hooks";
+import { 
+  useCreateInteracao, 
+  useInteracoesPorCliente, 
+  useUpdateInteracao, 
+  useEmpresas, 
+  useDeleteInteracao 
+} from "@/lib/api/hooks";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/interacoes")({
@@ -24,22 +30,22 @@ export const Route = createFileRoute("/interacoes")({
 function InteracoesPage() {
   const empresas = useEmpresas();
   const create = useCreateInteracao();
+  const update = useUpdateInteracao();
+  const remove = useDeleteInteracao();
 
-  const [idCliente, setIdCliente] = useState("");
+  const [idCliente, setIdCliente] = useState<string>("");
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [tipo, setTipo] = useState("Visita");
   const [dataHora, setDataHora] = useState(() => new Date().toISOString().slice(0, 16));
-  const [coords, setCoords] = useState("");
   const [feedback, setFeedback] = useState("");
 
-  const captureGeo = () => {
-    if (!navigator.geolocation) {
-      toast.error("Geolocalização não suportada");
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => setCoords(`${pos.coords.latitude},${pos.coords.longitude}`),
-      () => toast.error("Permissão de localização negada"),
-    );
+  const { data: listaInteracoes, isLoading: loadingInteracoes } = useInteracoesPorCliente(idCliente || undefined);
+
+  const cancelarEdicao = () => {
+    setEditingId(null);
+    setTipo("Visita");
+    setFeedback("");
+    setDataHora(new Date().toISOString().slice(0, 16));
   };
 
   const submit = async (e: React.FormEvent) => {
@@ -48,106 +54,231 @@ function InteracoesPage() {
       toast.error("Selecione uma empresa");
       return;
     }
-    await create.mutateAsync({
+
+    const payload = {
       id_cliente: idCliente,
       tipo_interacao: tipo,
       data_hora: new Date(dataHora).toISOString(),
-      coordenadas_geo: coords || null,
       feedback_anotacoes: feedback || null,
-    });
-    toast.success("Interação registrada");
-    setFeedback("");
-    setCoords("");
+    };
+
+    try {
+      if (editingId) {
+        await update.mutateAsync({ id: editingId, data: payload });
+        toast.success("Interação atualizada com sucesso!");
+        cancelarEdicao();
+      } else {
+        await create.mutateAsync(payload);
+        toast.success("Interação registrada com sucesso!");
+        setFeedback("");
+      }
+    } catch (err) {
+      toast.error("Erro ao processar a requisição.");
+    }
+  };
+
+  const handleEditClick = (item: any) => {
+    setEditingId(item.id_interacao);
+    setTipo(item.tipo_interacao);
+    setFeedback(item.feedback_anotacoes || "");
+    if (item.data_hora) {
+      setDataHora(new Date(item.data_hora).toISOString().slice(0, 16));
+    }
+  };
+
+  const handleDeleteClick = async (id: string) => {
+    if (window.confirm("Deseja excluir permanentemente esta interação do histórico de auditoria?")) {
+      try {
+        await remove.mutateAsync(id);
+        toast.success("Interação removida.");
+      } catch (err) {
+        toast.error("Erro ao deletar.");
+      }
+    }
   };
 
   return (
     <DashboardLayout>
-      <div className="mx-auto flex max-w-3xl flex-col gap-6">
-        <div>
-          <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-primary">
-            // consultor em campo
-          </span>
-          <h1 className="text-2xl font-semibold tracking-tight">Registrar Interação</h1>
-          <p className="text-sm text-muted-foreground">
-            Registre visitas, reuniões e feedbacks com cliente.
-          </p>
+      <div className="mx-auto flex max-w-6xl flex-col gap-8 lg:grid lg:grid-cols-12 lg:items-start">
+        
+        {/* COLUNA DO FORMULÁRIO */}
+        <div className="flex flex-col gap-6 lg:col-span-5">
+          <div>
+            <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-primary">
+              // {editingId ? "modo edição / auditoria" : "consultor em campo"}
+            </span>
+            <h1 className="text-2xl font-semibold tracking-tight">
+              {editingId ? "Editar Interação" : "Registrar Interação"}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {editingId ? "Altere os dados salvos do histórico do cliente." : "Registre visitas, reuniões e feedbacks com cliente."}
+            </p>
+          </div>
+
+          <form
+            onSubmit={submit}
+            className="flex flex-col gap-5 rounded-lg border border-border bg-card p-6 shadow-card"
+          >
+            <div className="flex items-center justify-between border-b border-border pb-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/15 text-primary ring-1 ring-primary/30">
+                  <ClipboardList className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">{editingId ? "Modificar registro" : "Nova interação"}</p>
+                  <p className="text-xs text-muted-foreground">{editingId ? "PUT /interacoes" : "POST /interacoes"}</p>
+                </div>
+              </div>
+              {editingId && (
+                <Button type="button" variant="ghost" size="icon" onClick={cancelarEdicao}>
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+
+            <div className="grid gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Empresa cliente *</Label>
+                <Select value={idCliente} onValueChange={setIdCliente} disabled={!!editingId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a empresa..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {empresas.data?.map((e) => (
+                      <SelectItem key={e.id_cliente} value={e.id_cliente}>
+                        {e.nome_empresa}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs">Tipo</Label>
+                <Select value={tipo} onValueChange={setTipo}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Visita">Visita</SelectItem>
+                    <SelectItem value="Reunião">Reunião</SelectItem>
+                    <SelectItem value="Ligação">Ligação</SelectItem>
+                    <SelectItem value="E-mail">E-mail</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs">Data e hora</Label>
+                <Input
+                  type="datetime-local"
+                  value={dataHora}
+                  onChange={(e) => setDataHora(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Feedback / Anotações</Label>
+                <Textarea
+                  value={feedback}
+                  onChange={(e) => setFeedback(e.target.value)}
+                  rows={4}
+                  placeholder="Notas da visita, próximos passos, percepções..."
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              {editingId && (
+                <Button type="button" variant="outline" onClick={cancelarEdicao}>
+                  Cancelar
+                </Button>
+              )}
+              <Button type="submit" disabled={create.isPending || update.isPending} className="gap-2">
+                {(create.isPending || update.isPending) && <Loader2 className="h-4 w-4 animate-spin" />}
+                {editingId ? "Salvar Alterações" : "Registrar"}
+              </Button>
+            </div>
+          </form>
         </div>
 
-        <form
-          onSubmit={submit}
-          className="flex flex-col gap-5 rounded-lg border border-border bg-card p-6 shadow-card"
-        >
-          <div className="flex items-center gap-3 border-b border-border pb-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/15 text-primary ring-1 ring-primary/30">
-              <ClipboardList className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold">Nova interação</p>
-              <p className="text-xs text-muted-foreground">POST /interacoes</p>
-            </div>
+        {/* COLUNA DO HISTÓRICO */}
+        <div className="flex flex-col gap-4 lg:col-span-7">
+          <div>
+            <h2 className="text-xl font-semibold tracking-tight">Linha do Tempo de Atendimento</h2>
+            <p className="text-sm text-muted-foreground">
+              {idCliente ? "Registros de interações encontrados para este cliente." : "Selecione uma empresa para carregar os registros."}
+            </p>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-1.5 md:col-span-2">
-              <Label className="text-xs">Empresa cliente *</Label>
-              <Select value={idCliente} onValueChange={setIdCliente}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione a empresa..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {empresas.data?.map((e) => (
-                    <SelectItem key={e.id_cliente} value={e.id_cliente}>
-                      {e.nome_empresa}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="flex flex-col gap-3 max-h-[600px] overflow-y-auto pr-1">
+            {loadingInteracoes ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : listaInteracoes && listaInteracoes.length > 0 ? (
+              listaInteracoes.map((item) => {
+                const idInteracao = item.id_interacao;
+                if (!idInteracao) return null;
 
-            <div className="space-y-1.5">
-              <Label className="text-xs">Tipo</Label>
-              <Select value={tipo} onValueChange={setTipo}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Visita">Visita</SelectItem>
-                  <SelectItem value="Reunião">Reunião</SelectItem>
-                  <SelectItem value="Ligação">Ligação</SelectItem>
-                  <SelectItem value="E-mail">E-mail</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+                return (
+                  <div 
+                    key={idInteracao} 
+                    className={`group rounded-lg border p-4 shadow-sm transition-all bg-card ${
+                      editingId === idInteracao ? 'border-primary ring-1 ring-primary' : 'border-border'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="space-y-1 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="rounded bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                            {item.tipo_interacao}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {item.data_hora 
+                              ? new Date(item.data_hora).toLocaleString("pt-BR") 
+                              : "Data não informada"}
+                          </span>
+                        </div>
+                        
+                        <p className="text-sm whitespace-pre-wrap pt-1 font-medium text-foreground">
+                          {item.feedback_anotacoes || <span className="text-muted-foreground italic text-xs">Sem anotações registradas.</span>}
+                        </p>
+                      </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-xs">Data e hora</Label>
-              <Input
-                type="datetime-local"
-                value={dataHora}
-                onChange={(e) => setDataHora(e.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5 md:col-span-2">
-              <Label className="text-xs">Feedback / Anotações</Label>
-              <Textarea
-                value={feedback}
-                onChange={(e) => setFeedback(e.target.value)}
-                rows={5}
-                placeholder="Notas da visita, próximos passos, percepções..."
-              />
-            </div>
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                          onClick={() => handleEditClick(item)}
+                          title="Editar interação"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => handleDeleteClick(idInteracao)}
+                          title="Deletar permanentemente"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            ) : idCliente ? (
+              <p className="text-sm text-muted-foreground italic py-4">Nenhuma interação encontrada para este cliente.</p>
+            ) : (
+              <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+                Aguardando a seleção do cliente no painel esquerdo...
+              </div>
+            )}
           </div>
+        </div>
 
-          {create.error && (
-            <p className="text-xs text-destructive">{(create.error as Error).message}</p>
-          )}
-
-          <div className="flex justify-end">
-            <Button type="submit" disabled={create.isPending} className="gap-2">
-              {create.isPending && <Loader2 className="h-4 w-4 animate-spin" />}Registrar
-            </Button>
-          </div>
-        </form>
       </div>
     </DashboardLayout>
   );

@@ -12,7 +12,6 @@ from validators import (
     validate_positive_value,
     validate_string_content,
     validate_enum_choice,
-    validate_coordinates,
     validate_email,
     validate_phone_br,
     validate_cep
@@ -31,7 +30,6 @@ class EmpresaBase(BaseModel):
     cep: Optional[str] = None
     localizacao: Optional[str] = None
     servico_prestado: Optional[str] = None
-    coordenadas_geo: Optional[str] = None  # <-- CAMPO ADICIONADO AQUI
 
     @field_validator("cnpj")
     @classmethod
@@ -48,22 +46,11 @@ class EmpresaBase(BaseModel):
     def check_cep(cls, v):
         return validate_cep(v)
 
-    @field_validator("coordenadas_geo")  # <-- VALIDADOR ADICIONADO AQUI
-    @classmethod
-    def check_coords(cls, v):
-        return validate_coordinates(v)
 
     @field_validator("nome_empresa", "localizacao", "servico_prestado")
     @classmethod
     def check_text(cls, v):
         return validate_string_content(v)
-
-class EmpresaCreate(EmpresaBase):
-    pass
-
-class EmpresaResponse(EmpresaBase):
-    id_cliente: UUID
-    model_config = ConfigDict(from_attributes=True)
 
 class EmpresaCreate(EmpresaBase):
     pass
@@ -173,15 +160,12 @@ class HistoricoInteracaoBase(BaseModel):
     id_cliente: UUID
     tipo_interacao: Optional[str] = "Visita"
     data_hora: Optional[datetime] = None
-    coordinates_geo: Optional[str] = None
     feedback_anotacoes: Optional[str] = None
 
     @field_validator("tipo_interacao")
     @classmethod
     def check_tipo(cls, v):
         return validate_enum_choice(v.title(), ["Visita", "Reunião", "Reunião Presencial", "Ligação", "E-mail"])
-
-
 
     @field_validator("feedback_anotacoes")
     @classmethod

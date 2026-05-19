@@ -3,6 +3,7 @@ from sqlalchemy import Column, String, Text, ForeignKey, TIMESTAMP, DATE, Numeri
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from database import Base
+from sqlalchemy import Column, String, Text, ForeignKey, TIMESTAMP, DATE, Numeric, Boolean
 
 # ==========================================
 # 1. TABELAS MESTRE (ENTIDADES BASE)
@@ -17,7 +18,6 @@ class EmpresaCliente(Base):
     email = Column(String(255))
     cep = Column(String(8))
     localizacao = Column(Text)
-    coordenadas_geo = Column(String(100))
     servico_prestado = Column(Text)
 
     # Relacionamentos corrigidos (Removido 'pacientes', adicionado 'visitas')
@@ -34,6 +34,7 @@ class ModeloContrato(Base):
     nome_modelo = Column(String(255), nullable=False)
     periodicidade_cobranca = Column(String(50))
     descricao_padrao = Column(Text)
+    ativo = Column(Boolean, default=True) # <-- NOVA COLUNA AQUI
     
     # Relacionamentos
     contratos = relationship("Contrato", back_populates="modelo")

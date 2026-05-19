@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { FileText, Loader2, Plus } from "lucide-react";
+import { Archive, FileText, Loader2, Plus } from "lucide-react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { useCreateModelo, useModelos, useTodosContratos, useEmpresas } from "@/lib/api/hooks";
+import { useCreateModelo, useModelos, useTodosContratos, useEmpresas, useArquivarModelo, useArquivarContrato } from "@/lib/api/hooks";
 
 export const Route = createFileRoute("/contratos")({
   head: () => ({ meta: [{ title: "Contratos — Gestão do Cuidado" }] }),
@@ -25,6 +25,8 @@ function ContratosPage() {
   const modelos = useModelos();
   const contratos = useTodosContratos();
   const empresas = useEmpresas();
+  const arquivarModelo = useArquivarModelo();
+  const arquivarContrato = useArquivarContrato();
   const [open, setOpen] = useState(false);
 
   const empresaNome = (id: string) =>
@@ -60,10 +62,10 @@ function ContratosPage() {
             {modelos.data?.map((m) => (
               <div
                 key={m.id_modelo}
-                className="rounded-lg border border-border bg-card p-4 shadow-card"
+                className="rounded-lg border border-border bg-card p-4 shadow-card flex justify-between items-start group"
               >
-                <div className="flex items-start gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/15 text-primary ring-1 ring-primary/30">
+                <div className="flex items-start gap-3 w-full">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/15 text-primary ring-1 ring-primary/30 shrink-0">
                     <FileText className="h-4 w-4" />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -77,6 +79,22 @@ function ContratosPage() {
                       </p>
                     )}
                   </div>
+                  
+                  {/* 👇 Botão de Arquivar Modelo 👇 */}
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-8 w-8 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:text-destructive hover:bg-destructive/10 shrink-0"
+                    title="Arquivar modelo"
+                    disabled={arquivarModelo.isPending}
+                    onClick={() => {
+                      if(window.confirm("Deseja realmente arquivar este modelo? Ele não aparecerá mais para novos contratos.")) {
+                        arquivarModelo.mutate(m.id_modelo);
+                      }
+                    }}
+                  >
+                    <Archive className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
             ))}
@@ -104,6 +122,7 @@ function ContratosPage() {
                   <th className="px-4 py-3">fim</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3 text-right">Valor</th>
+                <th className="px-4 py-3 text-right">Ações</th> {/* <-- NOVA COLUNA */}
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -114,6 +133,12 @@ function ContratosPage() {
                     <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
                       {c.data_inicio}
                     </td>
+                    
+                    {/* 👇 Coluna de Data Fim adicionada aqui! 👇 */}
+                    <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
+                      {c.data_fim ?? "—"}
+                    </td>
+
                     <td className="px-4 py-3">
                       <span className="rounded-md bg-primary/15 px-2 py-0.5 text-xs text-primary">
                         {c.status_contrato ?? "Ativo"}
@@ -125,11 +150,30 @@ function ContratosPage() {
                         currency: "BRL",
                       })}
                     </td>
+                    
+                    {/* 👇 Botão de Arquivar Contrato 👇 */}
+                    <td className="px-4 py-3 text-right">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        title="Arquivar contrato"
+                        disabled={arquivarContrato.isPending}
+                        onClick={() => {
+                          if (window.confirm("Deseja arquivar este contrato? Ele passará para o status Arquivado.")) {
+                            arquivarContrato.mutate(c.id_contrato);
+                          }
+                        }}
+                      >
+                        <Archive className="h-4 w-4" />
+                      </Button>
+                    </td>
                   </tr>
                 ))}
                 {!contratos.isLoading && (contratos.data?.length ?? 0) === 0 && (
                   <tr>
-                    <td colSpan={5} className="p-6 text-center text-xs text-muted-foreground">
+                    {/* 👇 colSpan alterado para 6 para cobrir todas as colunas 👇 */}
+                    <td colSpan={6} className="p-6 text-center text-xs text-muted-foreground">
                       Nenhum contrato cadastrado.
                     </td>
                   </tr>
