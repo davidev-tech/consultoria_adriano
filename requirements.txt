@@ -8,3 +8,4 @@ python-multipart
 validate-docbr
 bleach
 watchfiles
+PyJWT

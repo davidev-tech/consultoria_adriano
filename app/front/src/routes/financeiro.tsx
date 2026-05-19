@@ -149,7 +149,7 @@ function FinanceiroPage() {
                     <th className="px-4 py-3">Forma</th>
                     <th className="px-4 py-3">Status</th>
                     <th className="px-4 py-3 text-right">Valor</th>
-                    <th className="px-4 py-3 w-20"></th> {/* Coluna fantasma para botões de ação */}
+                    <th className="px-4 py-3 w-20">{/* Coluna fantasma para botões de ação */}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">

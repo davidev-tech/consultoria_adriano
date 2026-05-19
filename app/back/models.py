@@ -1,9 +1,11 @@
 import uuid
+from pydantic import BaseModel, model_validator
 from sqlalchemy import Column, String, Text, ForeignKey, TIMESTAMP, DATE, Numeric
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from database import Base
 from sqlalchemy import Column, String, Text, ForeignKey, TIMESTAMP, DATE, Numeric, Boolean
+from typing import Optional
 
 # ==========================================
 # 1. TABELAS MESTRE (ENTIDADES BASE)
@@ -83,6 +85,7 @@ class Contrato(Base):
     modelo = relationship("ModeloContrato", back_populates="contratos")
     visitas = relationship("VisitaAtendimento", back_populates="contrato", cascade="all, delete-orphan")
     entregas = relationship("EntregasPrazos", back_populates="contrato", cascade="all, delete-orphan")
+    pagamentos = relationship("Pagamento", cascade="all, delete-orphan")
 
 
 # ==========================================
@@ -126,7 +129,7 @@ class Pagamento(Base):
     data_pagamento = Column(TIMESTAMP)
     valor = Column(Numeric(15, 2))
     forma_pagamento = Column(String(50))
-    condicao_pagamento = Column(Text)
+    # condicao_pagamento = Column(Text)
     status_pagamento = Column(String(50))
     
     visita = relationship("VisitaAtendimento", back_populates="pagamentos")

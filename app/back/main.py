@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException, status, Request, Query
 from fastapi.responses import JSONResponse
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import func, text
 from pydantic import BaseModel
@@ -11,6 +11,11 @@ from uuid import UUID
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional, List
 import os
+# Novos imports para metabase e JWT
+import time
+import jwt
+from fastapi import APIRouter, HTTPException, Depends
+from typing import Dict
 
 # 1. INICIALIZAÇÃO DO BANCO
 models.Base.metadata.create_all(bind=engine)
@@ -67,6 +72,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+router = APIRouter(tags=["Metabase"])
+
+METABASE_SECRET_KEY = "1f9325def9abf761d543eb8b1e61f77cc4a43dec7fada58d0f9d26c37db3bb7f"
+METABASE_RESOURCES: Dict[str, dict] = {
+    "contratos": {"dashboard": 34},
+    "financeiro": {"dashboard": 35},  # Mude para o ID real do Metabase
+    "interacoes": {"dashboard": 36},  # Mude para o ID real do Metabase
+}
+METABASE_SITE_URL = "http://localhost:3000"
+
 # 3. TRATADOR GLOBAL DE ERROS
 @app.exception_handler(IntegrityError)
 async def integrity_exception_handler(request: Request, exc: IntegrityError):
@@ -119,7 +134,11 @@ def listar_empresas(
     busca: Optional[str] = Query(None, description="Busca por nome ou CNPJ"),
     db: Session = Depends(get_db)
 ):
-    query = db.query(models.EmpresaCliente)
+    # 💡 O segredo está no .options(joinedload(...)) carregando a árvore de relações
+    query = db.query(models.EmpresaCliente).options(
+        joinedload(models.EmpresaCliente.interacoes),
+        joinedload(models.EmpresaCliente.contratos).joinedload(models.Contrato.pagamentos)
+    )
     
     if busca:
         query = query.filter(
@@ -335,3 +354,17 @@ def get_pagamentos_por_contrato(id_contrato: str, db: Session = Depends(get_db))
         return pagamentos
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao buscar pagamentos: {str(e)}")
+
+@app.get("/metabase/token/contratos", tags=["Metabase"])
+def obter_token_metabase():
+    try:
+        # Exemplo padrão de geração de token embutido do Metabase
+        payload = {
+            "resource": {"dashboard": 1}, # Substitua pelo ID real do seu dashboard no Metabase
+            "params": {},
+            "exp": round(time.time()) + (60 * 10) # Expira em 10 minutos
+        }
+        token = jwt.encode(payload, METABASE_SECRET_KEY, algorithm="HS256")
+        return {"token": token}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao gerar token: {str(e)}")

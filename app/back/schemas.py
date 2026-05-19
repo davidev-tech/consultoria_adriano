@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, field_validator, ValidationInfo
+from pydantic import BaseModel, ConfigDict, field_validator, ValidationInfo, model_validator
 from typing import Optional, List
 from uuid import UUID
 from datetime import date, datetime
@@ -54,10 +54,6 @@ class EmpresaBase(BaseModel):
 
 class EmpresaCreate(EmpresaBase):
     pass
-
-class EmpresaResponse(EmpresaBase):
-    id_cliente: UUID
-    model_config = ConfigDict(from_attributes=True)
 
 # ==========================================
 # 2. MÓDULO: RESPONSÁVEL (Contatos)
@@ -267,3 +263,76 @@ class PagamentoCreate(PagamentoBase):
 class PagamentoResponse(PagamentoBase):
     id_pagamento: UUID
     model_config = ConfigDict(from_attributes=True)
+
+# ==========================================
+# SUB-SCHEMAS DE SUPORTE PARA COMPATIBILIDADE FRONT-END
+# ==========================================
+class InteracaoFront(BaseModel):
+    data_interacao: Optional[datetime] = None
+    tipo: Optional[str] = None
+    feedback: Optional[str] = None
+    model_config = ConfigDict(from_attributes=True)
+
+    @model_validator(mode='before')
+    @classmethod
+    def map_fields(cls, v):
+        if not isinstance(v, dict):
+            return {
+                "data_interacao": getattr(v, "data_hora", None),
+                "tipo": getattr(v, "tipo_interacao", None),
+                "feedback": getattr(v, "feedback_anotacoes", None)
+            }
+        return v
+
+class ContratoFront(BaseModel):
+    id_contrato: UUID
+    data_fim: Optional[date] = None
+    status_contrato: Optional[str] = None
+    model_config = ConfigDict(from_attributes=True)
+
+class FinanceiroFront(BaseModel):
+    status: str
+    model_config = ConfigDict(from_attributes=True)
+
+    @model_validator(mode='before')
+    @classmethod
+    def map_fields(cls, v):
+        if not isinstance(v, dict):
+            status_val = getattr(v, "status_pagamento", "Pendente")
+            return {
+                "status": (status_val or "pendente").lower()
+            }
+        return v
+
+# ==========================================
+# SCHEMA PRINCIPAL DA EMPRESA ATUALIZADO
+# ==========================================
+class EmpresaResponse(EmpresaBase):
+    id_cliente: UUID
+    interacoes: List[InteracaoFront] = []
+    contratos: List[ContratoFront] = []
+    financeiro: List[FinanceiroFront] = []
+    model_config = ConfigDict(from_attributes=True)
+
+    @model_validator(mode='before')
+    @classmethod
+    def convert_to_dict_with_relations(cls, v):
+        if not isinstance(v, dict):
+            all_payments = []
+            for c in getattr(v, "contratos", []) or []:
+                for p in getattr(c, "pagamentos", []) or []:
+                    all_payments.append(p)
+            
+            return {
+                "id_cliente": v.id_cliente,
+                "nome_empresa": v.nome_empresa,
+                "cnpj": v.cnpj,
+                "email": v.email,
+                "cep": v.cep,
+                "localizacao": v.localizacao,
+                "servico_prestado": v.servico_prestado,
+                "interacoes": getattr(v, "interacoes", []) or [],
+                "contratos": getattr(v, "contratos", []) or [],
+                "financeiro": all_payments
+            }
+        return v

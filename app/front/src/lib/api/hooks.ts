@@ -35,6 +35,7 @@ export const useCreateEmpresa = () => {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["empresas"] }),
   });
 };
+
 export const useUpdateEmpresa = () => {
   const qc = useQueryClient();
   return useMutation({
@@ -116,14 +117,12 @@ export const useCreateContrato = () => {
   });
 };
 
-
 // --- MÓDULO 6: INTERAÇÕES ---
 export const useCreateInteracao = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: HistoricoInteracaoCreate) =>
       api<HistoricoInteracao>("/interacoes", { method: "POST", json: data }),
-    // Atualiza o histórico na tela assim que cria uma nova
     onSuccess: () => qc.invalidateQueries({ queryKey: ["interacoes"] }),
   });
 };
@@ -145,7 +144,6 @@ export const useUpdateInteracao = () => {
         method: "PUT", 
         json: args.data 
       }),
-    // Força a atualização do histórico após editar
     onSuccess: () => qc.invalidateQueries({ queryKey: ["interacoes"] }),
   });
 };
@@ -155,7 +153,6 @@ export const useDeleteInteracao = () => {
   return useMutation({
     mutationFn: (id: string) =>
       api<{ mensagem: string }>(`/interacoes/${id}`, { method: "DELETE" }),
-    // Força a atualização do histórico após deletar
     onSuccess: () => qc.invalidateQueries({ queryKey: ["interacoes"] }),
   });
 };
@@ -179,6 +176,7 @@ export const useCreatePagamento = () => {
       qc.invalidateQueries({ queryKey: ["pagamentos", vars.id_contrato] }),
   });
 };
+
 export const useUpdatePagamento = () => {
   const qc = useQueryClient();
   return useMutation({
@@ -211,15 +209,14 @@ export const useEntregasPorContrato = (idContrato?: UUID) => {
 };
 
 // --- AGREGADORES E MÚLTIPLOS (DASHBOARD) ---
-
 export const useTodosContratos = () => {
   const empresas = useEmpresas();
   return useQuery({
-    queryKey: ["contratos-all", empresas.data?.map((e) => e.id_cliente).join(",")],
+    queryKey: ["contratos-all", empresas.data?.map((e: Empresa) => e.id_cliente).join(",")],
     enabled: !!empresas.data,
-    queryFn: async () => {
+    queryFn: async (): Promise<Contrato[]> => {
       const all = await Promise.all(
-        (empresas.data ?? []).map((e) =>
+        (empresas.data ?? []).map((e: Empresa) =>
           api<Contrato[]>(`/contratos/${e.id_cliente}`).catch(() => [] as Contrato[]),
         ),
       );
@@ -252,12 +249,10 @@ export const useEntregasMulti = (ids: UUID[]) =>
     })),
   });
 
-  // 1. Hook para arquivar o Modelo
 export function useArquivarModelo() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      // Ajuste a URL base se você usar uma instância do axios
       const response = await fetch(`http://localhost:8000/modelos-contrato/${id}/arquivar`, {
         method: "PATCH",
       });
@@ -265,13 +260,11 @@ export function useArquivarModelo() {
       return response.json();
     },
     onSuccess: () => {
-      // Isso faz a tela recarregar a lista automaticamente após arquivar!
       queryClient.invalidateQueries({ queryKey: ["modelos"] });
     },
   });
 }
 
-// 2. Hook para arquivar o Contrato
 export function useArquivarContrato() {
   const queryClient = useQueryClient();
   return useMutation({
