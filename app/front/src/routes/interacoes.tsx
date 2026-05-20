@@ -57,7 +57,7 @@ function InteracoesPage() {
 
     const payload = {
       id_cliente: idCliente,
-      tipo_interacao: tipo,
+      tipo_interacao: tipo, // Enviando o valor selecionado ("Visita", "Mensagem", etc.)
       data_hora: new Date(dataHora).toISOString(),
       feedback_anotacoes: feedback || null,
     };
@@ -79,7 +79,7 @@ function InteracoesPage() {
 
   const handleEditClick = (item: any) => {
     setEditingId(item.id_interacao);
-    setTipo(item.tipo_interacao);
+    setTipo(item.tipo_interacao || "Visita");
     setFeedback(item.feedback_anotacoes || "");
     if (item.data_hora) {
       setDataHora(new Date(item.data_hora).toISOString().slice(0, 16));
@@ -162,6 +162,7 @@ function InteracoesPage() {
                   <SelectContent>
                     <SelectItem value="Visita">Visita</SelectItem>
                     <SelectItem value="Reunião">Reunião</SelectItem>
+                    <SelectItem value="Mensagem">Mensagem</SelectItem>
                     <SelectItem value="Ligação">Ligação</SelectItem>
                     <SelectItem value="E-mail">E-mail</SelectItem>
                   </SelectContent>
@@ -190,7 +191,7 @@ function InteracoesPage() {
             <div className="flex justify-end gap-2">
               {editingId && (
                 <Button type="button" variant="outline" onClick={cancelarEdicao}>
-                  Cancelar
+                  Cancel
                 </Button>
               )}
               <Button type="submit" disabled={create.isPending || update.isPending} className="gap-2">

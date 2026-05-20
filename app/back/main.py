@@ -11,10 +11,9 @@ from uuid import UUID
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional, List
 import os
-# Novos imports para metabase e JWT
 import time
 import jwt
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter
 from typing import Dict
 
 # 1. INICIALIZAÇÃO DO BANCO
@@ -55,19 +54,10 @@ app = FastAPI(
 )
 
 # 2. CONFIGURACAO DE SEGURANCA (CORS)
-# cors_origins = [
-#     origin.strip()
-#     for origin in os.getenv("CORS_ALLOW_ORIGINS", "").split(",")
-#     if origin.strip()
-# ]
-
-# Modificamos o CORSMiddleware para aceitar seu IP e porta local
-# 2. CONFIGURACAO DE SEGURANCA (CORS)
-# Vamos ignorar o .env por enquanto e forçar a liberação das portas locais
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # O asterisco libera o acesso para QUALQUER IP/Porta
-    allow_credentials=False, # Precisa ser False quando usamos o asterisco acima
+    allow_origins=["*"], 
+    allow_credentials=False, 
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -77,8 +67,8 @@ router = APIRouter(tags=["Metabase"])
 METABASE_SECRET_KEY = "1f9325def9abf761d543eb8b1e61f77cc4a43dec7fada58d0f9d26c37db3bb7f"
 METABASE_RESOURCES: Dict[str, dict] = {
     "contratos": {"dashboard": 34},
-    "financeiro": {"dashboard": 35},  # Mude para o ID real do Metabase
-    "interacoes": {"dashboard": 36},  # Mude para o ID real do Metabase
+    "financeiro": {"dashboard": 35},  
+    "interacoes": {"dashboard": 36},  
 }
 METABASE_SITE_URL = "http://localhost:3000"
 
@@ -134,7 +124,6 @@ def listar_empresas(
     busca: Optional[str] = Query(None, description="Busca por nome ou CNPJ"),
     db: Session = Depends(get_db)
 ):
-    # 💡 O segredo está no .options(joinedload(...)) carregando a árvore de relações
     query = db.query(models.EmpresaCliente).options(
         joinedload(models.EmpresaCliente.interacoes),
         joinedload(models.EmpresaCliente.contratos).joinedload(models.Contrato.pagamentos)
@@ -150,21 +139,17 @@ def listar_empresas(
 
 @app.get("/empresas/{id_cliente}", response_model=schemas.EmpresaResponse, tags=["Empresas"])
 def obter_empresa_por_id(id_cliente: UUID, db: Session = Depends(get_db)):
-    """Retorna os dados de uma única empresa para abrir a sub-tela de Histórico CRM."""
     empresa = db.query(models.EmpresaCliente).filter(models.EmpresaCliente.id_cliente == id_cliente).first()
     if not empresa:
         raise HTTPException(status_code=404, detail="Empresa cliente não encontrada.")
     return empresa
 
-# --- NOVAS ROTAS PARA EDITAR E EXCLUIR EMPRESAS ---
 @app.put("/empresas/{id_cliente}", response_model=schemas.EmpresaResponse, tags=["Empresas"])
 def atualizar_empresa(id_cliente: UUID, empresa_atualizada: schemas.EmpresaCreate, db: Session = Depends(get_db)):
-    """Atualiza os dados de uma empresa existente."""
     empresa_db = db.query(models.EmpresaCliente).filter(models.EmpresaCliente.id_cliente == id_cliente).first()
     if not empresa_db:
         raise HTTPException(status_code=404, detail="Empresa não encontrada.")
 
-    # Verifica se o CNPJ está sendo alterado para um que já existe
     if empresa_atualizada.cnpj != empresa_db.cnpj:
         existente = db.query(models.EmpresaCliente).filter(models.EmpresaCliente.cnpj == empresa_atualizada.cnpj).first()
         if existente:
@@ -181,7 +166,6 @@ def atualizar_empresa(id_cliente: UUID, empresa_atualizada: schemas.EmpresaCreat
 
 @app.delete("/empresas/{id_cliente}", status_code=status.HTTP_204_NO_CONTENT, tags=["Empresas"])
 def excluir_empresa(id_cliente: UUID, db: Session = Depends(get_db)):
-    """Remove uma empresa do banco de dados."""
     empresa_db = db.query(models.EmpresaCliente).filter(models.EmpresaCliente.id_cliente == id_cliente).first()
     if not empresa_db:
         raise HTTPException(status_code=404, detail="Empresa não encontrada.")
@@ -190,10 +174,9 @@ def excluir_empresa(id_cliente: UUID, db: Session = Depends(get_db)):
     db.commit()
     return None
 
-# --- MÓDULO 3: RESPONSÁVEIS (contatos das empresas) ---
+# --- MÓDULO 3: RESPONSÁVEIS ---
 @app.post("/responsaveis", response_model=schemas.ResponsavelResponse, tags=["Responsáveis"])
 def criar_responsavel(obj_in: schemas.ResponsavelCreate, db: Session = Depends(get_db)):
-    """Adiciona um contato (ex: Diretor de RH) a uma Empresa Cliente existente."""
     if obj_in.cpf:
         existente = db.query(models.Responsavel).filter(models.Responsavel.cpf == obj_in.cpf).first()
         if existente:
@@ -233,12 +216,9 @@ def listar_modelos(
     busca: Optional[str] = Query(None, description="Busca por nome do modelo"),
     db: Session = Depends(get_db)
 ):
-    # Já iniciamos a query filtrando apenas os que estão ativos
     query = db.query(models.ModeloContrato).filter(models.ModeloContrato.ativo == True)
-    
     if busca:
         query = query.filter(models.ModeloContrato.nome_modelo.ilike(f"%{busca}%"))
-        
     return query.all()
 
 # --- MÓDULO 5: CONTRATOS MESTRE ---
@@ -257,40 +237,36 @@ def criar_contrato(obj_in: schemas.ContratoCreate, db: Session = Depends(get_db)
 
 @app.get("/contratos/{id_cliente}", response_model=List[schemas.ContratoResponse], tags=["Contratos"])
 def listar_contratos_por_empresa(id_cliente: UUID, db: Session = Depends(get_db)):
-    contratos = db.query(models.Contrato).filter(models.Contrato.id_cliente == id_cliente).all()
-    return contratos
-def listar_todos_contratos(
-    id_cliente: Optional[UUID] = Query(None, description="Filtrar por empresa específica"),
-    status: Optional[str] = Query(None, description="Filtrar por status do contrato"),
-    db: Session = Depends(get_db)
-):
-    query = db.query(models.Contrato)
-    if id_cliente:
-         query = query.filter(models.Contrato.id_cliente == id_cliente)
-    if status:
-         query = query.filter(models.Contrato.status_contrato == status)
-    return query.all()
+    return db.query(models.Contrato).filter(models.Contrato.id_cliente == id_cliente).all()
 
 @app.patch("/modelos-contrato/{id_modelo}/arquivar", tags=["Modelos de Contrato"])
 def arquivar_modelo(id_modelo: UUID, db: Session = Depends(get_db)):
-    # Criamos a query de busca
     modelo_query = db.query(models.ModeloContrato).filter(models.ModeloContrato.id_modelo == id_modelo)
-    
-    # Checamos se existe
     if not modelo_query.first():
         raise HTTPException(status_code=404, detail="Modelo não encontrado")
     
-    # Fazemos o update direto na query (Isso resolve o erro vermelho do VSCode!)
     modelo_query.update({"ativo": False})
     db.commit()
-    
     return {"mensagem": "Modelo arquivado com sucesso"}
 
-@app.get("/interacoes/{id_cliente}")
-def get_interacoes_por_cliente(id_cliente: str, db: Session = Depends(get_db)):
+# --- MÓDULO 6: HISTÓRICO DE INTERAÇÕES (CRM) ---
+
+@app.post("/interacoes", response_model=schemas.HistoricoInteracaoResponse, tags=["Interações"])
+def criar_interacao(obj_in: schemas.HistoricoInteracaoCreate, db: Session = Depends(get_db)):
+    """Cadastra uma nova interação garantindo que o tipo esteja na lista permitida pelo schema."""
+    if not db.query(models.EmpresaCliente).filter(models.EmpresaCliente.id_cliente == obj_in.id_cliente).first():
+        raise HTTPException(status_code=404, detail="Empresa não encontrada.")
+        
+    novo_obj = models.HistoricoInteracoes(**obj_in.model_dump())
+    db.add(novo_obj)
+    db.commit()
+    db.refresh(novo_obj)
+    return novo_obj
+
+@app.get("/interacoes/{id_cliente}", response_model=List[schemas.HistoricoInteracaoResponse], tags=["Interações"])
+def get_interacoes_por_cliente(id_cliente: UUID, db: Session = Depends(get_db)):
+    """Busca o histórico de interações de um cliente específico ordenado por data."""
     try:
-        # ATENÇÃO: Substitua 'models.Interacao' pelo nome exato 
-        # da sua classe SQLAlchemy que representa a tabela de interações!
         interacoes = (
             db.query(models.HistoricoInteracoes)
             .filter(models.HistoricoInteracoes.id_cliente == id_cliente)
@@ -300,8 +276,50 @@ def get_interacoes_por_cliente(id_cliente: str, db: Session = Depends(get_db)):
         return interacoes
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao buscar interações: {str(e)}")
+
+@app.put("/interacoes/{id_interacao}", response_model=schemas.HistoricoInteracaoResponse, tags=["Interações"])
+def atualizar_interacao(id_interacao: UUID, payload: dict, db: Session = Depends(get_db)):
+    """Atualiza um registro existente aplicando a formatação de título e validação dos 5 tipos."""
+    db_interacao = db.query(models.HistoricoInteracoes).filter(models.HistoricoInteracoes.id_interacao == id_interacao).first()
     
-@app.delete("/pagamentos/{id_pagamento}")
+    if not db_interacao:
+        raise HTTPException(status_code=404, detail="Interação não encontrada")
+    
+    if "tipo_interacao" in payload and payload["tipo_interacao"]:
+        tipo_formatado = payload["tipo_interacao"].strip().title()
+        if tipo_formatado not in ["Visita", "Reunião", "Mensagem", "Ligação", "E-mail"]:
+            raise HTTPException(status_code=400, detail="Valor inválido. Use: Visita, Reunião, Mensagem, Ligação, E-mail")
+        db_interacao.tipo_interacao = tipo_formatado
+        
+    if "data_hora" in payload:
+        db_interacao.data_hora = payload["data_hora"]
+    if "feedback_anotacoes" in payload:
+        db_interacao.feedback_anotacoes = payload["feedback_anotacoes"]
+        
+    try:
+        db.commit()
+        db.refresh(db_interacao)
+        return db_interacao
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Erro ao atualizar: {str(e)}")
+
+@app.delete("/interacoes/{id_interacao}", tags=["Interações"])
+def deletar_interacao(id_interacao: UUID, db: Session = Depends(get_db)):
+    """Exclui permanentemente uma interação do histórico."""
+    db_interacao = db.query(models.HistoricoInteracoes).filter(models.HistoricoInteracoes.id_interacao == id_interacao).first()
+    if not db_interacao:
+        raise HTTPException(status_code=404, detail="Interação não encontrada")
+    try:
+        db.delete(db_interacao)
+        db.commit()
+        return {"mensagem": "Interação removida com sucesso"}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Erro ao deletar: {str(e)}")
+
+# --- MÓDULO 7: PAGAMENTOS ---
+@app.delete("/pagamentos/{id_pagamento}", tags=["Pagamentos"])
 def deletar_pagamento(id_pagamento: str, db: Session = Depends(get_db)):
     try:
         pagamento = db.query(models.Pagamento).filter(models.Pagamento.id_pagamento == id_pagamento).first()
@@ -315,108 +333,63 @@ def deletar_pagamento(id_pagamento: str, db: Session = Depends(get_db)):
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
     
-# ✅ Tem que ser app.put para atualizar dados existentes
-@app.put("/interacoes/{id_interacao}")
-def atualizar_interacao(id_interacao: str, payload: dict, db: Session = Depends(get_db)):
-    # 1. Busca a interação existente no banco
-    # ATENÇÃO: Ajuste "models.HistoricoInteracoes" para o nome correto da sua classe
-    db_interacao = db.query(models.HistoricoInteracoes).filter(models.HistoricoInteracoes.id_interacao == id_interacao).first()
-    
-    if not db_interacao:
-        raise HTTPException(status_code=404, detail="Interação não encontrada")
-    
-    # 2. Atualiza apenas os campos que o front-end enviou (ignorando coordenadas)
-    if "tipo_interacao" in payload:
-        db_interacao.tipo_interacao = payload["tipo_interacao"]
-    if "data_hora" in payload:
-        db_interacao.data_hora = payload["data_hora"]
-    if "feedback_anotacoes" in payload:
-        db_interacao.feedback_anotacoes = payload["feedback_anotacoes"]
-        
-    try:
-        db.commit()
-        db.refresh(db_interacao)
-        return db_interacao
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"Erro ao atualizar: {str(e)}")
-    
-@app.get("/pagamentos/contrato/{id_contrato}")
+@app.get("/pagamentos/contrato/{id_contrato}", tags=["Pagamentos"])
 def get_pagamentos_por_contrato(id_contrato: str, db: Session = Depends(get_db)):
     try:
-        # ATENÇÃO: Verifique se a sua classe SQLAlchemy se chama 'Pagamento' mesmo!
         pagamentos = (
             db.query(models.Pagamento)
             .filter(models.Pagamento.id_contrato == id_contrato)
-            .order_by(models.Pagamento.data_pagamento.desc()) # Ordena do mais recente para o mais antigo
+            .order_by(models.Pagamento.data_pagamento.desc()) 
             .all()
         )
         return pagamentos
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao buscar pagamentos: {str(e)}")
 
+# --- MÓDULO 8: METABASE INTEGRATION ---
 @app.get("/metabase/token/contratos", tags=["Metabase"])
 def obter_token_metabase():
     try:
-        # Exemplo padrão de geração de token embutido do Metabase
         payload = {
-            "resource": {"dashboard": 1}, # Substitua pelo ID real do seu dashboard no Metabase
+            "resource": {"dashboard": 1}, 
             "params": {},
-            "exp": round(time.time()) + (60 * 10) # Expira em 10 minutos
+            "exp": round(time.time()) + (60 * 10) 
         }
         token = jwt.encode(payload, METABASE_SECRET_KEY, algorithm="HS256")
         return {"token": token}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao gerar token: {str(e)}")
     
-# ==========================================
-# ROTA PARA DESARQUIVAR MODELO DE CONTRATO
-# ==========================================
-@app.patch("/modelos-contrato/{modelo_id}/desarquivar")
+# --- MÓDULO 9: GERENCIAMENTO DE STATUS (ARQUIVAMENTO) ---
+@app.patch("/modelos-contrato/{modelo_id}/desarquivar", tags=["Modelos de Contrato"])
 def desarquivar_modelo(modelo_id: str, db: Session = Depends(get_db)):
     modelo = db.query(models.ModeloContrato).filter(models.ModeloContrato.id_modelo == modelo_id).first()
-    
     if not modelo:
         raise HTTPException(status_code=404, detail="Modelo não encontrado")
     
-    # Usa a coluna booleana exata do seu banco
     modelo.ativo = True
-        
     db.commit()
     db.refresh(modelo)
     return {"mensagem": "Modelo desarquivado com sucesso!", "id_modelo": modelo_id}
 
-# ==========================================
-# ROTA PARA ARQUIVAR CONTRATO
-# ==========================================
-@app.patch("/contratos/{contrato_id}/arquivar")
+@app.patch("/contratos/{contrato_id}/arquivar", tags=["Contratos"])
 def arquivar_contrato(contrato_id: str, db: Session = Depends(get_db)):
-    # 👇 Corrigido o espaçamento aqui: models.Contrato
     contrato = db.query(models.Contrato).filter(models.Contrato.id_contrato == contrato_id).first()
-    
     if not contrato:
         raise HTTPException(status_code=404, detail="Contrato não encontrado no banco")
     
     contrato.status_contrato = "Arquivado"
-    
     db.commit()
     db.refresh(contrato)
     return {"mensagem": "Contrato arquivado com sucesso!", "id_contrato": contrato_id}
 
-
-# ==========================================
-# ROTA PARA DESARQUIVAR CONTRATO
-# ==========================================
-@app.patch("/contratos/{contrato_id}/desarquivar")
+@app.patch("/contratos/{contrato_id}/desarquivar", tags=["Contratos"])
 def desarquivar_contrato(contrato_id: str, db: Session = Depends(get_db)):
     contrato = db.query(models.Contrato).filter(models.Contrato.id_contrato == contrato_id).first()
-    
     if not contrato:
         raise HTTPException(status_code=404, detail="Contrato não encontrado no banco")
     
-    # Retorna o status para "Ativo"
     contrato.status_contrato = "Ativo"
-    
     db.commit()
     db.refresh(contrato)
     return {"mensagem": "Contrato desarquivado com sucesso!", "id_contrato": contrato_id}

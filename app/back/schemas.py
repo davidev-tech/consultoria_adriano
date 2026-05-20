@@ -161,7 +161,7 @@ class HistoricoInteracaoBase(BaseModel):
     @field_validator("tipo_interacao")
     @classmethod
     def check_tipo(cls, v):
-        return validate_enum_choice(v.title(), ["Visita", "Reunião", "Reunião Presencial", "Ligação", "E-mail"])
+        return validate_enum_choice(v.title(), ["Visita", "Reunião", "Mensagem", "Ligação", "E-mail"])
 
     @field_validator("feedback_anotacoes")
     @classmethod
