@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Archive, FileText, Loader2, Plus } from "lucide-react";
+import { Archive, FileText, Loader2, Plus, Link } from "lucide-react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { useCreateModelo, useModelos, useTodosContratos, useEmpresas, useArquivarModelo, useArquivarContrato } from "@/lib/api/hooks";
+// Importamos o useCreateContrato do seu arquivo de hooks
+import { 
+  useCreateModelo, 
+  useModelos, 
+  useTodosContratos, 
+  useEmpresas, 
+  useArquivarModelo, 
+  useArquivarContrato,
+  useCreateContrato 
+} from "@/lib/api/hooks"; 
 
 export const Route = createFileRoute("/contratos")({
   head: () => ({ meta: [{ title: "Contratos — Gestão do Cuidado" }] }),
@@ -27,7 +36,10 @@ function ContratosPage() {
   const empresas = useEmpresas();
   const arquivarModelo = useArquivarModelo();
   const arquivarContrato = useArquivarContrato();
-  const [open, setOpen] = useState(false);
+  
+  // Controles de estado para as duas janelas
+  const [openModelo, setOpenModelo] = useState(false);
+  const [openContrato, setOpenContrato] = useState(false);
 
   const empresaNome = (id: string) =>
     empresas.data?.find((e) => e.id_cliente === id)?.nome_empresa ?? id.slice(0, 8);
@@ -37,7 +49,10 @@ function ContratosPage() {
   return (
     <DashboardLayout>
       <div className="mx-auto flex max-w-7xl flex-col gap-8">
-        {/* Modelos */}
+        
+        {/* ==================================================== */}
+        {/* SEÇÃO 1: MODELOS DE CONTRATO                         */}
+        {/* ==================================================== */}
         <section>
           <div className="mb-4 flex items-end justify-between">
             <div>
@@ -49,15 +64,18 @@ function ContratosPage() {
                 Templates reutilizáveis para vínculo com empresas.
               </p>
             </div>
-            <Dialog open={open} onOpenChange={setOpen}>
+            
+            {/* Botão Novo Modelo */}
+            <Dialog open={openModelo} onOpenChange={setOpenModelo}>
               <DialogTrigger asChild>
                 <Button className="gap-2">
                   <Plus className="h-4 w-4" /> Novo modelo
                 </Button>
               </DialogTrigger>
-              <NovoModeloDialog onClose={() => setOpen(false)} />
+              <NovoModeloDialog onClose={() => setOpenModelo(false)} />
             </Dialog>
           </div>
+          
           <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
             {modelos.data?.map((m) => (
               <div
@@ -80,7 +98,7 @@ function ContratosPage() {
                     )}
                   </div>
                   
-                  {/* 👇 Botão de Arquivar Modelo 👇 */}
+                  {/* Botão de Arquivar Modelo */}
                   <Button 
                     variant="ghost" 
                     size="icon" 
@@ -104,14 +122,30 @@ function ContratosPage() {
           </div>
         </section>
 
-        {/* Contratos vinculados */}
+        {/* ==================================================== */}
+        {/* SEÇÃO 2: CONTRATOS VINCULADOS                        */}
+        {/* ==================================================== */}
         <section>
-          <div className="mb-4">
-            <h2 className="text-lg font-semibold">Contratos Vinculados</h2>
-            <p className="text-xs text-muted-foreground">
-              Todos os contratos das empresas cadastradas.
-            </p>
+          {/* 👇 AQUI ESTÁ A CORREÇÃO DO BOTÃO VINCULAR CONTRATO 👇 */}
+          <div className="mb-4 flex items-end justify-between">
+            <div>
+              <h2 className="text-lg font-semibold">Contratos Vinculados</h2>
+              <p className="text-xs text-muted-foreground">
+                Todos os contratos das empresas cadastradas.
+              </p>
+            </div>
+            
+            {/* Botão Vincular Contrato */}
+            <Dialog open={openContrato} onOpenChange={setOpenContrato}>
+              <DialogTrigger asChild>
+                <Button className="gap-2" variant="default">
+                  <Link className="h-4 w-4" /> Vincular Contrato
+                </Button>
+              </DialogTrigger>
+              <VincularContratoDialog onClose={() => setOpenContrato(false)} />
+            </Dialog>
           </div>
+
           <div className="overflow-hidden rounded-lg border border-border bg-card shadow-card">
             <table className="w-full text-sm">
               <thead>
@@ -122,7 +156,7 @@ function ContratosPage() {
                   <th className="px-4 py-3">fim</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3 text-right">Valor</th>
-                <th className="px-4 py-3 text-right">Ações</th> {/* <-- NOVA COLUNA */}
+                  <th className="px-4 py-3 text-right">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -133,12 +167,9 @@ function ContratosPage() {
                     <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
                       {c.data_inicio}
                     </td>
-                    
-                    {/* 👇 Coluna de Data Fim adicionada aqui! 👇 */}
                     <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
                       {c.data_fim ?? "—"}
                     </td>
-
                     <td className="px-4 py-3">
                       <span className="rounded-md bg-primary/15 px-2 py-0.5 text-xs text-primary">
                         {c.status_contrato ?? "Ativo"}
@@ -151,7 +182,7 @@ function ContratosPage() {
                       })}
                     </td>
                     
-                    {/* 👇 Botão de Arquivar Contrato 👇 */}
+                    {/* Botão de Arquivar Contrato */}
                     <td className="px-4 py-3 text-right">
                       <Button
                         variant="ghost"
@@ -172,8 +203,7 @@ function ContratosPage() {
                 ))}
                 {!contratos.isLoading && (contratos.data?.length ?? 0) === 0 && (
                   <tr>
-                    {/* 👇 colSpan alterado para 6 para cobrir todas as colunas 👇 */}
-                    <td colSpan={6} className="p-6 text-center text-xs text-muted-foreground">
+                    <td colSpan={7} className="p-6 text-center text-xs text-muted-foreground">
                       Nenhum contrato cadastrado.
                     </td>
                   </tr>
@@ -186,6 +216,10 @@ function ContratosPage() {
     </DashboardLayout>
   );
 }
+
+// ============================================================================
+// COMPONENTES DE DIALOG (POP-UPS)
+// ============================================================================
 
 function NovoModeloDialog({ onClose }: { onClose: () => void }) {
   const create = useCreateModelo();
@@ -235,6 +269,132 @@ function NovoModeloDialog({ onClose }: { onClose: () => void }) {
           </Button>
           <Button type="submit" disabled={create.isPending} className="gap-2">
             {create.isPending && <Loader2 className="h-4 w-4 animate-spin" />}Criar
+          </Button>
+        </DialogFooter>
+      </form>
+    </DialogContent>
+  );
+}
+
+// 👇 NOVO POP-UP PARA VINCULAR CONTRATO 👇
+function VincularContratoDialog({ onClose }: { onClose: () => void }) {
+  const create = useCreateContrato();
+  const empresas = useEmpresas();
+  const modelos = useModelos();
+  
+  const [idCliente, setIdCliente] = useState("");
+  const [idModelo, setIdModelo] = useState("");
+  const [dataInicio, setDataInicio] = useState("");
+  const [dataFim, setDataFim] = useState("");
+  const [valorAcordado, setValorAcordado] = useState("");
+  const [status, setStatus] = useState("Ativo");
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!idCliente || !idModelo || !dataInicio) return;
+    
+    // Tratamento para garantir que o valor seja salvo corretamente na API
+    const valorConvertido = valorAcordado ? parseFloat(valorAcordado.replace(",", ".")) : 0;
+
+    await create.mutateAsync({
+      id_cliente: idCliente,
+      id_modelo: idModelo,
+      data_inicio: dataInicio,
+      data_fim: dataFim || undefined, // Se estiver vazio, manda undefined
+      status_contrato: status,
+      valor_acordado: valorConvertido,
+    } as any); // "as any" para evitar conflito de tipagem temporário caso as datas sejam strings
+    
+    onClose();
+  };
+
+  return (
+    <DialogContent>
+      <DialogHeader>
+        <DialogTitle>Vincular Contrato</DialogTitle>
+      </DialogHeader>
+      <form onSubmit={submit} className="space-y-4">
+        
+        {/* Seleção de Empresa */}
+        <div className="space-y-1.5">
+          <Label className="text-xs">Empresa *</Label>
+          <select 
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            value={idCliente} 
+            onChange={(e) => setIdCliente(e.target.value)} 
+            required
+          >
+            <option value="">Selecione uma empresa...</option>
+            {empresas.data?.map(emp => (
+              <option key={emp.id_cliente} value={emp.id_cliente}>{emp.nome_empresa}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Seleção de Modelo */}
+        <div className="space-y-1.5">
+          <Label className="text-xs">Modelo de Contrato *</Label>
+          <select 
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            value={idModelo} 
+            onChange={(e) => setIdModelo(e.target.value)} 
+            required
+          >
+            <option value="">Selecione um modelo...</option>
+            {modelos.data?.map(mod => (
+              <option key={mod.id_modelo} value={mod.id_modelo}>{mod.nome_modelo}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Datas */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label className="text-xs">Data de Início *</Label>
+            <Input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} required />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Data de Fim</Label>
+            <Input type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} />
+          </div>
+        </div>
+
+        {/* Valor e Status */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label className="text-xs">Valor Acordado (R$)</Label>
+            <Input 
+              type="number" 
+              step="0.01" 
+              placeholder="0.00" 
+              value={valorAcordado} 
+              onChange={(e) => setValorAcordado(e.target.value)} 
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Status</Label>
+            <select 
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              value={status} 
+              onChange={(e) => setStatus(e.target.value)}
+            >
+              <option value="Ativo">Ativo</option>
+              <option value="Encerrado">Encerrado</option>
+              <option value="Pendente">Pendente</option>
+            </select>
+          </div>
+        </div>
+
+        {create.error && (
+          <p className="text-xs text-destructive">{(create.error as Error).message}</p>
+        )}
+        
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button type="submit" disabled={create.isPending} className="gap-2">
+            {create.isPending && <Loader2 className="h-4 w-4 animate-spin" />} Vincular
           </Button>
         </DialogFooter>
       </form>
