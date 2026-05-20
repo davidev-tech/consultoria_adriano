@@ -89,7 +89,7 @@ function Index() {
             Painel de Inteligência
           </h1>
           <p className="text-sm text-muted-foreground">
-            Visão geral da operação em tempo real conectada à API.
+            Visão geral da operação em tempo real.
           </p>
         </div>
 

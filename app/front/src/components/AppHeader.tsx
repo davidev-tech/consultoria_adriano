@@ -31,7 +31,7 @@ export function AppHeader() {
           <Avatar className="h-7 w-7">
             <AvatarImage src="" />
             <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
-              MC
+              AC
             </AvatarFallback>
           </Avatar>
           <div className="hidden sm:flex flex-col leading-tight">
