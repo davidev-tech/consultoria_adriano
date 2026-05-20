@@ -3,24 +3,20 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import func, text
-from pydantic import BaseModel
 from database import engine, get_db
 import models
 import schemas
 from uuid import UUID
 from fastapi.middleware.cors import CORSMiddleware
-from typing import Optional, List
-import os
+from typing import Optional, List, Dict
 import time
 import jwt
 from fastapi import APIRouter
-from typing import Dict
 
 # 1. INICIALIZAÇÃO DO BANCO
 models.Base.metadata.create_all(bind=engine)
 
 def ensure_empresa_cliente_columns() -> None:
-    """Cria colunas novas em 'empresa_cliente' quando o banco já existe."""
     dialect = engine.dialect.name
     statements = []
     
@@ -93,7 +89,6 @@ def read_root():
 # --- MÓDULO 1: DASHBOARD METRICS ---
 @app.get("/dashboard/kpis", tags=["Dashboard"])
 def obter_kpis_dashboard(db: Session = Depends(get_db)):
-    """Retorna os dados consolidados para os 3 cards superiores do Dashboard."""
     total_empresas = db.query(models.EmpresaCliente).count()
     total_ativos = db.query(models.Contrato).filter(models.Contrato.status_contrato == "Ativo").count()
     soma_receita = db.query(func.sum(models.Contrato.valor_acordado)).filter(models.Contrato.status_contrato == "Ativo").scalar() or 0
@@ -117,7 +112,7 @@ def criar_empresa(empresa: schemas.EmpresaCreate, db: Session = Depends(get_db))
     db.refresh(db_obj)
     return db_obj
 
-@app.get("/empresas", response_model=List[schemas.EmpresaResponse], tags=["Empresas"])
+@app.get("/empresas", response_model=List[schemas.EmpresaResponseCompleta], tags=["Empresas"])
 def listar_empresas(
     skip: int = Query(0, ge=0),
     limit: int = Query(10, le=100),
@@ -137,7 +132,7 @@ def listar_empresas(
         
     return query.offset(skip).limit(limit).all()
 
-@app.get("/empresas/{id_cliente}", response_model=schemas.EmpresaResponse, tags=["Empresas"])
+@app.get("/empresas/{id_cliente}", response_model=schemas.EmpresaResponseCompleta, tags=["Empresas"])
 def obter_empresa_por_id(id_cliente: UUID, db: Session = Depends(get_db)):
     empresa = db.query(models.EmpresaCliente).filter(models.EmpresaCliente.id_cliente == id_cliente).first()
     if not empresa:
@@ -216,10 +211,33 @@ def listar_modelos(
     busca: Optional[str] = Query(None, description="Busca por nome do modelo"),
     db: Session = Depends(get_db)
 ):
-    query = db.query(models.ModeloContrato).filter(models.ModeloContrato.ativo == True)
+    # REMOVIDO o filtro de ativo==True para que o front consiga ver os arquivados
+    query = db.query(models.ModeloContrato)
     if busca:
         query = query.filter(models.ModeloContrato.nome_modelo.ilike(f"%{busca}%"))
     return query.all()
+
+@app.patch("/modelos-contrato/{id_modelo}/arquivar", tags=["Modelos de Contrato"])
+def arquivar_modelo(id_modelo: UUID, db: Session = Depends(get_db)):
+    modelo_query = db.query(models.ModeloContrato).filter(models.ModeloContrato.id_modelo == id_modelo)
+    if not modelo_query.first():
+        raise HTTPException(status_code=404, detail="Modelo não encontrado")
+    
+    modelo_query.update({"ativo": False})
+    db.commit()
+    return {"mensagem": "Modelo arquivado com sucesso"}
+
+@app.patch("/modelos-contrato/{modelo_id}/desarquivar", tags=["Modelos de Contrato"])
+def desarquivar_modelo(modelo_id: str, db: Session = Depends(get_db)):
+    modelo = db.query(models.ModeloContrato).filter(models.ModeloContrato.id_modelo == modelo_id).first()
+    if not modelo:
+        raise HTTPException(status_code=404, detail="Modelo não encontrado")
+    
+    modelo.ativo = True
+    db.commit()
+    db.refresh(modelo)
+    return {"mensagem": "Modelo desarquivado com sucesso!", "id_modelo": modelo_id}
+
 
 # --- MÓDULO 5: CONTRATOS MESTRE ---
 @app.post("/contratos", response_model=schemas.ContratoResponse, tags=["Contratos"])
@@ -235,25 +253,49 @@ def criar_contrato(obj_in: schemas.ContratoCreate, db: Session = Depends(get_db)
     db.refresh(novo_obj)
     return novo_obj
 
+# 👇 ESSA É A ROTA QUE ESTAVA FALTANDO E FEZ TUDO SUMIR! 👇
+@app.get("/contratos", response_model=List[schemas.ContratoResponse], tags=["Contratos"])
+def listar_todos_contratos(
+    id_cliente: Optional[UUID] = Query(None, description="Filtrar por empresa"),
+    status: Optional[str] = Query(None, description="Filtrar por status"),
+    db: Session = Depends(get_db)
+):
+    query = db.query(models.Contrato)
+    if id_cliente:
+        query = query.filter(models.Contrato.id_cliente == id_cliente)
+    if status:
+        query = query.filter(models.Contrato.status_contrato == status)
+    return query.all()
+
 @app.get("/contratos/{id_cliente}", response_model=List[schemas.ContratoResponse], tags=["Contratos"])
 def listar_contratos_por_empresa(id_cliente: UUID, db: Session = Depends(get_db)):
     return db.query(models.Contrato).filter(models.Contrato.id_cliente == id_cliente).all()
 
-@app.patch("/modelos-contrato/{id_modelo}/arquivar", tags=["Modelos de Contrato"])
-def arquivar_modelo(id_modelo: UUID, db: Session = Depends(get_db)):
-    modelo_query = db.query(models.ModeloContrato).filter(models.ModeloContrato.id_modelo == id_modelo)
-    if not modelo_query.first():
-        raise HTTPException(status_code=404, detail="Modelo não encontrado")
+@app.patch("/contratos/{contrato_id}/arquivar", tags=["Contratos"])
+def arquivar_contrato(contrato_id: str, db: Session = Depends(get_db)):
+    contrato = db.query(models.Contrato).filter(models.Contrato.id_contrato == contrato_id).first()
+    if not contrato:
+        raise HTTPException(status_code=404, detail="Contrato não encontrado no banco")
     
-    modelo_query.update({"ativo": False})
+    contrato.status_contrato = "Arquivado"
     db.commit()
-    return {"mensagem": "Modelo arquivado com sucesso"}
+    db.refresh(contrato)
+    return {"mensagem": "Contrato arquivado com sucesso!", "id_contrato": contrato_id}
+
+@app.patch("/contratos/{contrato_id}/desarquivar", tags=["Contratos"])
+def desarquivar_contrato(contrato_id: str, db: Session = Depends(get_db)):
+    contrato = db.query(models.Contrato).filter(models.Contrato.id_contrato == contrato_id).first()
+    if not contrato:
+        raise HTTPException(status_code=404, detail="Contrato não encontrado no banco")
+    
+    contrato.status_contrato = "Ativo"
+    db.commit()
+    db.refresh(contrato)
+    return {"mensagem": "Contrato desarquivado com sucesso!", "id_contrato": contrato_id}
 
 # --- MÓDULO 6: HISTÓRICO DE INTERAÇÕES (CRM) ---
-
 @app.post("/interacoes", response_model=schemas.HistoricoInteracaoResponse, tags=["Interações"])
 def criar_interacao(obj_in: schemas.HistoricoInteracaoCreate, db: Session = Depends(get_db)):
-    """Cadastra uma nova interação garantindo que o tipo esteja na lista permitida pelo schema."""
     if not db.query(models.EmpresaCliente).filter(models.EmpresaCliente.id_cliente == obj_in.id_cliente).first():
         raise HTTPException(status_code=404, detail="Empresa não encontrada.")
         
@@ -265,7 +307,6 @@ def criar_interacao(obj_in: schemas.HistoricoInteracaoCreate, db: Session = Depe
 
 @app.get("/interacoes/{id_cliente}", response_model=List[schemas.HistoricoInteracaoResponse], tags=["Interações"])
 def get_interacoes_por_cliente(id_cliente: UUID, db: Session = Depends(get_db)):
-    """Busca o histórico de interações de um cliente específico ordenado por data."""
     try:
         interacoes = (
             db.query(models.HistoricoInteracoes)
@@ -279,7 +320,6 @@ def get_interacoes_por_cliente(id_cliente: UUID, db: Session = Depends(get_db)):
 
 @app.put("/interacoes/{id_interacao}", response_model=schemas.HistoricoInteracaoResponse, tags=["Interações"])
 def atualizar_interacao(id_interacao: UUID, payload: dict, db: Session = Depends(get_db)):
-    """Atualiza um registro existente aplicando a formatação de título e validação dos 5 tipos."""
     db_interacao = db.query(models.HistoricoInteracoes).filter(models.HistoricoInteracoes.id_interacao == id_interacao).first()
     
     if not db_interacao:
@@ -306,7 +346,6 @@ def atualizar_interacao(id_interacao: UUID, payload: dict, db: Session = Depends
 
 @app.delete("/interacoes/{id_interacao}", tags=["Interações"])
 def deletar_interacao(id_interacao: UUID, db: Session = Depends(get_db)):
-    """Exclui permanentemente uma interação do histórico."""
     db_interacao = db.query(models.HistoricoInteracoes).filter(models.HistoricoInteracoes.id_interacao == id_interacao).first()
     if not db_interacao:
         raise HTTPException(status_code=404, detail="Interação não encontrada")
@@ -359,37 +398,3 @@ def obter_token_metabase():
         return {"token": token}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao gerar token: {str(e)}")
-    
-# --- MÓDULO 9: GERENCIAMENTO DE STATUS (ARQUIVAMENTO) ---
-@app.patch("/modelos-contrato/{modelo_id}/desarquivar", tags=["Modelos de Contrato"])
-def desarquivar_modelo(modelo_id: str, db: Session = Depends(get_db)):
-    modelo = db.query(models.ModeloContrato).filter(models.ModeloContrato.id_modelo == modelo_id).first()
-    if not modelo:
-        raise HTTPException(status_code=404, detail="Modelo não encontrado")
-    
-    modelo.ativo = True
-    db.commit()
-    db.refresh(modelo)
-    return {"mensagem": "Modelo desarquivado com sucesso!", "id_modelo": modelo_id}
-
-@app.patch("/contratos/{contrato_id}/arquivar", tags=["Contratos"])
-def arquivar_contrato(contrato_id: str, db: Session = Depends(get_db)):
-    contrato = db.query(models.Contrato).filter(models.Contrato.id_contrato == contrato_id).first()
-    if not contrato:
-        raise HTTPException(status_code=404, detail="Contrato não encontrado no banco")
-    
-    contrato.status_contrato = "Arquivado"
-    db.commit()
-    db.refresh(contrato)
-    return {"mensagem": "Contrato arquivado com sucesso!", "id_contrato": contrato_id}
-
-@app.patch("/contratos/{contrato_id}/desarquivar", tags=["Contratos"])
-def desarquivar_contrato(contrato_id: str, db: Session = Depends(get_db)):
-    contrato = db.query(models.Contrato).filter(models.Contrato.id_contrato == contrato_id).first()
-    if not contrato:
-        raise HTTPException(status_code=404, detail="Contrato não encontrado no banco")
-    
-    contrato.status_contrato = "Ativo"
-    db.commit()
-    db.refresh(contrato)
-    return {"mensagem": "Contrato desarquivado com sucesso!", "id_contrato": contrato_id}

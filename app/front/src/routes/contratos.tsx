@@ -50,21 +50,34 @@ function ContratosPage() {
   const modeloNome = (id: string) =>
     modelos.data?.find((m) => m.id_modelo === id)?.nome_modelo ?? "—";
 
-  // 👇 FILTRO DE CONTRATOS CORRIGIDO
+  // 👇 FILTRO DE CONTRATOS SUPER DEFENSIVO (Evita o limbo de dados)
   const contratosFiltrados = contratos.data?.filter((c) => {
-    const status = c.status_contrato?.trim().toLowerCase();
-    if (exibirArquivados) {
-      return status === "arquivado";
-    }
-    return status !== "arquivado";
+    const status = c.status_contrato?.toString().trim().toLowerCase();
+    const statusAlt = c.status?.toString().trim().toLowerCase();
+    
+    const isArquivado = 
+      status === "arquivado" || 
+      statusAlt === "arquivado" || 
+      c.arquivado === true || 
+      c.ativo === false || 
+      c.ativo === "false" || 
+      c.ativo === 0;
+
+    return exibirArquivados ? isArquivado : !isArquivado;
   });
 
-  // 👇 FILTRO DE MODELOS CORRIGIDO (Tratando a coluna booleana 'ativo')
+  // 👇 FILTRO DE MODELOS SUPER DEFENSIVO (Garante leitura de booleano, string ou número)
   const modelosFiltrados = modelos.data?.filter((m) => {
-    if (exibirArquivados) {
-      return m.ativo === false;
-    }
-    return m.ativo !== false;
+    const status = m.status_modelo?.toString().trim().toLowerCase() || m.status?.toString().trim().toLowerCase();
+    
+    const isArquivado = 
+      m.ativo === false || 
+      m.ativo === "false" || 
+      m.ativo === 0 || 
+      status === "arquivado" || 
+      status === "inativo";
+
+    return exibirArquivados ? isArquivado : !isArquivado;
   });
   
   return (
@@ -110,68 +123,77 @@ function ContratosPage() {
           </div>
           
           <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-            {modelosFiltrados?.map((m) => (
-              <div
-                key={m.id_modelo}
-                className="rounded-lg border border-border bg-card p-4 shadow-card flex justify-between items-start group"
-              >
-                <div className="flex items-start gap-3 w-full">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/15 text-primary ring-1 ring-primary/30 shrink-0">
-                    <FileText className="h-4 w-4" />
+            {modelosFiltrados?.map((m) => {
+              const statusModel = m.status_modelo?.toString().trim().toLowerCase() || m.status?.toString().trim().toLowerCase();
+              const isModeloArquivado = m.ativo === false || m.ativo === "false" || m.ativo === 0 || statusModel === "arquivado";
+
+              return (
+                <div
+                  key={m.id_modelo}
+                  className="rounded-lg border border-border bg-card p-4 shadow-card flex justify-between items-start group"
+                >
+                  <div className="flex items-start gap-3 w-full justify-between">
+                    <div className="flex items-start gap-3 min-w-0 flex-1">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/15 text-primary ring-1 ring-primary/30 shrink-0">
+                        <FileText className="h-4 w-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold truncate">{m.nome_modelo}</h3>
+                        <p className="text-xs text-muted-foreground">
+                          {m.periodicidade_cobranca ?? "sem periodicidade"}
+                        </p>
+                        {m.descricao_padrao && (
+                          <p className="mt-2 text-xs text-muted-foreground line-clamp-2">
+                            {m.descricao_padrao}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* 👇 BOTÃO DINÂMICO DE ARQUIVAR/DESARQUIVAR MODELO 👇 */}
+                    <div className="shrink-0 ml-2">
+                      {isModeloArquivado ? (
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8 text-primary hover:bg-primary/10"
+                          title="Desarquivar modelo"
+                          disabled={desarquivarModelo.isPending}
+                          onClick={() => {
+                            if(window.confirm("Deseja realmente desarquivar este modelo?")) {
+                              desarquivarModelo.mutate(m.id_modelo);
+                            }
+                          }}
+                        >
+                          <ArchiveRestore className="h-4 w-4" />
+                        </Button>
+                      ) : (
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                          title="Arquivar modelo"
+                          disabled={arquivarModelo.isPending}
+                          onClick={() => {
+                            if(window.confirm("Deseja realmente arquivar este modelo? Ele não aparecerá mais para novos contratos.")) {
+                              arquivarModelo.mutate(m.id_modelo);
+                            }
+                          }}
+                        >
+                          <Archive className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold truncate">{m.nome_modelo}</h3>
-                    <p className="text-xs text-muted-foreground">
-                      {m.periodicidade_cobranca ?? "sem periodicidade"}
-                    </p>
-                    {m.descricao_padrao && (
-                      <p className="mt-2 text-xs text-muted-foreground line-clamp-2">
-                        {m.descricao_padrao}
-                      </p>
-                    )}
-                  </div>
-                  
-                  {/* 👇 BOTÃO DINÂMICO DE ARQUIVAR/DESARQUIVAR MODELO 👇 */}
-                  {m.ativo === false ? (
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-8 w-8 text-primary opacity-0 group-hover:opacity-100 transition-opacity hover:bg-primary/10 shrink-0"
-                      title="Desarquivar modelo"
-                      disabled={desarquivarModelo.isPending}
-                      onClick={() => {
-                        if(window.confirm("Deseja realmente desarquivar este modelo?")) {
-                          desarquivarModelo.mutate(m.id_modelo);
-                        }
-                      }}
-                    >
-                      <ArchiveRestore className="h-4 w-4" />
-                    </Button>
-                  ) : (
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-8 w-8 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:text-destructive hover:bg-destructive/10 shrink-0"
-                      title="Arquivar modelo"
-                      disabled={arquivarModelo.isPending}
-                      onClick={() => {
-                        if(window.confirm("Deseja realmente arquivar este modelo? Ele não aparecerá mais para novos contratos.")) {
-                          arquivarModelo.mutate(m.id_modelo);
-                        }
-                      }}
-                    >
-                      <Archive className="h-4 w-4" />
-                    </Button>
-                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
             {modelos.isLoading && (
               <div className="col-span-full text-xs text-muted-foreground">Carregando…</div>
             )}
             {!modelos.isLoading && (modelosFiltrados?.length ?? 0) === 0 && (
               <div className="col-span-full text-xs text-muted-foreground py-2 italic">
-                Nenhum modelo encontrado nesta visualização.
+                Nenhum modelo encontrado nesta visualização {exibirArquivados && "(arquivados)"}.
               </div>
             )}
           </div>
@@ -213,64 +235,80 @@ function ContratosPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {/* 👇 AGORA MAPEANDO OS CONTRATOS FILTRADOS 👇 */}
-                {contratosFiltrados?.map((c) => (
-                  <tr key={c.id_contrato} className="hover:bg-muted/20">
-                    <td className="px-4 py-3 font-medium">{empresaNome(c.id_cliente)}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{modeloNome(c.id_modelo)}</td>
-                    <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
-                      {c.data_inicio}
-                    </td>
-                    <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
-                      {c.data_fim ?? "—"}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="rounded-md bg-primary/15 px-2 py-0.5 text-xs text-primary">
-                        {c.status_contrato ?? "Ativo"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right font-semibold">
-                      {Number(c.valor_acordado).toLocaleString("pt-BR", {
-                        style: "currency",
-                        currency: "BRL",
-                      })}
-                    </td>
+                {contratosFiltrados?.map((c) => {
+                  const statusContrat = c.status_contrato?.toString().trim().toLowerCase();
+                  const statusAlt = c.status?.toString().trim().toLowerCase();
+                  
+                  const isContratoArquivado = 
+                    statusContrat === "arquivado" || 
+                    statusAlt === "arquivado" || 
+                    c.arquivado === true || 
+                    c.ativo === false;
                     
-                    <td className="px-4 py-3 text-right">
-                      {c.status_contrato?.trim().toLowerCase() === "arquivado" ? (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-primary hover:bg-primary/10"
-                          title="Desarquivar contrato"
-                          disabled={desarquivarContrato.isPending}
-                          onClick={() => {
-                            if (window.confirm("Deseja desarquivar este contrato? Ele voltará a ficar Ativo.")) {
-                              desarquivarContrato.mutate(c.id_contrato);
-                            }
-                          }}
-                        >
-                          <ArchiveRestore className="h-4 w-4" />
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                          title="Arquivar contrato"
-                          disabled={arquivarContrato.isPending}
-                          onClick={() => {
-                            if (window.confirm("Deseja arquivar este contrato? Ele passará para o status Arquivado.")) {
-                              arquivarContrato.mutate(c.id_contrato);
-                            }
-                          }}
-                        >
-                          <Archive className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                  const isEncerrado = statusContrat === "encerrado" || statusAlt === "encerrado";
+                  
+                  return (
+                    <tr key={c.id_contrato} className="hover:bg-muted/20">
+                      <td className="px-4 py-3 font-medium">{empresaNome(c.id_cliente)}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{modeloNome(c.id_modelo)}</td>
+                      <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
+                        {c.data_inicio}
+                      </td>
+                      <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
+                        {c.data_fim ?? "—"}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`rounded-md px-2 py-0.5 text-xs font-medium ${
+                          isContratoArquivado || isEncerrado 
+                            ? "bg-muted text-muted-foreground border border-border" 
+                            : "bg-primary/15 text-primary"
+                        }`}>
+                          {c.status_contrato ?? "Ativo"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right font-semibold">
+                        {Number(c.valor_acordado).toLocaleString("pt-BR", {
+                          style: "currency",
+                          currency: "BRL",
+                        })}
+                      </td>
+                      
+                      <td className="px-4 py-3 text-right">
+                        {isContratoArquivado ? (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-primary hover:bg-primary/10"
+                            title="Desarquivar contrato"
+                            disabled={desarquivarContrato.isPending}
+                            onClick={() => {
+                              if (window.confirm("Deseja desarquivar este contrato? Ele voltará a ficar Ativo.")) {
+                                desarquivarContrato.mutate(c.id_contrato);
+                              }
+                            }}
+                          >
+                            <ArchiveRestore className="h-4 w-4" />
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                            title="Arquivar contrato"
+                            disabled={arquivarContrato.isPending}
+                            onClick={() => {
+                              if (window.confirm("Deseja arquivar este contrato? Ele passará para o status Arquivado.")) {
+                                arquivarContrato.mutate(c.id_contrato);
+                              }
+                            }}
+                          >
+                            <Archive className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
                 
                 {contratos.isLoading && (
                   <tr>
@@ -282,8 +320,8 @@ function ContratosPage() {
 
                 {!contratos.isLoading && (contratosFiltrados?.length ?? 0) === 0 && (
                   <tr>
-                    <td colSpan={7} className="p-6 text-center text-xs text-muted-foreground">
-                      Nenhum contrato encontrado nesta visualização.
+                    <td colSpan={7} className="p-6 text-center text-xs text-muted-foreground py-8 italic">
+                      Nenhum contrato encontrado nesta visualização {exibirArquivados && "(arquivados)"}.
                     </td>
                   </tr>
                 )}
@@ -415,7 +453,7 @@ function VincularContratoDialog({ onClose }: { onClose: () => void }) {
             required
           >
             <option value="">Selecione um modelo...</option>
-            {modelos.data?.map(mod => (
+            {modelos.data?.filter(mod => mod.ativo !== false && mod.ativo !== "false" && mod.ativo !== 0).map(mod => (
               <option key={mod.id_modelo} value={mod.id_modelo}>{mod.nome_modelo}</option>
             ))}
           </select>

@@ -20,9 +20,6 @@ from validators import (
 # ==========================================
 # 1. MÓDULO: EMPRESA CLIENTE
 # ==========================================
-# ==========================================
-# 1. MÓDULO: EMPRESA CLIENTE
-# ==========================================
 class EmpresaBase(BaseModel):
     nome_empresa: str
     cnpj: Optional[str] = None
@@ -31,29 +28,34 @@ class EmpresaBase(BaseModel):
     localizacao: Optional[str] = None
     servico_prestado: Optional[str] = None
 
+class EmpresaCreate(EmpresaBase):
     @field_validator("cnpj")
     @classmethod
     def check_cnpj(cls, v):
-        return validate_cnpj(v)
+        if v: return validate_cnpj(v)
+        return v
 
     @field_validator("email")
     @classmethod
     def check_email(cls, v):
-        return validate_email(v)
+        if v: return validate_email(v)
+        return v
 
     @field_validator("cep")
     @classmethod
     def check_cep(cls, v):
-        return validate_cep(v)
-
+        if v: return validate_cep(v)
+        return v
 
     @field_validator("nome_empresa", "localizacao", "servico_prestado")
     @classmethod
     def check_text(cls, v):
-        return validate_string_content(v)
+        if v: return validate_string_content(v)
+        return v
 
-class EmpresaCreate(EmpresaBase):
-    pass
+class EmpresaResponse(EmpresaBase):
+    id_cliente: UUID
+    model_config = ConfigDict(from_attributes=True)
 
 # ==========================================
 # 2. MÓDULO: RESPONSÁVEL (Contatos)
@@ -66,27 +68,31 @@ class ResponsavelBase(BaseModel):
     email: Optional[str] = None
     cargo: Optional[str] = None
 
+class ResponsavelCreate(ResponsavelBase): 
     @field_validator("cpf")
     @classmethod
     def check_cpf(cls, v):
-        return validate_cpf(v)
+        if v: return validate_cpf(v)
+        return v
 
     @field_validator("telefone")
     @classmethod
     def check_phone(cls, v):
-        return validate_phone_br(v)
+        if v: return validate_phone_br(v)
+        return v
 
     @field_validator("email")
     @classmethod
     def check_email(cls, v):
-        return validate_email(v)
+        if v: return validate_email(v)
+        return v
 
     @field_validator("nome", "cargo")
     @classmethod
     def check_text(cls, v):
-        return validate_string_content(v)
+        if v: return validate_string_content(v)
+        return v
 
-class ResponsavelCreate(ResponsavelBase): pass
 class ResponsavelResponse(ResponsavelBase):
     id_responsavel: UUID
     model_config = ConfigDict(from_attributes=True)
@@ -99,14 +105,16 @@ class ModeloContratoBase(BaseModel):
     periodicidade_cobranca: Optional[str] = None
     descricao_padrao: Optional[str] = None
 
+class ModeloContratoCreate(ModeloContratoBase): 
     @field_validator("nome_modelo", "descricao_padrao")
     @classmethod
     def check_text(cls, v):
-        return validate_string_content(v)
+        if v: return validate_string_content(v)
+        return v
 
-class ModeloContratoCreate(ModeloContratoBase): pass
 class ModeloContratoResponse(ModeloContratoBase):
     id_modelo: UUID
+    ativo: Optional[bool] = True  # 🌟 Permite que o BD retorne NULL sem travar
     model_config = ConfigDict(from_attributes=True)
 
 # ==========================================
@@ -120,6 +128,7 @@ class ContratoBase(BaseModel):
     data_inicio: date
     data_fim: Optional[date] = None
 
+class ContratoCreate(ContratoBase):
     @field_validator("valor_acordado")
     @classmethod
     def check_valor(cls, v):
@@ -128,9 +137,9 @@ class ContratoBase(BaseModel):
     @field_validator("status_contrato")
     @classmethod
     def check_status(cls, v):
-        return validate_enum_choice(v.title(), ["Ativo", "Pausado", "Encerrado","Arquivado"])
+        if v: return validate_enum_choice(v.title(), ["Ativo", "Pausado", "Encerrado", "Arquivado"])
+        return v
 
-class ContratoCreate(ContratoBase):
     @field_validator("data_inicio")
     @classmethod
     def check_data_inicio(cls, v):
@@ -150,7 +159,7 @@ class ContratoResponse(ContratoBase):
     model_config = ConfigDict(from_attributes=True)
 
 # ==========================================
-# 5. MÓDULO: HISTÓRICO DE INTERAÇÕES (CRM / Prazos rápidos)
+# 5. MÓDULO: HISTÓRICO DE INTERAÇÕES (CRM)
 # ==========================================
 class HistoricoInteracaoBase(BaseModel):
     id_cliente: UUID
@@ -158,46 +167,51 @@ class HistoricoInteracaoBase(BaseModel):
     data_hora: Optional[datetime] = None
     feedback_anotacoes: Optional[str] = None
 
+class HistoricoInteracaoCreate(HistoricoInteracaoBase):
     @field_validator("tipo_interacao")
     @classmethod
     def check_tipo(cls, v):
-        return validate_enum_choice(v.title(), ["Visita", "Reunião", "Mensagem", "Ligação", "E-mail"])
+        if v: return validate_enum_choice(v.title(), ["Visita", "Reunião", "Mensagem", "Ligação", "E-mail"])
+        return v
 
     @field_validator("feedback_anotacoes")
     @classmethod
     def check_text(cls, v):
-        return validate_string_content(v, min_length=1, max_length=1000)
+        if v: return validate_string_content(v, min_length=1, max_length=1000)
+        return v
 
-class HistoricoInteracaoCreate(HistoricoInteracaoBase):
     @field_validator("data_hora")
     @classmethod
     def check_data_hora(cls, v):
-        return validate_not_past_datetime(v)
+        if v: return validate_not_past_datetime(v)
+        return v
 
 class HistoricoInteracaoResponse(HistoricoInteracaoBase):
     id_interacao: UUID
     model_config = ConfigDict(from_attributes=True)
 
 # ==========================================
-# 6. MÓDULO: VISITAS DE ATENDIMENTO / AUDITORIA (B2B)
+# 6. MÓDULO: VISITAS DE ATENDIMENTO
 # ==========================================
 class VisitaAtendimentoBase(BaseModel):
     id_contrato: UUID
-    id_cliente: UUID  # Substituiu o id_paciente, alinhado com o models.py
+    id_cliente: UUID 
     data_hora: Optional[datetime] = None
     grau_urgencia: Optional[str] = None
     feedback_anotacoes: Optional[str] = None
 
+class VisitaAtendimentoCreate(VisitaAtendimentoBase):
     @field_validator("feedback_anotacoes")
     @classmethod
     def check_text(cls, v):
-        return validate_string_content(v)
+        if v: return validate_string_content(v)
+        return v
 
-class VisitaAtendimentoCreate(VisitaAtendimentoBase):
     @field_validator("data_hora")
     @classmethod
     def check_data_hora(cls, v):
-        return validate_not_past_datetime(v)
+        if v: return validate_not_past_datetime(v)
+        return v
 
 class VisitaAtendimentoResponse(VisitaAtendimentoBase):
     id_visita: UUID
@@ -213,21 +227,24 @@ class EntregaPrazoBase(BaseModel):
     data_conclusao: Optional[date] = None
     status_entrega: Optional[str] = "Pendente"
 
+class EntregaPrazoCreate(EntregaPrazoBase):
     @field_validator("descricao_entrega")
     @classmethod
     def check_descricao(cls, v):
-        return validate_string_content(v)
+        if v: return validate_string_content(v)
+        return v
 
     @field_validator("status_entrega")
     @classmethod
     def check_status(cls, v):
-        return validate_enum_choice(v.title(), ["Pendente", "Em Andamento", "Concluído", "Atrasado"])
+        if v: return validate_enum_choice(v.title(), ["Pendente", "Em Andamento", "Concluído", "Atrasado"])
+        return v
 
-class EntregaPrazoCreate(EntregaPrazoBase):
     @field_validator("data_prazo_limite")
     @classmethod
     def check_prazo_limite(cls, v):
-        return validate_not_past_date(v)
+        if v: return validate_not_past_date(v)
+        return v
 
 class EntregaPrazoResponse(EntregaPrazoBase):
     id_entrega: UUID
@@ -244,6 +261,7 @@ class PagamentoBase(BaseModel):
     forma_pagamento: Optional[str] = None
     status_pagamento: Optional[str] = "Pendente"
 
+class PagamentoCreate(PagamentoBase):
     @field_validator("valor")
     @classmethod
     def check_valor(cls, v):
@@ -252,13 +270,14 @@ class PagamentoBase(BaseModel):
     @field_validator("status_pagamento")
     @classmethod
     def check_status(cls, v):
-        return validate_enum_choice(v.title(), ["Pendente", "Pago", "Atrasado", "Cancelado"])
+        if v: return validate_enum_choice(v.title(), ["Pendente", "Pago", "Atrasado", "Cancelado"])
+        return v
 
-class PagamentoCreate(PagamentoBase):
     @field_validator("data_pagamento")
     @classmethod
     def check_data_pagamento(cls, v):
-        return validate_not_past_datetime(v)
+        if v: return validate_not_past_datetime(v)
+        return v
 
 class PagamentoResponse(PagamentoBase):
     id_pagamento: UUID
@@ -307,7 +326,7 @@ class FinanceiroFront(BaseModel):
 # ==========================================
 # SCHEMA PRINCIPAL DA EMPRESA ATUALIZADO
 # ==========================================
-class EmpresaResponse(EmpresaBase):
+class EmpresaResponseCompleta(EmpresaBase):
     id_cliente: UUID
     interacoes: List[InteracaoFront] = []
     contratos: List[ContratoFront] = []
