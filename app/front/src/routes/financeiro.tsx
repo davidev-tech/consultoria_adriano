@@ -44,9 +44,12 @@ function FinanceiroPage() {
   const [idContrato, setIdContrato] = useState("");
   const pagamentos = usePagamentosPorContrato(idContrato || undefined);
   const [open, setOpen] = useState(false);
-  
-  // Estado para armazenar qual pagamento estamos editando no momento
   const [editingPagamento, setEditingPagamento] = useState<any>(null);
+
+  // Mapeia qual é o contrato que o usuário selecionou na tela
+  const contratoSelecionado = useMemo(() => {
+    return contratos.data?.find((c) => c.id_contrato === idContrato);
+  }, [contratos.data, idContrato]);
 
   const empresaNome = (id: string) =>
     empresas.data?.find((e) => e.id_cliente === id)?.nome_empresa ?? "—";
@@ -57,17 +60,25 @@ function FinanceiroPage() {
       currency: "BRL",
     })}`;
 
+  // AUTOMAÇÃO FINANCEIRA MATEMÁTICA
   const totals = useMemo(() => {
     const list = pagamentos.data ?? [];
+    const valorMestreContrato = contratoSelecionado ? Number(contratoSelecionado.valor_acordado) : 0;
+    
+    // Soma apenas o que já está com status de "Pago"
+    const pago = list
+      .filter((p) => (p.status_pagamento ?? "").toLowerCase() === "pago")
+      .reduce((a, p) => a + Number(p.valor), 0);
+
+    // O que falta é a subtração exata da Receita Acordada pelo que já foi quitado
+    const falta = Math.max(0, valorMestreContrato - pago);
+
     return {
-      pago: list
-        .filter((p) => (p.status_pagamento ?? "").toLowerCase() === "pago")
-        .reduce((a, p) => a + Number(p.valor), 0),
-      pendente: list
-        .filter((p) => (p.status_pagamento ?? "").toLowerCase() !== "pago")
-        .reduce((a, p) => a + Number(p.valor), 0),
+      receitaAcordada: valorMestreContrato,
+      pago,
+      falta,
     };
-  }, [pagamentos.data]);
+  }, [pagamentos.data, contratoSelecionado]);
 
   const handleEditClick = (pagamento: any) => {
     setEditingPagamento(pagamento);
@@ -102,13 +113,11 @@ function FinanceiroPage() {
               <Button 
                 className="gap-2" 
                 disabled={!idContrato}
-                onClick={() => setEditingPagamento(null)} // Garante que abra em branco
+                onClick={() => setEditingPagamento(null)}
               >
                 <Plus className="h-4 w-4" /> Novo pagamento
               </Button>
             </DialogTrigger>
-            
-            {/* O modal agora lida tanto com criação quanto com edição. Usamos a 'key' para limpar o estado ao trocar */}
             <PagamentoDialog 
               key={editingPagamento?.id_pagamento || "novo"} 
               idContrato={idContrato} 
@@ -136,9 +145,11 @@ function FinanceiroPage() {
 
         {idContrato && (
           <>
-            <div className="grid gap-3 md:grid-cols-2">
+            {/* GRID ATUALIZADO PARA 3 COLUNAS AUTOMÁTICAS */}
+            <div className="grid gap-3 md:grid-cols-3">
+              <KpiCard label="Receita Acordada" value={totals.receitaAcordada} variant="info" />
               <KpiCard label="Total Pago" value={totals.pago} variant="success" />
-              <KpiCard label="Total Pendente" value={totals.pendente} variant="warning" />
+              <KpiCard label="Falta Pagar (Saldo)" value={totals.falta} variant="warning" />
             </div>
 
             <div className="overflow-hidden rounded-lg border border-border bg-card shadow-card">
@@ -149,7 +160,7 @@ function FinanceiroPage() {
                     <th className="px-4 py-3">Forma</th>
                     <th className="px-4 py-3">Status</th>
                     <th className="px-4 py-3 text-right">Valor</th>
-                    <th className="px-4 py-3 w-20">{/* Coluna fantasma para botões de ação */}</th>
+                    <th className="px-4 py-3 w-20"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -240,7 +251,7 @@ function KpiCard({
 }: {
   label: string;
   value: number;
-  variant: "success" | "warning";
+  variant: "success" | "warning" | "info";
 }) {
   return (
     <div className="rounded-lg border border-border bg-card p-5 shadow-card">
@@ -248,9 +259,9 @@ function KpiCard({
         <div
           className={cn(
             "flex h-10 w-10 items-center justify-center rounded-lg ring-1",
-            variant === "success"
-              ? "bg-success/15 text-success ring-success/30"
-              : "bg-warning/15 text-warning ring-warning/30",
+            variant === "success" && "bg-success/15 text-success ring-success/30",
+            variant === "warning" && "bg-warning/15 text-warning ring-warning/30",
+            variant === "info" && "bg-primary/15 text-primary ring-primary/30",
           )}
         >
           <Wallet className="h-5 w-5" />
@@ -266,7 +277,6 @@ function KpiCard({
   );
 }
 
-// O Componente foi rebatizado e agora aceita um 'pagamento' opcional para edição
 function PagamentoDialog({
   idContrato,
   pagamento,
@@ -280,7 +290,6 @@ function PagamentoDialog({
   const update = useUpdatePagamento();
   const isEditing = !!pagamento;
 
-  // Se tiver um pagamento, preenche os states. Se não, começa em branco.
   const [valor, setValor] = useState(pagamento ? String(pagamento.valor) : "");
   const [forma, setForma] = useState(pagamento?.forma_pagamento || "PIX");
   const [status, setStatus] = useState(pagamento?.status_pagamento || "Pago");

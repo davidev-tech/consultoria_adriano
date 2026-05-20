@@ -62,9 +62,21 @@ function EmpresasPage() {
             </p>
           </div>
 
-          <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleCloseModal()}>
+          <Dialog 
+            open={open} 
+            onOpenChange={(isOpen) => {
+              setOpen(isOpen);
+              if (!isOpen) handleCloseModal();
+            }}
+          >
             <DialogTrigger asChild>
-              <Button className="gap-2" onClick={() => setEmpresaEditando(null)}>
+              <Button 
+                className="gap-2" 
+                onClick={() => {
+                  setEmpresaEditando(null);
+                  setOpen(true);
+                }}
+              >
                 <Plus className="h-4 w-4" /> Nova empresa
               </Button>
             </DialogTrigger>

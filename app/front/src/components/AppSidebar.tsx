@@ -27,10 +27,12 @@ const items = [
   { title: "Contratos", url: "/contratos", icon: FileText, group: "Cadastros" },
   { title: "Interações", url: "/interacoes", icon: ClipboardList, group: "Operacional" },
   { title: "Financeiro", url: "/financeiro", icon: Wallet, group: "Financeiro" },
-  { title: "Configurações", url: "/configuracoes", icon: Cog, group: "Sistema" },
+  // Comentado para ocultar a visão de desenvolvedor
+  // { title: "Configurações", url: "/configuracoes", icon: Cog, group: "Sistema" },
 ];
 
-const groups = ["Inteligência", "Cadastros", "Operacional", "Financeiro", "Sistema"] as const;
+// O grupo "Sistema" também foi removido para não ficar um cabeçalho vazio
+const groups = ["Inteligência", "Cadastros", "Operacional", "Financeiro"] as const;
 
 export function AppSidebar() {
   const currentPath = useRouterState({ select: (s) => s.location.pathname });

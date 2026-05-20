@@ -357,7 +357,48 @@ def deletar_interacao(id_interacao: UUID, db: Session = Depends(get_db)):
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Erro ao deletar: {str(e)}")
 
-# --- MÓDULO 7: PAGAMENTOS ---
+## --- MÓDULO 7: PAGAMENTOS ---
+
+@app.post("/pagamentos", tags=["Pagamentos"])
+def criar_pagamento(payload: dict, db: Session = Depends(get_db)):
+    try:
+        novo_pago = models.Pagamento(
+            id_contrato=payload.get("id_contrato"),
+            valor=payload.get("valor"),
+            forma_pagamento=payload.get("forma_pagamento"),
+            status_pagamento=payload.get("status_pagamento"),
+            data_pagamento=payload.get("data_pagamento")
+        )
+        db.add(novo_pago)
+        db.commit()
+        db.refresh(novo_pago)
+        return novo_pago
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Erro ao criar pagamento: {str(e)}")
+
+@app.put("/pagamentos/{id_pagamento}", tags=["Pagamentos"])
+def atualizar_pagamento(id_pagamento: str, payload: dict, db: Session = Depends(get_db)):
+    try:
+        pagamento = db.query(models.Pagamento).filter(models.Pagamento.id_pagamento == id_pagamento).first()
+        if not pagamento:
+            raise HTTPException(status_code=404, detail="Pagamento não encontrado")
+        
+        # Trata caso o hook envie envelopado em 'data' ou diretamente no body
+        dados = payload.get("data", payload) if "data" in payload and len(payload) == 1 else payload
+        
+        if "valor" in dados: pagamento.valor = dados["valor"]
+        if "forma_pagamento" in dados: pagamento.forma_pagamento = dados["forma_pagamento"]
+        if "status_pagamento" in dados: pagamento.status_pagamento = dados["status_pagamento"]
+        if "data_pagamento" in dados: pagamento.data_pagamento = dados["data_pagamento"]
+        
+        db.commit()
+        db.refresh(pagamento)
+        return pagamento
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Erro ao atualizar: {str(e)}")
+
 @app.delete("/pagamentos/{id_pagamento}", tags=["Pagamentos"])
 def deletar_pagamento(id_pagamento: str, db: Session = Depends(get_db)):
     try:
