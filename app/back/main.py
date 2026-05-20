@@ -368,3 +368,55 @@ def obter_token_metabase():
         return {"token": token}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao gerar token: {str(e)}")
+    
+# ==========================================
+# ROTA PARA DESARQUIVAR MODELO DE CONTRATO
+# ==========================================
+@app.patch("/modelos-contrato/{modelo_id}/desarquivar")
+def desarquivar_modelo(modelo_id: str, db: Session = Depends(get_db)):
+    modelo = db.query(models.ModeloContrato).filter(models.ModeloContrato.id_modelo == modelo_id).first()
+    
+    if not modelo:
+        raise HTTPException(status_code=404, detail="Modelo não encontrado")
+    
+    # Usa a coluna booleana exata do seu banco
+    modelo.ativo = True
+        
+    db.commit()
+    db.refresh(modelo)
+    return {"mensagem": "Modelo desarquivado com sucesso!", "id_modelo": modelo_id}
+
+# ==========================================
+# ROTA PARA ARQUIVAR CONTRATO
+# ==========================================
+@app.patch("/contratos/{contrato_id}/arquivar")
+def arquivar_contrato(contrato_id: str, db: Session = Depends(get_db)):
+    # 👇 Corrigido o espaçamento aqui: models.Contrato
+    contrato = db.query(models.Contrato).filter(models.Contrato.id_contrato == contrato_id).first()
+    
+    if not contrato:
+        raise HTTPException(status_code=404, detail="Contrato não encontrado no banco")
+    
+    contrato.status_contrato = "Arquivado"
+    
+    db.commit()
+    db.refresh(contrato)
+    return {"mensagem": "Contrato arquivado com sucesso!", "id_contrato": contrato_id}
+
+
+# ==========================================
+# ROTA PARA DESARQUIVAR CONTRATO
+# ==========================================
+@app.patch("/contratos/{contrato_id}/desarquivar")
+def desarquivar_contrato(contrato_id: str, db: Session = Depends(get_db)):
+    contrato = db.query(models.Contrato).filter(models.Contrato.id_contrato == contrato_id).first()
+    
+    if not contrato:
+        raise HTTPException(status_code=404, detail="Contrato não encontrado no banco")
+    
+    # Retorna o status para "Ativo"
+    contrato.status_contrato = "Ativo"
+    
+    db.commit()
+    db.refresh(contrato)
+    return {"mensagem": "Contrato desarquivado com sucesso!", "id_contrato": contrato_id}

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Archive, FileText, Loader2, Plus, Link } from "lucide-react";
+import { Archive, FileText, Loader2, Plus, Link, ArchiveRestore } from "lucide-react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,13 +14,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-// Importamos o useCreateContrato do seu arquivo de hooks
 import { 
   useCreateModelo, 
   useModelos, 
   useTodosContratos, 
   useEmpresas, 
   useArquivarModelo, 
+  useDesarquivarModelo,
+  useDesarquivarContrato,
   useArquivarContrato,
   useCreateContrato 
 } from "@/lib/api/hooks"; 
@@ -36,20 +37,53 @@ function ContratosPage() {
   const empresas = useEmpresas();
   const arquivarModelo = useArquivarModelo();
   const arquivarContrato = useArquivarContrato();
+  const desarquivarModelo = useDesarquivarModelo();
+  const desarquivarContrato = useDesarquivarContrato();
   
-  // Controles de estado para as duas janelas
   const [openModelo, setOpenModelo] = useState(false);
   const [openContrato, setOpenContrato] = useState(false);
+  const [exibirArquivados, setExibirArquivados] = useState(false);
 
   const empresaNome = (id: string) =>
     empresas.data?.find((e) => e.id_cliente === id)?.nome_empresa ?? id.slice(0, 8);
+    
   const modeloNome = (id: string) =>
     modelos.data?.find((m) => m.id_modelo === id)?.nome_modelo ?? "—";
 
+  // 👇 FILTRO DE CONTRATOS CORRIGIDO
+  const contratosFiltrados = contratos.data?.filter((c) => {
+    const status = c.status_contrato?.trim().toLowerCase();
+    if (exibirArquivados) {
+      return status === "arquivado";
+    }
+    return status !== "arquivado";
+  });
+
+  // 👇 FILTRO DE MODELOS CORRIGIDO (Tratando a coluna booleana 'ativo')
+  const modelosFiltrados = modelos.data?.filter((m) => {
+    if (exibirArquivados) {
+      return m.ativo === false;
+    }
+    return m.ativo !== false;
+  });
+  
   return (
     <DashboardLayout>
       <div className="mx-auto flex max-w-7xl flex-col gap-8">
         
+        {/* 👇 BOTÃO GLOBAL PARA EXIBIR/OCULTAR ARQUIVADOS 👇 */}
+        <div className="flex justify-end">
+          <Button
+            variant={exibirArquivados ? "default" : "outline"}
+            size="sm"
+            className="gap-2"
+            onClick={() => setExibirArquivados(!exibirArquivados)}
+          >
+            {exibirArquivados ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+            {exibirArquivados ? "Ver Itens Ativos" : "Ver Itens Arquivados"}
+          </Button>
+        </div>
+
         {/* ==================================================== */}
         {/* SEÇÃO 1: MODELOS DE CONTRATO                         */}
         {/* ==================================================== */}
@@ -57,7 +91,7 @@ function ContratosPage() {
           <div className="mb-4 flex items-end justify-between">
             <div>
               <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-primary">
-                // catálogo
+                // catálogo {exibirArquivados && "(arquivados)"}
               </span>
               <h1 className="text-2xl font-semibold tracking-tight">Modelos de Contrato</h1>
               <p className="text-sm text-muted-foreground">
@@ -65,7 +99,6 @@ function ContratosPage() {
               </p>
             </div>
             
-            {/* Botão Novo Modelo */}
             <Dialog open={openModelo} onOpenChange={setOpenModelo}>
               <DialogTrigger asChild>
                 <Button className="gap-2">
@@ -77,7 +110,7 @@ function ContratosPage() {
           </div>
           
           <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-            {modelos.data?.map((m) => (
+            {modelosFiltrados?.map((m) => (
               <div
                 key={m.id_modelo}
                 className="rounded-lg border border-border bg-card p-4 shadow-card flex justify-between items-start group"
@@ -98,26 +131,48 @@ function ContratosPage() {
                     )}
                   </div>
                   
-                  {/* Botão de Arquivar Modelo */}
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-8 w-8 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:text-destructive hover:bg-destructive/10 shrink-0"
-                    title="Arquivar modelo"
-                    disabled={arquivarModelo.isPending}
-                    onClick={() => {
-                      if(window.confirm("Deseja realmente arquivar este modelo? Ele não aparecerá mais para novos contratos.")) {
-                        arquivarModelo.mutate(m.id_modelo);
-                      }
-                    }}
-                  >
-                    <Archive className="h-4 w-4" />
-                  </Button>
+                  {/* 👇 BOTÃO DINÂMICO DE ARQUIVAR/DESARQUIVAR MODELO 👇 */}
+                  {m.ativo === false ? (
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8 text-primary opacity-0 group-hover:opacity-100 transition-opacity hover:bg-primary/10 shrink-0"
+                      title="Desarquivar modelo"
+                      disabled={desarquivarModelo.isPending}
+                      onClick={() => {
+                        if(window.confirm("Deseja realmente desarquivar este modelo?")) {
+                          desarquivarModelo.mutate(m.id_modelo);
+                        }
+                      }}
+                    >
+                      <ArchiveRestore className="h-4 w-4" />
+                    </Button>
+                  ) : (
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:text-destructive hover:bg-destructive/10 shrink-0"
+                      title="Arquivar modelo"
+                      disabled={arquivarModelo.isPending}
+                      onClick={() => {
+                        if(window.confirm("Deseja realmente arquivar este modelo? Ele não aparecerá mais para novos contratos.")) {
+                          arquivarModelo.mutate(m.id_modelo);
+                        }
+                      }}
+                    >
+                      <Archive className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               </div>
             ))}
             {modelos.isLoading && (
               <div className="col-span-full text-xs text-muted-foreground">Carregando…</div>
+            )}
+            {!modelos.isLoading && (modelosFiltrados?.length ?? 0) === 0 && (
+              <div className="col-span-full text-xs text-muted-foreground py-2 italic">
+                Nenhum modelo encontrado nesta visualização.
+              </div>
             )}
           </div>
         </section>
@@ -126,16 +181,14 @@ function ContratosPage() {
         {/* SEÇÃO 2: CONTRATOS VINCULADOS                        */}
         {/* ==================================================== */}
         <section>
-          {/* 👇 AQUI ESTÁ A CORREÇÃO DO BOTÃO VINCULAR CONTRATO 👇 */}
           <div className="mb-4 flex items-end justify-between">
             <div>
-              <h2 className="text-lg font-semibold">Contratos Vinculados</h2>
+              <h2 className="text-lg font-semibold">Contratos Vinculados {exibirArquivados && "(Arquivados)"}</h2>
               <p className="text-xs text-muted-foreground">
                 Todos os contratos das empresas cadastradas.
               </p>
             </div>
             
-            {/* Botão Vincular Contrato */}
             <Dialog open={openContrato} onOpenChange={setOpenContrato}>
               <DialogTrigger asChild>
                 <Button className="gap-2" variant="default">
@@ -153,14 +206,15 @@ function ContratosPage() {
                   <th className="px-4 py-3">Empresa</th>
                   <th className="px-4 py-3">Modelo</th>
                   <th className="px-4 py-3">Início</th>
-                  <th className="px-4 py-3">fim</th>
+                  <th className="px-4 py-3">Fim</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3 text-right">Valor</th>
                   <th className="px-4 py-3 text-right">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {contratos.data?.map((c) => (
+                {/* 👇 AGORA MAPEANDO OS CONTRATOS FILTRADOS 👇 */}
+                {contratosFiltrados?.map((c) => (
                   <tr key={c.id_contrato} className="hover:bg-muted/20">
                     <td className="px-4 py-3 font-medium">{empresaNome(c.id_cliente)}</td>
                     <td className="px-4 py-3 text-muted-foreground">{modeloNome(c.id_modelo)}</td>
@@ -182,29 +236,54 @@ function ContratosPage() {
                       })}
                     </td>
                     
-                    {/* Botão de Arquivar Contrato */}
                     <td className="px-4 py-3 text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                        title="Arquivar contrato"
-                        disabled={arquivarContrato.isPending}
-                        onClick={() => {
-                          if (window.confirm("Deseja arquivar este contrato? Ele passará para o status Arquivado.")) {
-                            arquivarContrato.mutate(c.id_contrato);
-                          }
-                        }}
-                      >
-                        <Archive className="h-4 w-4" />
-                      </Button>
+                      {c.status_contrato?.trim().toLowerCase() === "arquivado" ? (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-primary hover:bg-primary/10"
+                          title="Desarquivar contrato"
+                          disabled={desarquivarContrato.isPending}
+                          onClick={() => {
+                            if (window.confirm("Deseja desarquivar este contrato? Ele voltará a ficar Ativo.")) {
+                              desarquivarContrato.mutate(c.id_contrato);
+                            }
+                          }}
+                        >
+                          <ArchiveRestore className="h-4 w-4" />
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                          title="Arquivar contrato"
+                          disabled={arquivarContrato.isPending}
+                          onClick={() => {
+                            if (window.confirm("Deseja arquivar este contrato? Ele passará para o status Arquivado.")) {
+                              arquivarContrato.mutate(c.id_contrato);
+                            }
+                          }}
+                        >
+                          <Archive className="h-4 w-4" />
+                        </Button>
+                      )}
                     </td>
                   </tr>
                 ))}
-                {!contratos.isLoading && (contratos.data?.length ?? 0) === 0 && (
+                
+                {contratos.isLoading && (
                   <tr>
                     <td colSpan={7} className="p-6 text-center text-xs text-muted-foreground">
-                      Nenhum contrato cadastrado.
+                      Carregando contratos...
+                    </td>
+                  </tr>
+                )}
+
+                {!contratos.isLoading && (contratosFiltrados?.length ?? 0) === 0 && (
+                  <tr>
+                    <td colSpan={7} className="p-6 text-center text-xs text-muted-foreground">
+                      Nenhum contrato encontrado nesta visualização.
                     </td>
                   </tr>
                 )}
@@ -276,7 +355,6 @@ function NovoModeloDialog({ onClose }: { onClose: () => void }) {
   );
 }
 
-// 👇 NOVO POP-UP PARA VINCULAR CONTRATO 👇
 function VincularContratoDialog({ onClose }: { onClose: () => void }) {
   const create = useCreateContrato();
   const empresas = useEmpresas();
@@ -293,17 +371,16 @@ function VincularContratoDialog({ onClose }: { onClose: () => void }) {
     e.preventDefault();
     if (!idCliente || !idModelo || !dataInicio) return;
     
-    // Tratamento para garantir que o valor seja salvo corretamente na API
     const valorConvertido = valorAcordado ? parseFloat(valorAcordado.replace(",", ".")) : 0;
 
     await create.mutateAsync({
       id_cliente: idCliente,
       id_modelo: idModelo,
       data_inicio: dataInicio,
-      data_fim: dataFim || undefined, // Se estiver vazio, manda undefined
+      data_fim: dataFim || undefined,
       status_contrato: status,
       valor_acordado: valorConvertido,
-    } as any); // "as any" para evitar conflito de tipagem temporário caso as datas sejam strings
+    } as any);
     
     onClose();
   };
@@ -314,8 +391,6 @@ function VincularContratoDialog({ onClose }: { onClose: () => void }) {
         <DialogTitle>Vincular Contrato</DialogTitle>
       </DialogHeader>
       <form onSubmit={submit} className="space-y-4">
-        
-        {/* Seleção de Empresa */}
         <div className="space-y-1.5">
           <Label className="text-xs">Empresa *</Label>
           <select 
@@ -331,7 +406,6 @@ function VincularContratoDialog({ onClose }: { onClose: () => void }) {
           </select>
         </div>
 
-        {/* Seleção de Modelo */}
         <div className="space-y-1.5">
           <Label className="text-xs">Modelo de Contrato *</Label>
           <select 
@@ -347,7 +421,6 @@ function VincularContratoDialog({ onClose }: { onClose: () => void }) {
           </select>
         </div>
 
-        {/* Datas */}
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1.5">
             <Label className="text-xs">Data de Início *</Label>
@@ -359,7 +432,6 @@ function VincularContratoDialog({ onClose }: { onClose: () => void }) {
           </div>
         </div>
 
-        {/* Valor e Status */}
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1.5">
             <Label className="text-xs">Valor Acordado (R$)</Label>

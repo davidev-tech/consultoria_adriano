@@ -280,3 +280,36 @@ export function useArquivarContrato() {
     },
   });
 }
+export function useDesarquivarModelo() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const response = await fetch(`http://localhost:8000/modelos-contrato/${id}/desarquivar`, {
+        method: "PATCH",
+      });
+      if (!response.ok) throw new Error("Erro ao desarquivar modelo");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["modelos"] });
+    },
+  });
+}
+
+export function useDesarquivarContrato() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const response = await fetch(`http://localhost:8000/contratos/${id}/desarquivar`, {
+        method: "PATCH",
+      });
+      if (!response.ok) throw new Error("Erro ao desarquivar contrato");
+      return response.json();
+    },
+    onSuccess: () => {
+      // Invalida tanto a lista geral quanto a específica para forçar o recarregamento
+      queryClient.invalidateQueries({ queryKey: ["contratos"] });
+      queryClient.invalidateQueries({ queryKey: ["contratos-all"] });
+    },
+  });
+}

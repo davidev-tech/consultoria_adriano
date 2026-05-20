@@ -128,7 +128,7 @@ class ContratoBase(BaseModel):
     @field_validator("status_contrato")
     @classmethod
     def check_status(cls, v):
-        return validate_enum_choice(v.title(), ["Ativo", "Pausado", "Encerrado"])
+        return validate_enum_choice(v.title(), ["Ativo", "Pausado", "Encerrado","Arquivado"])
 
 class ContratoCreate(ContratoBase):
     @field_validator("data_inicio")
