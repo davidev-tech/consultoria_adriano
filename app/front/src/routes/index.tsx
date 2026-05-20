@@ -111,7 +111,7 @@ function Index() {
             helper="total no portfólio"
             icon={FileText}
           />
-          <MetricCard
+          {/* <MetricCard
             label="Receita Acordada"
             isLoading={empresasLoading}
             value={receitaTotal.toLocaleString("pt-BR", {
@@ -122,7 +122,7 @@ function Index() {
             trend="up"
             helper="soma estimada"
             icon={Wallet}
-          />
+          /> */}
         </div>
 
         {/* SEÇÃO DO METABASE COM ABAS DE NAVEGAÇÃO */}

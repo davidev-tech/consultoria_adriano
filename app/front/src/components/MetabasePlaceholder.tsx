@@ -26,7 +26,7 @@ export function MetabasePlaceholder() {
           rel="noreferrer"
           className="inline-flex items-center gap-1.5 rounded-md border border-primary/40 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary hover:bg-primary/20"
         >
-          <ExternalLink className="h-3 w-3" /> Abrir Metabase
+
         </a>
       </div>
 
