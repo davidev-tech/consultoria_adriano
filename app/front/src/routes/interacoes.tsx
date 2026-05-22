@@ -21,6 +21,12 @@ import {
   useDeleteInteracao 
 } from "@/lib/api/hooks";
 import { toast } from "sonner";
+// Utilitário para ajustar o fuso horário (UTC-3) no input datetime-local
+const getLocalDatetimeString = (date = new Date()) => {
+  const tzOffset = date.getTimezoneOffset() * 60000; // Pega a diferença do fuso em milissegundos
+  const localISOTime = new Date(date.getTime() - tzOffset).toISOString().slice(0, 16);
+  return localISOTime;
+};
 
 export const Route = createFileRoute("/interacoes")({
   head: () => ({ meta: [{ title: "Registrar Interação — Gestão do Cuidado" }] }),
@@ -36,7 +42,7 @@ function InteracoesPage() {
   const [idCliente, setIdCliente] = useState<string>("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [tipo, setTipo] = useState("Visita");
-  const [dataHora, setDataHora] = useState(() => new Date().toISOString().slice(0, 16));
+  const [dataHora, setDataHora] = useState(() => getLocalDatetimeString());
   const [feedback, setFeedback] = useState("");
 
   const { data: listaInteracoes, isLoading: loadingInteracoes } = useInteracoesPorCliente(idCliente || undefined);
@@ -56,11 +62,11 @@ function InteracoesPage() {
     }
 
     const payload = {
-      id_cliente: idCliente,
-      tipo_interacao: tipo, // Enviando o valor selecionado ("Visita", "Mensagem", etc.)
-      data_hora: new Date(dataHora).toISOString(),
-      feedback_anotacoes: feedback || null,
-    };
+  id_cliente: idCliente,
+  tipo_interacao: tipo,
+  data_hora: dataHora.length === 16 ? `${dataHora}:00` : dataHora, // ✅ Envia o horário local exato com os segundos zerados
+  feedback_anotacoes: feedback || null,
+};
 
     try {
       if (editingId) {
@@ -82,7 +88,7 @@ function InteracoesPage() {
     setTipo(item.tipo_interacao || "Visita");
     setFeedback(item.feedback_anotacoes || "");
     if (item.data_hora) {
-      setDataHora(new Date(item.data_hora).toISOString().slice(0, 16));
+      setDataHora(getLocalDatetimeString(new Date(item.data_hora)));
     }
   };
 
@@ -235,8 +241,14 @@ function InteracoesPage() {
                             {item.tipo_interacao}
                           </span>
                           <span className="text-xs text-muted-foreground">
-                            {item.data_hora 
-                              ? new Date(item.data_hora).toLocaleString("pt-BR") 
+                            {item.data_hora
+                              ? new Date(item.data_hora).toLocaleString("pt-BR", {
+                                    day: '2-digit',
+                                    month: '2-digit',
+                                    year: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })
                               : "Data não informada"}
                           </span>
                         </div>
