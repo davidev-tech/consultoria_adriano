@@ -49,7 +49,7 @@ export function AppSidebar() {
           <div className="flex flex-col leading-tight group-data-[collapsible=icon]:hidden">
             <span className="text-sm font-semibold tracking-tight">Gestão do Cuidado</span>
             <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-              Consultoria
+              AM Consultoria
             </span>
           </div>
         </Link>
