@@ -112,6 +112,18 @@ class ModeloContratoCreate(ModeloContratoBase):
         if v: return validate_string_content(v)
         return v
 
+    # 🌟 NOVO VALIDADOR ADICIONADO AQUI 🌟
+    @field_validator("periodicidade_cobranca")
+    @classmethod
+    def check_periodicidade(cls, v):
+        opcoes_validas = [
+            "Semanal", "Quinzenal", "Mensal", "Bimestral", 
+            "Trimestral", "Semestral", "Anual", "Por Visita"
+        ]
+        # Aplica .title() para formatar como "Semanal", "Por Visita", etc., e valida
+        if v: return validate_enum_choice(v.title(), opcoes_validas)
+        return v
+
 class ModeloContratoResponse(ModeloContratoBase):
     id_modelo: UUID
     ativo: Optional[bool] = True  # 🌟 Permite que o BD retorne NULL sem travar

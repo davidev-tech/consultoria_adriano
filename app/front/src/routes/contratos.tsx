@@ -367,7 +367,20 @@ function NovoModeloDialog({ onClose }: { onClose: () => void }) {
         </div>
         <div className="space-y-1.5">
           <Label className="text-xs">Periodicidade de cobrança</Label>
-          <Input value={periodicidade} onChange={(e) => setPeriodicidade(e.target.value)} />
+          <select 
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            value={periodicidade} 
+            onChange={(e) => setPeriodicidade(e.target.value)}
+          >
+            <option value="Semanal">Semanal</option>
+            <option value="Quinzenal">Quinzenal</option>
+            <option value="Mensal">Mensal</option>
+            <option value="Bimestral">Bimestral</option>
+            <option value="Trimestral">Trimestral</option>
+            <option value="Semestral">Semestral</option>
+            <option value="Anual">Anual</option>
+            <option value="Por Visita">Por Visita</option>
+          </select>
         </div>
         <div className="space-y-1.5">
           <Label className="text-xs">Descrição padrão</Label>
