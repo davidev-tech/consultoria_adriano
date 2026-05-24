@@ -1,11 +1,37 @@
 import uuid
-from pydantic import BaseModel, model_validator
 from sqlalchemy import Column, String, Text, ForeignKey, TIMESTAMP, DATE, Numeric, INTEGER, DateTime, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from database import Base
-from typing import Optional
 import datetime
+
+# ==========================================
+# 0. CATÁLOGO E VÍNCULOS DE SERVIÇOS (NOVO DESACOPLAMENTO)
+# ==========================================
+
+class CatalogoServico(Base):
+    __tablename__ = "catalogo_servico"
+    
+    id_servico = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    nome_servico = Column(String(255), nullable=False, unique=True)
+    descricao = Column(Text)
+    
+    # Relacionamento reverso
+    vinculos = relationship("ServicoPrestado", back_populates="servico_catalogo")
+
+
+class ServicoPrestado(Base):
+    __tablename__ = "servico_prestado"
+    
+    id_vinculo = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id_cliente = Column(UUID(as_uuid=True), ForeignKey("empresa_cliente.id_cliente", ondelete="CASCADE"))
+    id_servico = Column(UUID(as_uuid=True), ForeignKey("catalogo_servico.id_servico", ondelete="RESTRICT"))
+    data_inicio = Column(TIMESTAMP, default=datetime.datetime.utcnow)
+    
+    # Relacionamentos
+    empresa = relationship("EmpresaCliente", back_populates="servicos_contratados")
+    servico_catalogo = relationship("CatalogoServico", back_populates="vinculos")
+
 
 # ==========================================
 # 1. TABELAS MESTRE (ENTIDADES BASE)
@@ -18,12 +44,16 @@ class EmpresaCliente(Base):
     nome_empresa = Column(String(255), nullable=False)
     cnpj = Column(String(20), unique=True)
     email = Column(String(255))
-    cep = Column(String(8))
-    localizacao = Column(Text)
-    servico_prestado = Column(Text)
     
-
-    # Relacionamentos corrigidos (Removido 'pacientes', adicionado 'visitas')
+    # --- COLUNAS ATÔMICAS DE LOCALIZAÇÃO (1FN) ---
+    cep = Column(String(8))
+    estado = Column(String(2))
+    cidade = Column(String(100))
+    bairro = Column(String(100))
+    logradouro = Column(String(255))
+    
+    # Relacionamentos
+    servicos_contratados = relationship("ServicoPrestado", back_populates="empresa", cascade="all, delete-orphan")
     responsaveis = relationship("Responsavel", back_populates="empresa", cascade="all, delete-orphan")
     contratos = relationship("Contrato", back_populates="empresa", cascade="all, delete-orphan")
     interacoes = relationship("HistoricoInteracoes", back_populates="empresa", cascade="all, delete-orphan")
@@ -37,7 +67,7 @@ class ModeloContrato(Base):
     nome_modelo = Column(String(255), nullable=False)
     periodicidade_cobranca = Column(String(50))
     descricao_padrao = Column(Text)
-    ativo = Column(Boolean, default=True) # <-- NOVA COLUNA AQUI
+    ativo = Column(Boolean, default=True) 
     
     # Relacionamentos
     contratos = relationship("Contrato", back_populates="modelo")
@@ -121,7 +151,7 @@ class VisitaAtendimento(Base):
     feedback_anotacoes = Column(Text)
     
     contrato = relationship("Contrato", back_populates="visitas")
-    empresa = relationship("EmpresaCliente", back_populates="visitas") # <- Corrigido para EmpresaCliente
+    empresa = relationship("EmpresaCliente", back_populates="visitas")
     pagamentos = relationship("Pagamento", back_populates="visita", cascade="all, delete-orphan")
 
 
@@ -134,17 +164,16 @@ class Pagamento(Base):
     data_pagamento = Column(TIMESTAMP)
     valor = Column(Numeric(15, 2))
     forma_pagamento = Column(String(50))
-    # condicao_pagamento = Column(Text)
     status_pagamento = Column(String(50))
-    data_vencimento = Column(DATE)
-    valor_juros = Column(Numeric(15, 2), default=0)
-    # Adicione estas duas linhas junto com as outras colunas (ex: id_cliente, valor...)
-    data_vencimento = Column(DATE, nullable=True) # A data limite desta parcela específica
-    valor_juros = Column(Numeric(15, 2), default=0.00) # O valor acumulado de juros por atraso
+    
+    # Correção: Removida a duplicidade de declaração dessas variáveis
+    data_vencimento = Column(DATE, nullable=True) 
+    valor_juros = Column(Numeric(15, 2), default=0.00) 
 
     visita = relationship("VisitaAtendimento", back_populates="pagamentos")
 
-class Fatura(Base): # Substitua 'Base' pelo seu padrão de herança (ex: SQLModel ou Base)
+
+class Fatura(Base): 
     __tablename__ = "faturas"
 
     id_fatura = Column(UUID(as_uuid=True), primary_key=True, index=True)
@@ -157,5 +186,4 @@ class Fatura(Base): # Substitua 'Base' pelo seu padrão de herança (ex: SQLMode
     valor_juros_pago = Column(Numeric(15, 2), default=0.00)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
-    # Permite acessar dados do contrato diretamente de dentro da fatura
     contrato = relationship("Contrato", back_populates="faturas")

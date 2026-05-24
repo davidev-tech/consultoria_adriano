@@ -18,17 +18,28 @@ from validators import (
 )
 
 # ==========================================
-# 1. MÓDULO: EMPRESA CLIENTE
+# 1. MÓDULO: EMPRESA CLIENTE E CATÁLOGO DE SERVIÇOS
 # ==========================================
+
+class ServicoDetalhe(BaseModel):
+    id_servico: UUID
+    nome_servico: str
+    model_config = ConfigDict(from_attributes=True)
+
 class EmpresaBase(BaseModel):
     nome_empresa: str
     cnpj: Optional[str] = None
     email: Optional[str] = None
     cep: Optional[str] = None
-    localizacao: Optional[str] = None
-    servico_prestado: Optional[str] = None
+    estado: Optional[str] = None
+    cidade: Optional[str] = None
+    bairro: Optional[str] = None
+    logradouro: Optional[str] = None
 
 class EmpresaCreate(EmpresaBase):
+    # O front-end envia apenas uma lista de IDs para vincular os serviços na criação
+    ids_servicos_contratados: List[UUID] = []
+
     @field_validator("cnpj")
     @classmethod
     def check_cnpj(cls, v):
@@ -47,14 +58,23 @@ class EmpresaCreate(EmpresaBase):
         if v: return validate_cep(v)
         return v
 
-    @field_validator("nome_empresa", "localizacao", "servico_prestado")
+    @field_validator("nome_empresa", "cidade", "bairro", "logradouro")
     @classmethod
     def check_text(cls, v):
         if v: return validate_string_content(v)
         return v
 
+    @field_validator("estado")
+    @classmethod
+    def check_estado(cls, v):
+        # Validação simples para garantir 2 caracteres na UF
+        if v: return validate_string_content(v, min_length=2, max_length=2)
+        return v
+
 class EmpresaResponse(EmpresaBase):
     id_cliente: UUID
+    servicos_contratados: List[ServicoDetalhe] = []
+    
     model_config = ConfigDict(from_attributes=True)
 
 # ==========================================
@@ -340,6 +360,7 @@ class FinanceiroFront(BaseModel):
 # ==========================================
 class EmpresaResponseCompleta(EmpresaBase):
     id_cliente: UUID
+    servicos_contratados: List[ServicoDetalhe] = []
     interacoes: List[InteracaoFront] = []
     contratos: List[ContratoFront] = []
     financeiro: List[FinanceiroFront] = []
@@ -349,25 +370,38 @@ class EmpresaResponseCompleta(EmpresaBase):
     @classmethod
     def convert_to_dict_with_relations(cls, v):
         if not isinstance(v, dict):
+            # Extraindo pagamentos aninhados
             all_payments = []
             for c in getattr(v, "contratos", []) or []:
                 for p in getattr(c, "pagamentos", []) or []:
                     all_payments.append(p)
             
+            # Extraindo detalhes do catálogo de serviços via tabela de vínculo
+            servicos_list = []
+            for sp in getattr(v, "servicos_contratados", []) or []:
+                if getattr(sp, "servico_catalogo", None):
+                    servicos_list.append({
+                        "id_servico": sp.servico_catalogo.id_servico,
+                        "nome_servico": sp.servico_catalogo.nome_servico
+                    })
+
             return {
                 "id_cliente": v.id_cliente,
                 "nome_empresa": v.nome_empresa,
                 "cnpj": v.cnpj,
                 "email": v.email,
                 "cep": v.cep,
-                "localizacao": v.localizacao,
-                "servico_prestado": v.servico_prestado,
+                "estado": v.estado,
+                "cidade": v.cidade,
+                "bairro": v.bairro,
+                "logradouro": v.logradouro,
+                "servicos_contratados": servicos_list,
                 "interacoes": getattr(v, "interacoes", []) or [],
                 "contratos": getattr(v, "contratos", []) or [],
                 "financeiro": all_payments
             }
         return v
-
+    
 # ==========================================
 # 8. MÓDULO: FATURAS
 # ==========================================
