@@ -6,72 +6,56 @@ from database import Base
 import datetime
 
 # ==========================================
-# 0. CATÁLOGO E VÍNCULOS DE SERVIÇOS (NOVO DESACOPLAMENTO)
+# 0. CATÁLOGO E VÍNCULOS DE SERVIÇOS
 # ==========================================
 
 class CatalogoServico(Base):
     __tablename__ = "catalogo_servico"
-    
     id_servico = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tipo_servico = Column(String(255), nullable=False, unique=True)
+    tipo_servico = Column(String(255), nullable=False, unique=True) # Nome exato do Supabase
     descricao = Column(Text)
-    
-    # Relacionamento reverso
     vinculos = relationship("ServicoPrestado", back_populates="servico_catalogo")
-
 
 class ServicoPrestado(Base):
     __tablename__ = "servico_prestado"
-    
     id_vinculo = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     id_cliente = Column(UUID(as_uuid=True), ForeignKey("empresa_cliente.id_cliente", ondelete="CASCADE"))
     id_servico = Column(UUID(as_uuid=True), ForeignKey("catalogo_servico.id_servico", ondelete="RESTRICT"))
     data_inicio = Column(TIMESTAMP, default=datetime.datetime.utcnow)
     
-    # Relacionamentos
     empresa = relationship("EmpresaCliente", back_populates="servicos_contratados")
     servico_catalogo = relationship("CatalogoServico", back_populates="vinculos")
 
-
 # ==========================================
-# 1. TABELAS MESTRE (ENTIDADES BASE)
+# 1. TABELAS MESTRE
 # ==========================================
 
 class EmpresaCliente(Base):
     __tablename__ = "empresa_cliente"
-    
     id_cliente = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     nome_empresa = Column(String(255), nullable=False)
     cnpj = Column(String(20), unique=True)
     email = Column(String(255))
     
-    # --- COLUNAS ATÔMICAS DE LOCALIZAÇÃO (1FN) ---
-    cep = Column(String(8))
-    estado = Column(String(2))
-    cidade = Column(String(100))
-    bairro = Column(String(100))
-    logradouro = Column(String(255))
+    # Colunas conforme visualizado no vídeo
+    localizacao_estado = Column(String(2))
+    localizacao_cidade = Column(String(100))
+    localizacao_bairro = Column(String(100))
     
-    # Relacionamentos
     servicos_contratados = relationship("ServicoPrestado", back_populates="empresa", cascade="all, delete-orphan")
     responsaveis = relationship("Responsavel", back_populates="empresa", cascade="all, delete-orphan")
     contratos = relationship("Contrato", back_populates="empresa", cascade="all, delete-orphan")
     interacoes = relationship("HistoricoInteracoes", back_populates="empresa", cascade="all, delete-orphan")
     visitas = relationship("VisitaAtendimento", back_populates="empresa", cascade="all, delete-orphan")
 
-
 class ModeloContrato(Base):
     __tablename__ = "modelo_contrato"
-    
     id_modelo = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     nome_modelo = Column(String(255), nullable=False)
     periodicidade_cobranca = Column(String(50))
     descricao_padrao = Column(Text)
     ativo = Column(Boolean, default=True) 
-    
-    # Relacionamentos
     contratos = relationship("Contrato", back_populates="modelo")
-
 
 # ==========================================
 # 2. PRIMEIRO NÍVEL DE DEPENDÊNCIA
@@ -79,31 +63,24 @@ class ModeloContrato(Base):
 
 class Responsavel(Base):
     __tablename__ = "responsavel"
-    
     id_responsavel = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     id_cliente = Column(UUID(as_uuid=True), ForeignKey("empresa_cliente.id_cliente", ondelete="CASCADE"))
     nome = Column(String(255), nullable=False)
     cpf = Column(String(14), unique=True)
     cargo = Column(String(100))
-    
     empresa = relationship("EmpresaCliente", back_populates="responsaveis")
-
 
 class HistoricoInteracoes(Base):
     __tablename__ = "historico_interacoes"
-    
     id_interacao = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     id_cliente = Column(UUID(as_uuid=True), ForeignKey("empresa_cliente.id_cliente", ondelete="CASCADE"))
     tipo_interacao = Column(String(100))
     data_hora = Column(TIMESTAMP)
     feedback_anotacoes = Column(Text)
-    
     empresa = relationship("EmpresaCliente", back_populates="interacoes")
-
 
 class Contrato(Base):
     __tablename__ = "contrato"
-    
     id_contrato = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     id_cliente = Column(UUID(as_uuid=True), ForeignKey("empresa_cliente.id_cliente", ondelete="CASCADE"))
     id_modelo = Column(UUID(as_uuid=True), ForeignKey("modelo_contrato.id_modelo"))
@@ -122,27 +99,22 @@ class Contrato(Base):
     pagamentos = relationship("Pagamento", cascade="all, delete-orphan")
     faturas = relationship("Fatura", back_populates="contrato", cascade="all, delete-orphan")
 
-
 # ==========================================
-# 3. SEGUNDO E TERCEIRO NÍVEL (DETALHES)
+# 3. SEGUNDO E TERCEIRO NÍVEL
 # ==========================================
 
 class EntregasPrazos(Base):
     __tablename__ = "entregas_prazos"
-    
     id_entrega = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     id_contrato = Column(UUID(as_uuid=True), ForeignKey("contrato.id_contrato", ondelete="CASCADE"))
     descricao_entrega = Column(Text, nullable=False)
     data_prazo_limite = Column(DATE)
     data_conclusao = Column(DATE)
     status_entrega = Column(String(50))
-    
     contrato = relationship("Contrato", back_populates="entregas")
-
 
 class VisitaAtendimento(Base):
     __tablename__ = "visita_atendimento"
-    
     id_visita = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     id_contrato = Column(UUID(as_uuid=True), ForeignKey("contrato.id_contrato"))
     id_cliente = Column(UUID(as_uuid=True), ForeignKey("empresa_cliente.id_cliente", ondelete="CASCADE"))
@@ -154,10 +126,8 @@ class VisitaAtendimento(Base):
     empresa = relationship("EmpresaCliente", back_populates="visitas")
     pagamentos = relationship("Pagamento", back_populates="visita", cascade="all, delete-orphan")
 
-
 class Pagamento(Base):
     __tablename__ = "pagamento"
-    
     id_pagamento = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     id_contrato = Column(UUID(as_uuid=True), ForeignKey("contrato.id_contrato", ondelete="CASCADE"))
     id_visita = Column(UUID(as_uuid=True), ForeignKey("visita_atendimento.id_visita"))
@@ -165,17 +135,12 @@ class Pagamento(Base):
     valor = Column(Numeric(15, 2))
     forma_pagamento = Column(String(50))
     status_pagamento = Column(String(50))
-    
-    # Correção: Removida a duplicidade de declaração dessas variáveis
     data_vencimento = Column(DATE, nullable=True) 
     valor_juros = Column(Numeric(15, 2), default=0.00) 
-
     visita = relationship("VisitaAtendimento", back_populates="pagamentos")
-
 
 class Fatura(Base): 
     __tablename__ = "faturas"
-
     id_fatura = Column(UUID(as_uuid=True), primary_key=True, index=True)
     id_contrato = Column(UUID(as_uuid=True), ForeignKey("contrato.id_contrato", ondelete="CASCADE"))
     valor_original = Column(Numeric(15, 2), nullable=False)
@@ -185,5 +150,4 @@ class Fatura(Base):
     valor_pago = Column(Numeric(15, 2), nullable=True)
     valor_juros_pago = Column(Numeric(15, 2), default=0.00)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
-
     contrato = relationship("Contrato", back_populates="faturas")
