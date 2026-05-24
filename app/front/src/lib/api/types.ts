@@ -1,23 +1,53 @@
 // Tipos espelhados dos schemas Pydantic da API
 export type UUID = string;
 
+// --- NOVO DTO: Catálogo de Serviços ---
+export interface ServicoDetalhe {
+  id_servico: UUID;
+  nome_servico: string;
+}
+
 export interface Empresa {
   id_cliente: UUID;
   nome_empresa: string;
   cnpj?: string | null;
   email?: string | null;
+  
+  // --- COLUNAS ATÔMICAS DE LOCALIZAÇÃO ---
   cep?: string | null;
-  localizacao?: string | null;
-  servico_prestado?: string | null;
+  estado?: string | null;
+  cidade?: string | null;
+  bairro?: string | null;
+  logradouro?: string | null;
+  
+  // --- SERVIÇOS VINCULADOS ---
+  servicos_contratados?: ServicoDetalhe[];
+  
+  // Arrays para suportar a EmpresaResponseCompleta (usado nas tabelas do front)
+  interacoes?: any[];
+  contratos?: any[];
+  financeiro?: any[];
 }
+
 export interface EmpresaCreate {
   nome_empresa: string;
   cnpj?: string | null;
   email?: string | null;
+  
+  // --- COLUNAS ATÔMICAS DE LOCALIZAÇÃO ---
   cep?: string | null;
-  localizacao?: string | null;
-  servico_prestado?: string | null;
+  estado?: string | null;
+  cidade?: string | null;
+  bairro?: string | null;
+  logradouro?: string | null;
+  
+  // Array de UUIDs para enviar ao back-end na hora de salvar
+  ids_servicos_contratados: UUID[];
 }
+
+// ==========================================
+// RESTANTE DO ARQUIVO MANTIDO INTACTO
+// ==========================================
 
 export interface Responsavel {
   id_responsavel: UUID;
