@@ -13,7 +13,7 @@ class CatalogoServico(Base):
     __tablename__ = "catalogo_servico"
     
     id_servico = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    nome_servico = Column(String(255), nullable=False, unique=True)
+    tipo_servico = Column(String(255), nullable=False, unique=True)
     descricao = Column(Text)
     
     # Relacionamento reverso
