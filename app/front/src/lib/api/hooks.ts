@@ -307,9 +307,50 @@ export function useDesarquivarContrato() {
       return response.json();
     },
     onSuccess: () => {
-      // Invalida tanto a lista geral quanto a específica para forçar o recarregamento
       queryClient.invalidateQueries({ queryKey: ["contratos"] });
       queryClient.invalidateQueries({ queryKey: ["contratos-all"] });
     },
   });
 }
+
+// --- MÓDULO NEW: FATURAS CORRIGIDAS ---
+export const useFaturasPorContrato = (idContrato?: UUID) => {
+  const { searchTerm } = useSearch();
+  return useQuery({
+    queryKey: ["faturas", idContrato, searchTerm],
+    queryFn: () => api<any[]>(`/faturas?id_contrato=${idContrato}${searchTerm ? `?busca=${searchTerm}` : ""}`),
+    enabled: !!idContrato,
+  });
+};
+
+export const useCreateFatura = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: any) =>
+      api<any>("/faturas", { method: "POST", json: data }),
+    onSuccess: (_d, vars) =>
+      qc.invalidateQueries({ queryKey: ["faturas", vars.id_contrato] }),
+  });
+};
+
+export const useUpdateFatura = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (args: { id: string; data: any }) =>
+      api<{ mensagem: string }>(`/faturas/${args.id}`, { 
+        method: "PUT", 
+        json: args.data 
+      }),
+    onSuccess: (_d, vars) => 
+      qc.invalidateQueries({ queryKey: ["faturas", vars.data.id_contrato] }),
+  });
+};
+
+export const useDeleteFatura = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      api<{ mensagem: string }>(`/faturas/${id}`, { method: "DELETE" }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["faturas"] }),
+  });
+};

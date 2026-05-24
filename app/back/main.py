@@ -1,3 +1,5 @@
+from datetime import date
+
 from fastapi import FastAPI, Depends, HTTPException, status, Request, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session, joinedload
@@ -12,6 +14,8 @@ from typing import Optional, List, Dict
 import time
 import jwt
 from fastapi import APIRouter
+from dateutil.relativedelta import relativedelta
+import calendar
 
 # 1. INICIALIZAÇÃO DO BANCO
 models.Base.metadata.create_all(bind=engine)
@@ -439,3 +443,79 @@ def obter_token_metabase():
         return {"token": token}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao gerar token: {str(e)}")
+    
+@app.post("/contratos", response_model=schemas.ContratoResponse, tags=["Contratos"])
+def criar_novo_contrato(contrato_data: schemas.ContratoCreate, db: Session = Depends(get_db)):
+    # 1. Salva o contrato principal enviado pelo Front-end
+    novo_contrato = models.Contrato(**contrato_data.dict())
+    db.add(novo_contrato)
+    db.flush() # Gera o ID do contrato sem fechar a transação definitiva
+
+    # 2. Lógica automática de geração de faturas mês a mês
+    data_corrente = novo_contrato.data_inicio
+    data_fim = novo_contrato.data_fim
+    dia_vencimento_escolhido = novo_contrato.dia_vencimento or 5
+
+    while data_corrente <= data_fim:
+        # Tratamento para meses que não têm o dia escolhido (Ex: dia 31 em Fevereiro)
+        ultimo_dia_mes = calendar.monthrange(data_corrente.year, data_corrente.month)[1]
+        dia_vencimento_real = min(dia_vencimento_escolhido, ultimo_dia_mes)
+        
+        vencimento_fatura = date(data_corrente.year, data_corrente.month, dia_vencimento_real)
+
+        # Evita gerar faturas antes da real data de início do contrato
+        if vencimento_fatura >= novo_contrato.data_inicio:
+            nova_fatura = models.Fatura(
+                id_contrato=novo_contrato.id_contrato,
+                valor_original=novo_contrato.valor_acordado, # Assume que o valor inserido é a parcela mensal
+                data_vencimento=vencimento_fatura,
+                status="Pendente"
+            )
+            db.add(nova_fatura)
+
+        # Avança exatamente 1 mês no laço de repetição
+        data_corrente += relativedelta(months=1)
+
+    db.commit()
+    db.refresh(novo_contrato)
+    return novo_contrato
+
+# --- MÓDULO: FATURAS ---
+
+@app.get("/faturas", response_model=list[schemas.FaturaResponse], tags=["Faturas"])
+def listar_faturas(id_contrato: str = None, db: Session = Depends(get_db)):
+    query = db.query(models.Fatura)
+    if id_contrato:
+        query = query.filter(models.Fatura.id_contrato == id_contrato)
+    return query.all()
+
+@app.post("/faturas", response_model=schemas.FaturaResponse, tags=["Faturas"])
+def criar_fatura(fatura_in: schemas.FaturaCreate, db: Session = Depends(get_db)):
+    nova_fatura = models.Fatura(**fatura_in.dict())
+    db.add(nova_fatura)
+    db.commit()
+    db.refresh(nova_fatura)
+    return nova_fatura
+
+@app.put("/faturas/{id_fatura}", response_model=schemas.FaturaResponse, tags=["Faturas"])
+def atualizar_fatura(id_fatura: int, fatura_in: schemas.FaturaUpdate, db: Session = Depends(get_db)):
+    fatura = db.query(models.Fatura).filter(models.Fatura.id_fatura == id_fatura).first()
+    if not fatura:
+        raise HTTPException(status_code=404, detail="Fatura não encontrada.")
+    
+    for var, value in fatura_in.dict(exclude_unset=True).items():
+        setattr(fatura, var, value)
+        
+    db.commit()
+    db.refresh(fatura)
+    return fatura
+
+@app.delete("/faturas/{id_fatura}", status_code=204, tags=["Faturas"])
+def deletar_fatura(id_fatura: int, db: Session = Depends(get_db)):
+    fatura = db.query(models.Fatura).filter(models.Fatura.id_fatura == id_fatura).first()
+    if not fatura:
+        raise HTTPException(status_code=404, detail="Fatura não encontrada.")
+    
+    db.delete(fatura)
+    db.commit()
+    return {"mensagem": "Fatura removida com sucesso"}

@@ -367,3 +367,85 @@ class EmpresaResponseCompleta(EmpresaBase):
                 "financeiro": all_payments
             }
         return v
+
+# ==========================================
+# 8. MÓDULO: FATURAS
+# ==========================================
+
+class FaturaBase(BaseModel):
+    id_contrato: UUID
+    valor_original: float
+    data_vencimento: date
+    status: str = "Pendente"
+    data_pagamento: Optional[date] = None
+    valor_pago: Optional[float] = None
+
+    @field_validator("valor_original")
+    @classmethod
+    def check_valor_original(cls, v):
+        return validate_positive_value(v)
+
+    @field_validator("valor_pago")
+    @classmethod
+    def check_valor_pago(cls, v):
+        if v is not None:
+            return validate_positive_value(v)
+        return v
+
+    @field_validator("status")
+    @classmethod
+    def check_status(cls, v):
+        opcoes_validas = ["Pendente", "Pago", "Atrasado", "Cancelada"]
+        if v not in opcoes_validas:
+            raise ValueError(f"Status da fatura inválido. Opções válidas: {', '.join(opcoes_validas)}")
+        return v
+
+class FaturaUpdate(BaseModel):
+    """
+    Schema usado no endpoint PUT para atualizações parciais.
+    Todos os campos são opcionais para permitir atualizar apenas o que mudou.
+    """
+    valor_original: Optional[float] = None
+    data_vencimento: Optional[date] = None
+    status: Optional[str] = None
+    data_pagamento: Optional[date] = None
+    valor_pago: Optional[float] = None
+
+    @field_validator("valor_original")
+    @classmethod
+    def check_valor_original(cls, v):
+        if v is not None:
+            return validate_positive_value(v)
+        return v
+
+    @field_validator("valor_pago")
+    @classmethod
+    def check_valor_pago(cls, v):
+        if v is not None:
+            return validate_positive_value(v)
+        return v
+
+    @field_validator("status")
+    @classmethod
+    def check_status(cls, v):
+        if v is not None:
+            opcoes_validas = ["Pendente", "Pago", "Atrasado", "Cancelada"]
+            if v not in opcoes_validas:
+                raise ValueError(f"Status da fatura inválido. Opções válidas: {', '.join(opcoes_validas)}")
+        return v
+
+class FaturaCreate(FaturaBase):
+    """
+    Schema usado no endpoint POST.
+    Herda tudo de FaturaBase.
+    """
+    pass
+
+class FaturaResponse(FaturaBase):
+    """
+    Schema usado para retornar dados (GET, POST return).
+    Inclui o ID gerado pelo banco.
+    """
+    id_fatura: UUID
+
+    model_config = ConfigDict(from_attributes=True)

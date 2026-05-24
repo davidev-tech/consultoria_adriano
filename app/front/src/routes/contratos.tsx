@@ -25,6 +25,7 @@ import {
   useArquivarContrato,
   useCreateContrato 
 } from "@/lib/api/hooks"; 
+import { Checkbox } from "@/components/ui/checkbox" // ou o caminho correspondente no seu projeto
 
 export const Route = createFileRoute("/contratos")({
   head: () => ({ meta: [{ title: "Contratos — Gestão do Cuidado" }] }),
@@ -79,6 +80,10 @@ function ContratosPage() {
 
     return exibirArquivados ? isArquivado : !isArquivado;
   });
+  // ... seus outros estados
+const [diaVencimento, setDiaVencimento] = useState<string>(''); // Para o dia padrão
+const [cobraJuros, setCobraJuros] = useState<boolean>(false);
+const [taxaJuros, setTaxaJuros] = useState<string>('0');
   
   return (
     <DashboardLayout>
@@ -417,6 +422,10 @@ function VincularContratoDialog({ onClose }: { onClose: () => void }) {
   const [dataFim, setDataFim] = useState("");
   const [valorAcordado, setValorAcordado] = useState("");
   const [status, setStatus] = useState("Ativo");
+  // 1. Adicione os estados que o formulário está tentando ler e salvar:
+  const [diaVencimento, setDiaVencimento] = useState<string>("5"); // Padrão dia 5
+  const [cobraJuros, setCobraJuros] = useState<boolean>(false);
+  const [taxaJuros, setTaxaJuros] = useState<string>("0");
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -436,81 +445,129 @@ function VincularContratoDialog({ onClose }: { onClose: () => void }) {
     onClose();
   };
 
+  // setDiaVencimento is already defined via useState hook above
+
   return (
     <DialogContent>
-      <DialogHeader>
-        <DialogTitle>Vincular Contrato</DialogTitle>
-      </DialogHeader>
-      <form onSubmit={submit} className="space-y-4">
-        <div className="space-y-1.5">
-          <Label className="text-xs">Empresa *</Label>
-          <select 
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            value={idCliente} 
-            onChange={(e) => setIdCliente(e.target.value)} 
-            required
-          >
-            <option value="">Selecione uma empresa...</option>
-            {empresas.data?.map(emp => (
-              <option key={emp.id_cliente} value={emp.id_cliente}>{emp.nome_empresa}</option>
-            ))}
-          </select>
-        </div>
+  <DialogHeader>
+    <DialogTitle>Vincular Contrato</DialogTitle>
+  </DialogHeader>
 
-        <div className="space-y-1.5">
-          <Label className="text-xs">Modelo de Contrato *</Label>
-          <select 
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            value={idModelo} 
-            onChange={(e) => setIdModelo(e.target.value)} 
-            required
-          >
-            <option value="">Selecione um modelo...</option>
-            {modelos.data?.filter(mod => mod.ativo !== false && mod.ativo !== "false" && mod.ativo !== 0).map(mod => (
-              <option key={mod.id_modelo} value={mod.id_modelo}>{mod.nome_modelo}</option>
-            ))}
-          </select>
-        </div>
+  <form onSubmit={submit} className="space-y-4">
+    {/* --- SEUS CAMPOS ORIGINAIS --- */}
+    <div className="space-y-1.5">
+      <Label className="text-xs">Empresa *</Label>
+      <select 
+        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+        value={idCliente} 
+        onChange={(e) => setIdCliente(e.target.value)} 
+        required
+      >
+        <option value="">Selecione uma empresa...</option>
+        {empresas.data?.map(emp => (
+          <option key={emp.id_cliente} value={emp.id_cliente}>{emp.nome_empresa}</option>
+        ))}
+      </select>
+    </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <Label className="text-xs">Data de Início *</Label>
-            <Input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} required />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs">Data de Fim</Label>
-            <Input type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} />
-          </div>
-        </div>
+    <div className="space-y-1.5">
+      <Label className="text-xs">Modelo de Contrato *</Label>
+      <select 
+        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+        value={idModelo} 
+        onChange={(e) => setIdModelo(e.target.value)} 
+        required
+      >
+        <option value="">Selecione um modelo...</option>
+        {modelos.data?.filter(mod => mod.ativo !== false && mod.ativo !== "false" && mod.ativo !== 0).map(mod => (
+          <option key={mod.id_modelo} value={mod.id_modelo}>{mod.nome_modelo}</option>
+        ))}
+      </select>
+    </div>
+    
+    <div className="grid grid-cols-2 gap-4">
+      <div className="space-y-1.5">
+        <Label className="text-xs">Data de Início *</Label>
+        <Input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} required />
+      </div>
+      <div className="space-y-1.5">
+        <Label className="text-xs">Data de Fim</Label>
+        <Input type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} />
+      </div>
+    </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <Label className="text-xs">Valor Acordado (R$)</Label>
-            <Input 
-              type="number" 
-              step="0.01" 
-              placeholder="0.00" 
-              value={valorAcordado} 
-              onChange={(e) => setValorAcordado(e.target.value)} 
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs">Status</Label>
-            <select 
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-              value={status} 
-              onChange={(e) => setStatus(e.target.value)}
-            >
-              <option value="Ativo">Ativo</option>
-              <option value="Encerrado">Encerrado</option>
-              <option value="Pendente">Pendente</option>
-            </select>
-          </div>
-        </div>
+    <div className="grid grid-cols-2 gap-4">
+      <div className="space-y-1.5">
+        <Label className="text-xs">Valor Acordado (R$)</Label>
+        <Input 
+          type="number" 
+          step="0.01" 
+          placeholder="0.00" 
+          value={valorAcordado} 
+          onChange={(e) => setValorAcordado(e.target.value)} 
+        />
+      </div>
+      <div className="space-y-1.5">
+        <Label className="text-xs">Status</Label>
+        <select 
+          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          value={status} 
+          onChange={(e) => setStatus(e.target.value)}
+        >
+          <option value="Ativo">Ativo</option>
+          <option value="Encerrado">Encerrado</option>
+          <option value="Pendente">Pendente</option>
+        </select>
+      </div>
+    </div>
 
-        {create.error && (
-          <p className="text-xs text-destructive">{(create.error as Error).message}</p>
-        )}
+    {/* --- NOVOS CAMPOS FINANCEIROS --- */}
+    <div className="pt-2 border-t border-border mt-2 space-y-4">
+      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Configurações de Pagamento</p>
+      
+      <div className="space-y-1.5">
+        <Label className="text-xs">Dia de Vencimento Padrão *</Label>
+        <Input 
+          type="number" 
+          min="1" max="31"
+          value={diaVencimento}
+          onChange={(e) => setDiaVencimento(e.target.value)}
+          placeholder="Ex: 5"
+          required
+        />
+      </div>
+
+      <div className="flex items-center space-x-2 pt-1">
+        <Checkbox 
+          id="cobra-juros" 
+          checked={cobraJuros}
+          onCheckedChange={(checked) => setCobraJuros(checked === true)}
+        />
+        <Label htmlFor="cobra-juros" className="text-xs cursor-pointer">Cobrar juros por atraso?</Label>
+      </div>
+
+      {cobraJuros && (
+        <div className="space-y-1.5 pl-6 border-l-2 border-primary/20">
+          <Label className="text-xs">Taxa de Juros (%) *</Label>
+          <Input 
+            type="number" 
+            step="0.01" 
+            min="0"
+            value={taxaJuros}
+            onChange={(e) => setTaxaJuros(e.target.value)}
+            placeholder="Ex: 2.00"
+            required={cobraJuros}
+          />
+        </div>
+      )}
+    </div>
+    {/* --- FIM DOS NOVOS CAMPOS --- */}
+
+    {create.error && (
+      <p className="text-xs text-destructive">{(create.error as Error).message}</p>
+    )}
+
+    {/* O SEU DIALOG FOOTER VAI CONTINUAR AQUI ABAIXO DENTRO DO FORM */}
         
         <DialogFooter>
           <Button type="button" variant="outline" onClick={onClose}>
