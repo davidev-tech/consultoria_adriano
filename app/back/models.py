@@ -28,6 +28,10 @@ class ServicoPrestado(Base):
     empresa = relationship("EmpresaCliente", back_populates="servicos_contratados")
     servico_catalogo = relationship("CatalogoServico", back_populates="vinculos")
 
+    @property
+    def tipo_servico(self):
+        return self.servico_catalogo.tipo_servico if self.servico_catalogo else None
+
 # ==========================================
 # 1. TABELAS MESTRE
 # ==========================================
@@ -48,7 +52,6 @@ class EmpresaCliente(Base):
     responsaveis = relationship("Responsavel", back_populates="empresa", cascade="all, delete-orphan")
     contratos = relationship("Contrato", back_populates="empresa", cascade="all, delete-orphan")
     interacoes = relationship("HistoricoInteracoes", back_populates="empresa", cascade="all, delete-orphan")
-    visitas = relationship("VisitaAtendimento", back_populates="empresa", cascade="all, delete-orphan")
 
 class ModeloContrato(Base):
     __tablename__ = "modelo_contrato"
@@ -96,7 +99,6 @@ class Contrato(Base):
 
     empresa = relationship("EmpresaCliente", back_populates="contratos")
     modelo = relationship("ModeloContrato", back_populates="contratos")
-    visitas = relationship("VisitaAtendimento", back_populates="contrato", cascade="all, delete-orphan")
     entregas = relationship("EntregasPrazos", back_populates="contrato", cascade="all, delete-orphan")
     pagamentos = relationship("Pagamento", cascade="all, delete-orphan")
     faturas = relationship("Fatura", back_populates="contrato", cascade="all, delete-orphan")
@@ -128,11 +130,10 @@ class Pagamento(Base):
     valor_juros = Column(Numeric(15, 2), default=0.00) 
 
     contrato = relationship("Contrato", back_populates="pagamentos")
-    interacao = relationship("HistoricoInteracoes", back_populates="pagamento", uselist=False)
 
 class Fatura(Base): 
     __tablename__ = "faturas"
-    id_fatura = Column(UUID(as_uuid=True), primary_key=True, index=True)
+    id_fatura = Column(UUID(as_uuid=True),default=uuid.uuid4, primary_key=True, index=True)
     id_contrato = Column(UUID(as_uuid=True), ForeignKey("contrato.id_contrato", ondelete="CASCADE"))
     valor_original = Column(Numeric(15, 2), nullable=False)
     data_vencimento = Column(DATE, nullable=False)

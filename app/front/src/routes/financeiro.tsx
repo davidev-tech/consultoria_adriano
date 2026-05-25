@@ -61,11 +61,13 @@ function FinanceiroPage() {
 
   // INTELIGÊNCIA FINANCEIRA: CÁLCULO DINÂMICO DE ATRAZOS E JUROS
   function calcularFaturamento(fatura: any) {
-    if (fatura.status === "Pago" || fatura.data_pagamento) {
+if (fatura.status === "Pago" || fatura.data_pagamento) {
       return {
+        ...fatura,
         status: "Pago",
         valorOriginal: Number(fatura.valor_original),
-        valorAtualizado: Number(fatura.valor_pago || fatura.valor_original),
+        // Soma o original com os juros pagos (usando 0 se for null/undefined)
+        valorAtualizado: Number(fatura.valor_original) + Number(fatura.valor_juros_pago || 0),
         cor: "text-emerald-600 font-medium"
       };
     }
@@ -176,23 +178,28 @@ function FinanceiroPage() {
             <h1 className="text-2xl font-semibold tracking-tight">Faturamento e Parcelas</h1>
             <p className="text-sm text-muted-foreground">Controle mensal do contrato ativo.</p>
           </div>
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-              <Button 
-                className="gap-2" 
-                disabled={!idContrato}
-                onClick={() => setEditingFatura(null)}
-              >
-                <Plus className="h-4 w-4" /> Nova Fatura Manual
-              </Button>
-            </DialogTrigger>
-            <FaturaDialog 
-              key={editingFatura?.id_fatura || "novo"} 
-              id_contrato={contratos} 
-              fatura={editingFatura}
-              onClose={() => setOpen(false)} 
-            />
-          </Dialog>
+          {/* Substitua da linha 182 até a 198 por isto: */}
+<Button 
+  className="gap-2" 
+  onClick={() => {
+    setEditingFatura({ id_fatura: "novo" });
+    setOpen(true);
+  }}
+>
+  <Plus className="h-4 w-4" /> Nova Fatura Manual
+</Button>
+
+{open && (
+  <FaturaDialog 
+    key={editingFatura?.id_fatura || "novo"} 
+    id_contrato={idContrato} 
+    fatura={editingFatura?.id_fatura === "novo" ? null : editingFatura} 
+    onClose={() => {
+      setOpen(false);
+      setEditingFatura(null);
+    }} 
+  />
+)}
         </div>
 
         <div className="rounded-lg border border-border bg-card p-5 shadow-card">
@@ -298,7 +305,9 @@ function FinanceiroPage() {
   );
 }
 
-// COMPONENTE KPI CARD
+// ==========================================
+// 2. SUB-COMPONENTE: CARD DE REVISÃO (KPI)
+// ==========================================
 function KpiCard({ label, value, variant }: { label: string; value: number; variant: "success" | "warning" | "info" }) {
   return (
     <div className="rounded-lg border border-border bg-card p-5 shadow-card">
@@ -324,7 +333,9 @@ function KpiCard({ label, value, variant }: { label: string; value: number; vari
   );
 }
 
-/// 1. Mudamos de idContrato para id_contrato aqui na declaração das props
+// ==========================================
+// 3. SUB-COMPONENTE: DIALOG DA FATURA (COMPLETO)
+// ==========================================
 function FaturaDialog({ id_contrato, fatura, onClose }: { id_contrato: string; fatura?: any; onClose: () => void }) {
   const create = useCreateFatura();
   const update = useUpdateFatura();
@@ -337,7 +348,7 @@ function FaturaDialog({ id_contrato, fatura, onClose }: { id_contrato: string; f
   const [status, setStatus] = useState(fatura?.status || "Pendente");
   const [dataPagamento, setDataPagamento] = useState(fatura?.data_pagamento ? fatura.data_pagamento.slice(0, 10) : "");
   const [valorPago, setValorPago] = useState(fatura?.valor_pago ? String(fatura.valor_pago) : "");
-  
+
   const isLoading = create.isPending || update.isPending;
 
   const submit = async (e: React.FormEvent) => {
@@ -366,7 +377,7 @@ function FaturaDialog({ id_contrato, fatura, onClose }: { id_contrato: string; f
       }
       onClose();
     } catch (error) {
-      toast.error("Erro ao salvar a fatura.");
+      toast.error("Erro ao salvar a faturar.");
     }
   };
 
@@ -395,7 +406,7 @@ function FaturaDialog({ id_contrato, fatura, onClose }: { id_contrato: string; f
               <Label className="text-xs">Status da Cobrança</Label>
               <Select value={status} onValueChange={setStatus}>
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="Selecione" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Pendente">Pendente</SelectItem>
@@ -407,17 +418,17 @@ function FaturaDialog({ id_contrato, fatura, onClose }: { id_contrato: string; f
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs">Data de Vencimento *</Label>
-            <Input 
-              type="date" 
-              value={dataVencimento} 
-              onChange={(e) => setDataVencimento(e.target.value)} 
-              required 
+            <Label className="text-xs">Data de Vencimento</Label>
+            <Input
+              type="date"
+              value={dataVencimento}
+              onChange={(e) => setDataVencimento(e.target.value)}
+              required
             />
           </div>
 
           {status === "Pago" && (
-            <div className="grid grid-cols-2 gap-3 p-3 bg-muted rounded-md border">
+            <div className="grid grid-cols-2 gap-3 p-3 bg-muted/40 rounded-md border border-border">
               <div className="space-y-1.5">
                 <Label className="text-xs">Data do Pagamento</Label>
                 <Input
@@ -427,6 +438,7 @@ function FaturaDialog({ id_contrato, fatura, onClose }: { id_contrato: string; f
                   required
                 />
               </div>
+
               <div className="space-y-1.5">
                 <Label className="text-xs">Valor Pago (R$)</Label>
                 <Input
@@ -434,23 +446,21 @@ function FaturaDialog({ id_contrato, fatura, onClose }: { id_contrato: string; f
                   step="0.01"
                   value={valorPago}
                   onChange={(e) => setValorPago(e.target.value)}
-                  placeholder={valor}
-                  required
+                  placeholder="0,00"
                 />
               </div>
             </div>
           )}
 
-          {/* DIALOG FOOTER RESTAURADO AQUI! */}
-          <DialogFooter className="pt-2">
+          {/* RODAPÉ DO FORMULÁRIO COM OS BOTÕES REORGANIZADOS */}
+          <div className="flex justify-end gap-2 pt-4 border-t border-border">
             <Button type="button" variant="outline" onClick={onClose}>
               Cancelar
             </Button>
             <Button type="submit" disabled={isLoading}>
               {isLoading ? "Salvando..." : isEditing ? "Salvar" : "Adicionar Cobrança"}
             </Button>
-          </DialogFooter>
-          
+          </div>
         </form>
       </DialogContent>
     </Dialog>

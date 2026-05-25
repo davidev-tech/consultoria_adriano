@@ -1,3 +1,4 @@
+# consultoria_adriano/app/back/schemas.py
 from pydantic import BaseModel, ConfigDict, field_validator, ValidationInfo, model_validator
 from typing import Optional, List
 from uuid import UUID
@@ -5,9 +6,9 @@ from datetime import date, datetime
 
 # Importação relativa das regras de validação
 from validators import (
-    validate_cpf, 
-    validate_cnpj, 
-    validate_not_past_date, 
+    validate_cpf,
+    validate_cnpj,
+    validate_not_past_date,
     validate_not_past_datetime,
     validate_positive_value,
     validate_string_content,
@@ -18,26 +19,28 @@ from validators import (
 )
 
 # ==========================================
-# 1. MÓDULO: EMPRESA CLIENTE E CATÁLOGO DE SERVIÇOS
+# 0. CATÁLOGO DE SERVIÇOS E VINCULOS
 # ==========================================
 
 class ServicoDetalhe(BaseModel):
-    id_servico: UUID
-    nome_servico: str
+    id_servico: Optional[UUID] = None
+    tipo_servico: Optional[str] = None
+    
     model_config = ConfigDict(from_attributes=True)
+
+# ==========================================
+# 1. MÓDULO: EMPRESA CLIENTE
+# ==========================================
 
 class EmpresaBase(BaseModel):
     nome_empresa: str
     cnpj: Optional[str] = None
     email: Optional[str] = None
-    cep: Optional[str] = None
-    estado: Optional[str] = None
-    cidade: Optional[str] = None
-    bairro: Optional[str] = None
-    logradouro: Optional[str] = None
+    localizacao_estado: Optional[str] = None
+    localizacao_cidade: Optional[str] = None
+    localizacao_bairro: Optional[str] = None
 
 class EmpresaCreate(EmpresaBase):
-    # O front-end envia apenas uma lista de IDs para vincular os serviços na criação
     ids_servicos_contratados: List[UUID] = []
 
     @field_validator("cnpj")
@@ -52,22 +55,15 @@ class EmpresaCreate(EmpresaBase):
         if v: return validate_email(v)
         return v
 
-    @field_validator("cep")
-    @classmethod
-    def check_cep(cls, v):
-        if v: return validate_cep(v)
-        return v
-
-    @field_validator("nome_empresa", "cidade", "bairro", "logradouro")
+    @field_validator("nome_empresa", "localizacao_cidade", "localizacao_bairro")
     @classmethod
     def check_text(cls, v):
         if v: return validate_string_content(v)
         return v
 
-    @field_validator("estado")
+    @field_validator("localizacao_estado")
     @classmethod
     def check_estado(cls, v):
-        # Validação simples para garantir 2 caracteres na UF
         if v: return validate_string_content(v, min_length=2, max_length=2)
         return v
 
@@ -80,20 +76,15 @@ class EmpresaResponse(EmpresaBase):
 # ==========================================
 # 2. MÓDULO: RESPONSÁVEL (Contatos)
 # ==========================================
+
 class ResponsavelBase(BaseModel):
-    id_cliente: UUID
     nome: str
-    cpf: Optional[str] = None
     telefone: Optional[str] = None
     email: Optional[str] = None
     cargo: Optional[str] = None
 
-class ResponsavelCreate(ResponsavelBase): 
-    @field_validator("cpf")
-    @classmethod
-    def check_cpf(cls, v):
-        if v: return validate_cpf(v)
-        return v
+class ResponsavelCreate(ResponsavelBase):
+    id_cliente: UUID
 
     @field_validator("telefone")
     @classmethod
@@ -115,53 +106,60 @@ class ResponsavelCreate(ResponsavelBase):
 
 class ResponsavelResponse(ResponsavelBase):
     id_responsavel: UUID
+    id_cliente: UUID
+    
     model_config = ConfigDict(from_attributes=True)
 
 # ==========================================
 # 3. MÓDULO: MODELO DE CONTRATO
 # ==========================================
+
 class ModeloContratoBase(BaseModel):
     nome_modelo: str
     periodicidade_cobranca: Optional[str] = None
     descricao_padrao: Optional[str] = None
+    ativo: Optional[bool] = True
 
-class ModeloContratoCreate(ModeloContratoBase): 
+class ModeloContratoCreate(ModeloContratoBase):
+    
     @field_validator("nome_modelo", "descricao_padrao")
     @classmethod
     def check_text(cls, v):
         if v: return validate_string_content(v)
         return v
 
-    # 🌟 NOVO VALIDADOR ADICIONADO AQUI 🌟
     @field_validator("periodicidade_cobranca")
     @classmethod
     def check_periodicidade(cls, v):
         opcoes_validas = [
-            "Semanal", "Quinzenal", "Mensal", "Bimestral", 
-            "Trimestral", "Semestral", "Anual", "Por Visita"
+            "Semanal", "Quinzenal", "Mensal", "Bimestral",
+            "Trimestral", "Semestral", "Anual", "Única"
         ]
-        # Aplica .title() para formatar como "Semanal", "Por Visita", etc., e valida
         if v: return validate_enum_choice(v.title(), opcoes_validas)
         return v
 
 class ModeloContratoResponse(ModeloContratoBase):
     id_modelo: UUID
-    ativo: Optional[bool] = True  # 🌟 Permite que o BD retorne NULL sem travar
+    
     model_config = ConfigDict(from_attributes=True)
 
 # ==========================================
 # 4. MÓDULO: CONTRATO
 # ==========================================
+
 class ContratoBase(BaseModel):
-    id_cliente: UUID
-    id_modelo: UUID
     valor_acordado: float
     status_contrato: Optional[str] = "Ativo"
     data_inicio: date
     data_fim: Optional[date] = None
+    cobra_juros: Optional[bool] = False
+    taxa_juros: Optional[float] = 0.00
 
 class ContratoCreate(ContratoBase):
-    @field_validator("valor_acordado")
+    id_cliente: UUID
+    id_modelo: UUID
+
+    @field_validator("valor_acordado", "taxa_juros")
     @classmethod
     def check_valor(cls, v):
         return validate_positive_value(v)
@@ -169,7 +167,7 @@ class ContratoCreate(ContratoBase):
     @field_validator("status_contrato")
     @classmethod
     def check_status(cls, v):
-        if v: return validate_enum_choice(v.title(), ["Ativo", "Pausado", "Encerrado", "Arquivado"])
+        if v: return validate_enum_choice(v.title(), ["Ativo", "Encerrado", "Arquivado"])
         return v
 
     @field_validator("data_inicio")
@@ -177,94 +175,68 @@ class ContratoCreate(ContratoBase):
     def check_data_inicio(cls, v):
         return validate_not_past_date(v)
 
-    @field_validator("data_fim")
-    @classmethod
-    def check_data_fim(cls, v, info: ValidationInfo):
-        if v:
-            validate_not_past_date(v)
-            if "data_inicio" in info.data and v < info.data["data_inicio"]:
+    @model_validator(mode='after')
+    def check_data_fim(self) -> 'ContratoCreate':
+        if self.data_fim and self.data_inicio:
+            if self.data_fim <= self.data_inicio:
                 raise ValueError("A data de término deve ser posterior à data de início.")
-        return v
+        return self
 
 class ContratoResponse(ContratoBase):
     id_contrato: UUID
+    id_cliente: UUID
+    id_modelo: UUID
+    
     model_config = ConfigDict(from_attributes=True)
 
 # ==========================================
-# 5. MÓDULO: HISTÓRICO DE INTERAÇÕES (CRM)
+# 5. MÓDULO: HISTÓRICO DE INTERAÇÕES
 # ==========================================
-class HistoricoInteracaoBase(BaseModel):
-    id_cliente: UUID
+
+class InteracaoBase(BaseModel):
     tipo_interacao: Optional[str] = "Visita"
     data_hora: Optional[datetime] = None
     feedback_anotacoes: Optional[str] = None
+    grau_urgencia: Optional[str] = "Baixo"
 
-class HistoricoInteracaoCreate(HistoricoInteracaoBase):
+class InteracaoCreate(InteracaoBase):
+    id_cliente: UUID
+
     @field_validator("tipo_interacao")
     @classmethod
     def check_tipo(cls, v):
-        if v: return validate_enum_choice(v.title(), ["Visita", "Reunião", "Mensagem", "Ligação", "E-mail"])
+        opcoes = ["Visita", "Ligação", "E-mail", "Mensagem", "Reunião Online"]
+        if v: return validate_enum_choice(v.title(), opcoes)
         return v
-
-    @field_validator("feedback_anotacoes")
+        
+    @field_validator("grau_urgencia")
     @classmethod
-    def check_text(cls, v):
-        if v: return validate_string_content(v, min_length=1, max_length=1000)
+    def check_urgencia(cls, v):
+        if v: return validate_enum_choice(v.title(), ["Baixo", "Médio", "Alto"])
         return v
 
-    @field_validator("data_hora")
-    @classmethod
-    def check_data_hora(cls, v):
-        if v: return validate_not_past_datetime(v)
-        return v
-
-class HistoricoInteracaoResponse(HistoricoInteracaoBase):
+class InteracaoResponse(InteracaoBase):
     id_interacao: UUID
+    id_cliente: UUID
+    
     model_config = ConfigDict(from_attributes=True)
 
 # ==========================================
-# 6. MÓDULO: VISITAS DE ATENDIMENTO
+# 6. MÓDULO: ENTREGAS E PRAZOS
 # ==========================================
-class VisitaAtendimentoBase(BaseModel):
-    id_contrato: UUID
-    id_cliente: UUID 
-    data_hora: Optional[datetime] = None
-    grau_urgencia: Optional[str] = None
-    feedback_anotacoes: Optional[str] = None
 
-class VisitaAtendimentoCreate(VisitaAtendimentoBase):
-    @field_validator("feedback_anotacoes")
-    @classmethod
-    def check_text(cls, v):
-        if v: return validate_string_content(v)
-        return v
-
-    @field_validator("data_hora")
-    @classmethod
-    def check_data_hora(cls, v):
-        if v: return validate_not_past_datetime(v)
-        return v
-
-class VisitaAtendimentoResponse(VisitaAtendimentoBase):
-    id_visita: UUID
-    model_config = ConfigDict(from_attributes=True)
-
-# ==========================================
-# 7. MÓDULO: ENTREGAS E PRAZOS
-# ==========================================
-class EntregaPrazoBase(BaseModel):
-    id_contrato: UUID
+class EntregaBase(BaseModel):
     descricao_entrega: str
     data_prazo_limite: date
-    data_conclusao: Optional[date] = None
     status_entrega: Optional[str] = "Pendente"
 
-class EntregaPrazoCreate(EntregaPrazoBase):
+class EntregaCreate(EntregaBase):
+    id_contrato: UUID
+
     @field_validator("descricao_entrega")
     @classmethod
-    def check_descricao(cls, v):
-        if v: return validate_string_content(v)
-        return v
+    def check_text(cls, v):
+        return validate_string_content(v)
 
     @field_validator("status_entrega")
     @classmethod
@@ -272,29 +244,27 @@ class EntregaPrazoCreate(EntregaPrazoBase):
         if v: return validate_enum_choice(v.title(), ["Pendente", "Em Andamento", "Concluído", "Atrasado"])
         return v
 
-    @field_validator("data_prazo_limite")
-    @classmethod
-    def check_prazo_limite(cls, v):
-        if v: return validate_not_past_date(v)
-        return v
-
-class EntregaPrazoResponse(EntregaPrazoBase):
+class EntregaResponse(EntregaBase):
     id_entrega: UUID
+    id_contrato: UUID
+    
     model_config = ConfigDict(from_attributes=True)
 
 # ==========================================
-# 8. MÓDULO: PAGAMENTOS
+# 7. MÓDULO: PAGAMENTOS
 # ==========================================
+
 class PagamentoBase(BaseModel):
-    id_contrato: UUID
-    id_visita: Optional[UUID] = None
-    valor: float
-    data_pagamento: Optional[datetime] = None
+    valor_pago: float
+    data_pagamento: datetime
     forma_pagamento: Optional[str] = None
     status_pagamento: Optional[str] = "Pendente"
+    valor_juros: Optional[float] = 0.00
 
 class PagamentoCreate(PagamentoBase):
-    @field_validator("valor")
+    id_contrato: UUID
+
+    @field_validator("valor_pago", "valor_juros")
     @classmethod
     def check_valor(cls, v):
         return validate_positive_value(v)
@@ -302,19 +272,45 @@ class PagamentoCreate(PagamentoBase):
     @field_validator("status_pagamento")
     @classmethod
     def check_status(cls, v):
-        if v: return validate_enum_choice(v.title(), ["Pendente", "Pago", "Atrasado", "Cancelado"])
-        return v
-
-    @field_validator("data_pagamento")
-    @classmethod
-    def check_data_pagamento(cls, v):
-        if v: return validate_not_past_datetime(v)
+        if v: return validate_enum_choice(v.title(), ["Pendente", "Pago", "Cancelado"])
         return v
 
 class PagamentoResponse(PagamentoBase):
     id_pagamento: UUID
+    id_contrato: UUID
+    
     model_config = ConfigDict(from_attributes=True)
 
+# ==========================================
+# 8. MÓDULO: FATURAS
+# ==========================================
+
+class FaturaBase(BaseModel):
+    valor_original: float
+    data_vencimento: date
+    status: Optional[str] = "Pendente"
+    valor_juros_pago: Optional[float] = 0.00
+
+class FaturaCreate(FaturaBase):
+    id_contrato: UUID
+
+    @field_validator("valor_original", "valor_juros_pago")
+    @classmethod
+    def check_valor(cls, v):
+        return validate_positive_value(v)
+
+    @field_validator("status")
+    @classmethod
+    def check_status(cls, v):
+        if v: return validate_enum_choice(v.title(), ["Pendente", "Pago", "Atrasado", "Cancelado"])
+        return v
+
+class FaturaResponse(FaturaBase):
+    id_fatura: UUID
+    id_contrato: UUID
+    created_at: datetime
+    
+    model_config = ConfigDict(from_attributes=True)
 # ==========================================
 # SUB-SCHEMAS DE SUPORTE PARA COMPATIBILIDADE FRONT-END
 # ==========================================
@@ -354,132 +350,3 @@ class FinanceiroFront(BaseModel):
                 "status": (status_val or "pendente").lower()
             }
         return v
-
-# ==========================================
-# SCHEMA PRINCIPAL DA EMPRESA ATUALIZADO
-# ==========================================
-class EmpresaResponseCompleta(EmpresaBase):
-    id_cliente: UUID
-    servicos_contratados: List[ServicoDetalhe] = []
-    interacoes: List[InteracaoFront] = []
-    contratos: List[ContratoFront] = []
-    financeiro: List[FinanceiroFront] = []
-    model_config = ConfigDict(from_attributes=True)
-
-    @model_validator(mode='before')
-    @classmethod
-    def convert_to_dict_with_relations(cls, v):
-        if not isinstance(v, dict):
-            # Extraindo pagamentos aninhados
-            all_payments = []
-            for c in getattr(v, "contratos", []) or []:
-                for p in getattr(c, "pagamentos", []) or []:
-                    all_payments.append(p)
-            
-            # Extraindo detalhes do catálogo de serviços via tabela de vínculo
-            servicos_list = []
-            for sp in getattr(v, "servicos_contratados", []) or []:
-                if getattr(sp, "servico_catalogo", None):
-                    servicos_list.append({
-                        "id_servico": sp.servico_catalogo.id_servico,
-                        "nome_servico": sp.servico_catalogo.nome_servico
-                    })
-
-            return {
-                "id_cliente": v.id_cliente,
-                "nome_empresa": v.nome_empresa,
-                "cnpj": v.cnpj,
-                "email": v.email,
-                "cep": v.cep,
-                "estado": v.estado,
-                "cidade": v.cidade,
-                "bairro": v.bairro,
-                "logradouro": v.logradouro,
-                "servicos_contratados": servicos_list,
-                "interacoes": getattr(v, "interacoes", []) or [],
-                "contratos": getattr(v, "contratos", []) or [],
-                "financeiro": all_payments
-            }
-        return v
-    
-# ==========================================
-# 8. MÓDULO: FATURAS
-# ==========================================
-
-class FaturaBase(BaseModel):
-    id_contrato: UUID
-    valor_original: float
-    data_vencimento: date
-    status: str = "Pendente"
-    data_pagamento: Optional[date] = None
-    valor_pago: Optional[float] = None
-
-    @field_validator("valor_original")
-    @classmethod
-    def check_valor_original(cls, v):
-        return validate_positive_value(v)
-
-    @field_validator("valor_pago")
-    @classmethod
-    def check_valor_pago(cls, v):
-        if v is not None:
-            return validate_positive_value(v)
-        return v
-
-    @field_validator("status")
-    @classmethod
-    def check_status(cls, v):
-        opcoes_validas = ["Pendente", "Pago", "Atrasado", "Cancelada"]
-        if v not in opcoes_validas:
-            raise ValueError(f"Status da fatura inválido. Opções válidas: {', '.join(opcoes_validas)}")
-        return v
-
-class FaturaUpdate(BaseModel):
-    """
-    Schema usado no endpoint PUT para atualizações parciais.
-    Todos os campos são opcionais para permitir atualizar apenas o que mudou.
-    """
-    valor_original: Optional[float] = None
-    data_vencimento: Optional[date] = None
-    status: Optional[str] = None
-    data_pagamento: Optional[date] = None
-    valor_pago: Optional[float] = None
-
-    @field_validator("valor_original")
-    @classmethod
-    def check_valor_original(cls, v):
-        if v is not None:
-            return validate_positive_value(v)
-        return v
-
-    @field_validator("valor_pago")
-    @classmethod
-    def check_valor_pago(cls, v):
-        if v is not None:
-            return validate_positive_value(v)
-        return v
-
-    @field_validator("status")
-    @classmethod
-    def check_status(cls, v):
-        if v is not None:
-            opcoes_validas = ["Pendente", "Pago", "Atrasado", "Cancelada"]
-            if v not in opcoes_validas:
-                raise ValueError(f"Status da fatura inválido. Opções válidas: {', '.join(opcoes_validas)}")
-        return v
-
-class FaturaCreate(FaturaBase):
-    """
-    Schema usado no endpoint POST.
-    Herda tudo de FaturaBase.
-    """
-    pass
-
-class FaturaResponse(FaturaBase):
-    """
-    Schema usado para retornar dados (GET, POST return).
-    Inclui o ID gerado pelo banco.
-    """
-    id_fatura: UUID
-
-    model_config = ConfigDict(from_attributes=True)

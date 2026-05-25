@@ -139,7 +139,7 @@ def criar_empresa(empresa: schemas.EmpresaCreate, db: Session = Depends(get_db))
     db.refresh(db_obj)
     return db_obj
 
-@app.get("/empresas", response_model=List[schemas.EmpresaResponseCompleta], tags=["Empresas"])
+@app.get("/empresas", response_model=List[schemas.EmpresaResponse], tags=["Empresas"])
 def listar_empresas(
     skip: int = Query(0, ge=0),
     limit: int = Query(10, le=100),
@@ -150,7 +150,9 @@ def listar_empresas(
     query = db.query(models.EmpresaCliente).options(
         joinedload(models.EmpresaCliente.servicos_contratados).joinedload(models.ServicoPrestado.servico_catalogo),
         joinedload(models.EmpresaCliente.interacoes),
-        joinedload(models.EmpresaCliente.contratos).joinedload(models.Contrato.pagamentos)
+        # AQUI: Carregando os contratos com seus pagamentos E com suas faturas
+        joinedload(models.EmpresaCliente.contratos).joinedload(models.Contrato.pagamentos),
+        joinedload(models.EmpresaCliente.contratos).joinedload(models.Contrato.faturas)
     )
     
     if busca:
@@ -161,12 +163,14 @@ def listar_empresas(
         
     return query.offset(skip).limit(limit).all()
 
-@app.get("/empresas/{id_cliente}", response_model=schemas.EmpresaResponseCompleta, tags=["Empresas"])
+@app.get("/empresas/{id_cliente}", response_model=schemas.EmpresaResponse, tags=["Empresas"])
 def obter_empresa_por_id(id_cliente: UUID, db: Session = Depends(get_db)):
     empresa = db.query(models.EmpresaCliente).options(
         joinedload(models.EmpresaCliente.servicos_contratados).joinedload(models.ServicoPrestado.servico_catalogo),
         joinedload(models.EmpresaCliente.interacoes),
-        joinedload(models.EmpresaCliente.contratos).joinedload(models.Contrato.pagamentos)
+        # AQUI: Carregando os contratos com seus pagamentos E com suas faturas
+        joinedload(models.EmpresaCliente.contratos).joinedload(models.Contrato.pagamentos),
+        joinedload(models.EmpresaCliente.contratos).joinedload(models.Contrato.faturas)
     ).filter(models.EmpresaCliente.id_cliente == id_cliente).first()
     
     if not empresa:
@@ -214,12 +218,14 @@ def excluir_empresa(id_cliente: UUID, db: Session = Depends(get_db)):
 # --- MÓDULO 3: RESPONSÁVEIS ---
 @app.post("/responsaveis", response_model=schemas.ResponsavelResponse, tags=["Responsáveis"])
 def criar_responsavel(obj_in: schemas.ResponsavelCreate, db: Session = Depends(get_db)):
-    if obj_in.cpf:
-        existente = db.query(models.Responsavel).filter(models.Responsavel.cpf == obj_in.cpf).first()
+    responsavel_data = obj_in.model_dump(exclude_none=True)
+    cpf = responsavel_data.get("cpf")
+    if cpf:
+        existente = db.query(models.Responsavel).filter(models.Responsavel.cpf == cpf).first()
         if existente:
             raise HTTPException(status_code=400, detail="Este CPF já cadastrado.")
             
-    novo_obj = models.Responsavel(**obj_in.model_dump())
+    novo_obj = models.Responsavel(**responsavel_data)
     db.add(novo_obj)
     db.commit()
     db.refresh(novo_obj)
@@ -264,7 +270,7 @@ def arquivar_modelo(id_modelo: UUID, db: Session = Depends(get_db)):
     if not modelo_query.first():
         raise HTTPException(status_code=404, detail="Modelo não encontrado")
     
-    modelo_query.update({"ativo": False})
+    modelo_query.update({"Ativo": False})
     db.commit()
     return {"mensagem": "Modelo arquivado com sucesso"}
 
@@ -294,29 +300,36 @@ def criar_novo_contrato(contrato_data: schemas.ContratoCreate, db: Session = Dep
     db.flush() 
 
     # Lógica de geração de faturas mês a mês
+    # Lógica de geração de faturas mês a mês vinculada à tabela de Faturas
     data_corrente = novo_contrato.data_inicio
     data_fim = novo_contrato.data_fim
-    dia_vencimento_escolhido = novo_contrato.dia_vencimento or 5
+    
+    # CORREÇÃO DA LINHA 305: Usa o dia do início do contrato como base de vencimento
+    dia_vencimento_escolhido = novo_contrato.data_inicio.day
 
     if data_fim:
-        while data_corrente <= data_fim:
-            ultimo_dia_mes = calendar.monthrange(data_corrente.year, data_corrente.month)[1]
+        # Calcula o total de meses de duração do contrato
+        total_meses = (data_fim.year - data_corrente.year) * 12 + (data_fim.month - data_corrente.month)
+        
+        for i in range(total_meses + 1):
+            data_alvo = novo_contrato.data_inicio + relativedelta(months=i)
+            ultimo_dia_mes = calendar.monthrange(data_alvo.year, data_alvo.month)[1]
             dia_vencimento_real = min(dia_vencimento_escolhido, ultimo_dia_mes)
-            vencimento_fatura = date(data_corrente.year, data_corrente.month, dia_vencimento_real)
+            
+            vencimento_fatura = date(data_alvo.year, data_alvo.month, dia_vencimento_real)
 
             if vencimento_fatura >= novo_contrato.data_inicio:
+                # Aqui a lógica alimenta estritamente a tabela de Fatura/Pagamento
                 nova_fatura = models.Fatura(
                     id_contrato=novo_contrato.id_contrato,
                     valor_original=novo_contrato.valor_acordado, 
-                    data_vencimento=vencimento_fatura,
+                    data_vencimento=vencimento_fatura,  # Data calculada vai para cá!
                     status="Pendente"
                 )
                 db.add(nova_fatura)
 
-            data_corrente += relativedelta(months=1)
-
-    db.commit()
-    db.refresh(novo_contrato)
+        db.commit()
+        db.refresh(novo_contrato)
     return novo_contrato
 
 @app.get("/contratos", response_model=List[schemas.ContratoResponse], tags=["Contratos"])
@@ -359,8 +372,8 @@ def desarquivar_contrato(contrato_id: str, db: Session = Depends(get_db)):
     return {"mensagem": "Contrato desarquivado com sucesso!", "id_contrato": contrato_id}
 
 # --- MÓDULO 6: HISTÓRICO DE INTERAÇÕES (CRM) ---
-@app.post("/interacoes", response_model=schemas.HistoricoInteracaoResponse, tags=["Interações"])
-def criar_interacao(obj_in: schemas.HistoricoInteracaoCreate, db: Session = Depends(get_db)):
+@app.post("/interacoes", response_model=schemas.InteracaoResponse, tags=["Interações"])
+def criar_interacao(obj_in: schemas.InteracaoCreate, db: Session = Depends(get_db)):
     if not db.query(models.EmpresaCliente).filter(models.EmpresaCliente.id_cliente == obj_in.id_cliente).first():
         raise HTTPException(status_code=404, detail="Empresa não encontrada.")
         
@@ -370,7 +383,7 @@ def criar_interacao(obj_in: schemas.HistoricoInteracaoCreate, db: Session = Depe
     db.refresh(novo_obj)
     return novo_obj
 
-@app.get("/interacoes/{id_cliente}", response_model=List[schemas.HistoricoInteracaoResponse], tags=["Interações"])
+@app.get("/interacoes/{id_cliente}", response_model=List[schemas.InteracaoResponse], tags=["Interações"])
 def get_interacoes_por_cliente(id_cliente: UUID, db: Session = Depends(get_db)):
     try:
         interacoes = (
@@ -383,7 +396,7 @@ def get_interacoes_por_cliente(id_cliente: UUID, db: Session = Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao buscar interações: {str(e)}")
 
-@app.put("/interacoes/{id_interacao}", response_model=schemas.HistoricoInteracaoResponse, tags=["Interações"])
+@app.put("/interacoes/{id_interacao}", response_model=schemas.InteracaoResponse, tags=["Interações"])
 def atualizar_interacao(id_interacao: UUID, payload: dict, db: Session = Depends(get_db)):
     db_interacao = db.query(models.HistoricoInteracoes).filter(models.HistoricoInteracoes.id_interacao == id_interacao).first()
     
@@ -423,16 +436,12 @@ def deletar_interacao(id_interacao: UUID, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Erro ao deletar: {str(e)}")
 
 ## --- MÓDULO 7: PAGAMENTOS ---
-@app.post("/pagamentos", tags=["Pagamentos"])
-def criar_pagamento(payload: dict, db: Session = Depends(get_db)):
+## --- MÓDULO 7: PAGAMENTOS ---
+## --- MÓDULO 7: PAGAMENTOS ---
+@app.post("/pagamentos", response_model=schemas.PagamentoResponse, tags=["Pagamentos"])
+def criar_pagamento(pagamento_in: schemas.PagamentoCreate, db: Session = Depends(get_db)):
     try:
-        novo_pago = models.Pagamento(
-            id_contrato=payload.get("id_contrato"),
-            valor=payload.get("valor"),
-            forma_pagamento=payload.get("forma_pagamento"),
-            status_pagamento=payload.get("status_pagamento"),
-            data_pagamento=payload.get("data_pagamento")
-        )
+        novo_pago = models.Pagamento(**pagamento_in.model_dump())
         db.add(novo_pago)
         db.commit()
         db.refresh(novo_pago)
@@ -441,27 +450,24 @@ def criar_pagamento(payload: dict, db: Session = Depends(get_db)):
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Erro ao criar pagamento: {str(e)}")
 
-@app.put("/pagamentos/{id_pagamento}", tags=["Pagamentos"])
-def atualizar_pagamento(id_pagamento: str, payload: dict, db: Session = Depends(get_db)):
+@app.put("/pagamentos/{id_pagamento}", response_model=schemas.PagamentoResponse, tags=["Pagamentos"])
+def atualizar_pagamento(id_pagamento: UUID, pagamento_in: schemas.PagamentoCreate, db: Session = Depends(get_db)):
     try:
+        # 1. Correção do filtro adicionando .id_pagamento
         pagamento = db.query(models.Pagamento).filter(models.Pagamento.id_pagamento == id_pagamento).first()
         if not pagamento:
             raise HTTPException(status_code=404, detail="Pagamento não encontrado")
         
-        dados = payload.get("data", payload) if "data" in payload and len(payload) == 1 else payload
-        
-        if "valor" in dados: pagamento.valor = dados["valor"]
-        if "forma_pagamento" in dados: pagamento.forma_pagamento = dados["forma_pagamento"]
-        if "status_pagamento" in dados: pagamento.status_pagamento = dados["status_pagamento"]
-        if "data_pagamento" in dados: pagamento.data_pagamento = dados["data_pagamento"]
-        
+        # 2. Loop automático correto (substitui todos os 'if' manuais de forma segura)
+        for var, value in pagamento_in.model_dump(exclude_unset=True).items():
+            setattr(pagamento, var, value)
+            
         db.commit()
         db.refresh(pagamento)
         return pagamento
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Erro ao atualizar: {str(e)}")
-
+        raise HTTPException(status_code=500, detail=f"Erro ao atualizar pagamento: {str(e)}")
 @app.delete("/pagamentos/{id_pagamento}", tags=["Pagamentos"])
 def deletar_pagamento(id_pagamento: str, db: Session = Depends(get_db)):
     try:
@@ -520,7 +526,7 @@ def criar_fatura(fatura_in: schemas.FaturaCreate, db: Session = Depends(get_db))
     return nova_fatura
 
 @app.put("/faturas/{id_fatura}", response_model=schemas.FaturaResponse, tags=["Faturas"])
-def atualizar_fatura(id_fatura: int, fatura_in: schemas.FaturaUpdate, db: Session = Depends(get_db)):
+def atualizar_fatura(id_fatura: int, fatura_in: schemas.FaturaCreate, db: Session = Depends(get_db)):
     fatura = db.query(models.Fatura).filter(models.Fatura.id_fatura == id_fatura).first()
     if not fatura:
         raise HTTPException(status_code=404, detail="Fatura não encontrada.")

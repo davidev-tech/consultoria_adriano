@@ -16,10 +16,10 @@ export function MetricCard({ label, value, delta, trend, helper, icon: Icon }: M
     <div className="rounded-lg border border-border bg-card p-5 shadow-soft transition-shadow hover:shadow-card">
       <div className="flex items-start justify-between">
         <div className="flex flex-col gap-1">
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground"> {/*O que eu acho que deveria estar puxando os dados de contrato */}
             {label}
           </span>
-          <span className="text-2xl font-semibold tracking-tight text-foreground">{value}</span>
+          <span className="text-2xl font-semibold tracking-tight text-foreground">{value}</span> {/*O que puxa os dados das empresas*/}
         </div>
         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/40 text-primary-foreground">
           <Icon className="h-5 w-5" />

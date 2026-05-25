@@ -197,7 +197,7 @@ export default function ContractModels() {
                   <label className="block text-xs text-zinc-400 mb-1">Status</label>
                   <div className="relative">
                     <select className="w-full appearance-none bg-[#09090b] border border-zinc-800 text-zinc-300 text-sm rounded-md px-3 py-2.5 outline-none focus:border-emerald-600 transition-colors">
-                      <option value="ativo">Ativo</option>
+                      <option value="Ativo">Ativo</option>
                       <option value="inativo">Inativo</option>
                     </select>
                     <ChevronDown className="w-4 h-4 text-zinc-500 absolute right-3 top-3 pointer-events-none" />

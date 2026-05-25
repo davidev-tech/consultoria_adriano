@@ -147,3 +147,14 @@ export interface PagamentoCreate {
   forma_pagamento?: string | null;
   status_pagamento?: string | null;
 }
+
+export interface Fatura {
+  id_fatura: string;
+  id_contrato: string;
+  data_emissao?: string | null;
+  valor_original?: number;
+  data_vencimento?: string | null;
+  status?: string | null;
+  data_pagamento?: string | null;
+  valor_juros_pago?: number | null;
+}

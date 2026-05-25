@@ -3,7 +3,7 @@ import { useState } from "react"; // <-- Importamos o useState
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { MetricCard } from "@/components/MetricCard";
 import { ActivityTable } from "@/components/ActivityTable";
-import { useEmpresas } from "@/lib/api/hooks"; 
+import { useEmpresas, useTodosContratos } from "@/lib/api/hooks"; 
 import { Building2, FileText, Wallet, ExternalLink, BarChart3, PieChart, TrendingUp } from "lucide-react";
 
 // 📋 LISTA DE DASHBOARDS (COLE SEUS LINKS AQUI)
@@ -35,6 +35,7 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   const { data: empresasData, isLoading: empresasLoading } = useEmpresas();
+  const { data: todosContratos, isLoading: contratosLoading } = useTodosContratos();
   
   // Controle de estado para saber qual aba está selecionada (Começa com a primeira da lista)
   const [dashboardAtivo, setDashboardAtivo] = useState(DASHBOARDS[0]);
@@ -45,16 +46,9 @@ function Index() {
 
  
 // 1. CÁLCULO DE CONTRATOS ATIVOS (Com trim() para limpar espaços invisíveis)
-  const totalContratosAtivos = empresas.reduce((acc: number, empresa: any) => {
-    if (empresa.contratos && Array.isArray(empresa.contratos)) {
-      const ativosNaEmpresa = empresa.contratos.filter(
-        (c: any) => c.status_contrato?.trim().toLowerCase() === "ativo"
-      ).length;
-      return acc + ativosNaEmpresa;
-    }
-    return acc;
-  }, 0);
-
+  // Substitua as linhas 26 a 31 por isto:
+const totalContratosAtivos = todosContratos?.filter((c: any) => c.status === 'Ativo').length || 0;
+  
   // 2. CÁLCULO DE RECEITA ACORDADA (Com conversor inteligente de números)
   const receitaTotal = empresas.reduce((acc: number, empresa: any) => {
     let somaContratos = 0;
@@ -62,7 +56,7 @@ function Index() {
     if (empresa.contratos && Array.isArray(empresa.contratos)) {
       somaContratos = empresa.contratos.reduce((soma: number, contrato: any) => {
         // Verifica se é ativo, removendo espaços em branco acidentais do banco
-        if (contrato.status_contrato?.trim().toLowerCase() === "ativo") {
+        if (contrato.status_contrato?.trim().toLowerCase() === "Ativo") {
           
           // Tenta converter o valor. Se vier "1500,00", ele troca por "1500.00" para o JS conseguir somar
           let valorConvertido = Number(contrato.valor_acordado);
