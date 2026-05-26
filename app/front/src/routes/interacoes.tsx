@@ -38,13 +38,13 @@ function InteracoesPage() {
   const create = useCreateInteracao();
   const update = useUpdateInteracao();
   const remove = useDeleteInteracao();
-
+  const [grauUrgencia, setGrauUrgencia] = useState("Baixo");
   const [idCliente, setIdCliente] = useState<string>("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [tipo, setTipo] = useState("Visita");
   const [dataHora, setDataHora] = useState(() => getLocalDatetimeString());
   const [feedback, setFeedback] = useState("");
-
+  
   const { data: listaInteracoes, isLoading: loadingInteracoes } = useInteracoesPorCliente(idCliente || undefined);
 
   const cancelarEdicao = () => {
@@ -62,10 +62,12 @@ function InteracoesPage() {
     }
 
     const payload = {
-  id_cliente: idCliente,
-  tipo_interacao: tipo,
-  data_hora: dataHora.length === 16 ? `${dataHora}:00` : dataHora, // ✅ Envia o horário local exato com os segundos zerados
-  feedback_anotacoes: feedback || null,
+      id_cliente: idCliente,
+      tipo_interacao: tipo,
+      data_hora: dataHora,
+      feedback_anotacoes: feedback,
+      grau_urgencia: grauUrgencia, // <--- O novo campo entrando aqui
+    };
 };
 
     try {
@@ -182,6 +184,19 @@ function InteracoesPage() {
                   value={dataHora}
                   onChange={(e) => setDataHora(e.target.value)}
                 />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-muted-foreground">Grau de Urgência</label>
+                <Select value={grauUrgencia} onValueChange={setGrauUrgencia}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o grau" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Baixo">Baixo</SelectItem>
+                    <SelectItem value="Médio">Médio</SelectItem>
+                    <SelectItem value="Alto">Alto</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Feedback / Anotações</Label>

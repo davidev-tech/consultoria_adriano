@@ -41,7 +41,6 @@ class EmpresaCliente(Base):
     id_cliente = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     nome_empresa = Column(String(255), nullable=False)
     cnpj = Column(String(20), unique=True)
-    email = Column(String(255))
     
     # Colunas conforme visualizado no vídeo
     localizacao_estado = Column(String(2))

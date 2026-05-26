@@ -194,6 +194,7 @@ class ContratoResponse(ContratoBase):
 # ==========================================
 
 class InteracaoBase(BaseModel):
+    id_cliente: UUID
     tipo_interacao: Optional[str] = "Visita"
     data_hora: Optional[datetime] = None
     feedback_anotacoes: Optional[str] = None
