@@ -21,9 +21,10 @@ import {
   useDeleteInteracao 
 } from "@/lib/api/hooks";
 import { toast } from "sonner";
+
 // Utilitário para ajustar o fuso horário (UTC-3) no input datetime-local
 const getLocalDatetimeString = (date = new Date()) => {
-  const tzOffset = date.getTimezoneOffset() * 60000; // Pega a diferença do fuso em milissegundos
+  const tzOffset = date.getTimezoneOffset() * 60000; 
   const localISOTime = new Date(date.getTime() - tzOffset).toISOString().slice(0, 16);
   return localISOTime;
 };
@@ -38,6 +39,7 @@ function InteracoesPage() {
   const create = useCreateInteracao();
   const update = useUpdateInteracao();
   const remove = useDeleteInteracao();
+  
   const [grauUrgencia, setGrauUrgencia] = useState("Baixo");
   const [idCliente, setIdCliente] = useState<string>("");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -51,6 +53,7 @@ function InteracoesPage() {
     setEditingId(null);
     setTipo("Visita");
     setFeedback("");
+    setGrauUrgencia("Baixo");
     setDataHora(new Date().toISOString().slice(0, 16));
   };
 
@@ -66,9 +69,8 @@ function InteracoesPage() {
       tipo_interacao: tipo,
       data_hora: dataHora,
       feedback_anotacoes: feedback,
-      grau_urgencia: grauUrgencia, // <--- O novo campo entrando aqui
+      grau_urgencia: grauUrgencia, 
     };
-};
 
     try {
       if (editingId) {
@@ -79,6 +81,7 @@ function InteracoesPage() {
         await create.mutateAsync(payload);
         toast.success("Interação registrada com sucesso!");
         setFeedback("");
+        setGrauUrgencia("Baixo");
       }
     } catch (err) {
       toast.error("Erro ao processar a requisição.");
@@ -89,6 +92,7 @@ function InteracoesPage() {
     setEditingId(item.id_interacao);
     setTipo(item.tipo_interacao || "Visita");
     setFeedback(item.feedback_anotacoes || "");
+    setGrauUrgencia(item.grau_urgencia || "Baixo");
     if (item.data_hora) {
       setDataHora(getLocalDatetimeString(new Date(item.data_hora)));
     }
@@ -152,7 +156,7 @@ function InteracoesPage() {
                     <SelectValue placeholder="Selecione a empresa..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {empresas.data?.map((e) => (
+                    {empresas.data?.map((e: any) => (
                       <SelectItem key={e.id_cliente} value={e.id_cliente}>
                         {e.nome_empresa}
                       </SelectItem>
@@ -178,14 +182,6 @@ function InteracoesPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs">Data e hora</Label>
-                <Input
-                  type="datetime-local"
-                  value={dataHora}
-                  onChange={(e) => setDataHora(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-muted-foreground">Grau de Urgência</label>
                 <Select value={grauUrgencia} onValueChange={setGrauUrgencia}>
                   <SelectTrigger>
@@ -198,6 +194,16 @@ function InteracoesPage() {
                   </SelectContent>
                 </Select>
               </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs">Data e hora</Label>
+                <Input
+                  type="datetime-local"
+                  value={dataHora}
+                  onChange={(e) => setDataHora(e.target.value)}
+                />
+              </div>
+              
               <div className="space-y-1.5">
                 <Label className="text-xs">Feedback / Anotações</Label>
                 <Textarea
@@ -238,7 +244,7 @@ function InteracoesPage() {
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
             ) : listaInteracoes && listaInteracoes.length > 0 ? (
-              listaInteracoes.map((item) => {
+              listaInteracoes.map((item: any) => {
                 const idInteracao = item.id_interacao;
                 if (!idInteracao) return null;
 
@@ -255,6 +261,16 @@ function InteracoesPage() {
                           <span className="rounded bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
                             {item.tipo_interacao}
                           </span>
+                          {/* Exibindo o grau de urgência na interface */}
+                          {item.grau_urgencia && (
+                            <span className={`rounded px-2 py-0.5 text-xs font-semibold ${
+                              item.grau_urgencia === 'Alto' ? 'bg-red-100 text-red-700' : 
+                              item.grau_urgencia === 'Médio' ? 'bg-yellow-100 text-yellow-700' : 
+                              'bg-green-100 text-green-700'
+                            }`}>
+                              Urgência: {item.grau_urgencia}
+                            </span>
+                          )}
                           <span className="text-xs text-muted-foreground">
                             {item.data_hora
                               ? new Date(item.data_hora).toLocaleString("pt-BR", {
