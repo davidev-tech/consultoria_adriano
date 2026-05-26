@@ -416,7 +416,10 @@ def atualizar_interacao(id_interacao: UUID, payload: dict, db: Session = Depends
     
     if "grau_urgencia" in payload:
         db_interacao.grau_urgencia = payload["grau_urgencia"]
-        
+
+    if "status_financeiro" in payload:
+        db_interacao.status_financeiro = payload["status_financeiro"]
+
     try:
         db.commit()
         db.refresh(db_interacao)

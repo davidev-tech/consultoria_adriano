@@ -41,6 +41,7 @@ function InteracoesPage() {
   const remove = useDeleteInteracao();
   
   const [grauUrgencia, setGrauUrgencia] = useState("Baixo");
+  const [statusFinanceiro, setStatusFinanceiro] = useState("Não Cobrado"); // <--- NOVO ESTADO
   const [idCliente, setIdCliente] = useState<string>("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [tipo, setTipo] = useState("Visita");
@@ -54,6 +55,7 @@ function InteracoesPage() {
     setTipo("Visita");
     setFeedback("");
     setGrauUrgencia("Baixo");
+    setStatusFinanceiro("Não Cobrado"); // <--- LIMPA O CAMPO NO CANCELAMENTO
     setDataHora(new Date().toISOString().slice(0, 16));
   };
 
@@ -69,7 +71,8 @@ function InteracoesPage() {
       tipo_interacao: tipo,
       data_hora: dataHora,
       feedback_anotacoes: feedback,
-      grau_urgencia: grauUrgencia, 
+      grau_urgencia: grauUrgencia,
+      status_financeiro: statusFinanceiro, // <--- ADICIONADO AO PAYLOAD PARA O BACKEND
     };
 
     try {
@@ -82,6 +85,7 @@ function InteracoesPage() {
         toast.success("Interação registrada com sucesso!");
         setFeedback("");
         setGrauUrgencia("Baixo");
+        setStatusFinanceiro("Não Cobrado"); // <--- LIMPA APÓS SUCESSO
       }
     } catch (err) {
       toast.error("Erro ao processar a requisição.");
@@ -93,6 +97,7 @@ function InteracoesPage() {
     setTipo(item.tipo_interacao || "Visita");
     setFeedback(item.feedback_anotacoes || "");
     setGrauUrgencia(item.grau_urgencia || "Baixo");
+    setStatusFinanceiro(item.status_financeiro || "Não Cobrado"); // <--- PREENCHE AO EDITAR
     if (item.data_hora) {
       setDataHora(getLocalDatetimeString(new Date(item.data_hora)));
     }
@@ -195,6 +200,21 @@ function InteracoesPage() {
                 </Select>
               </div>
 
+              {/* NOVO CAMPO: STATUS FINANCEIRO */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-muted-foreground">Status Financeiro</label>
+                <Select value={statusFinanceiro} onValueChange={setStatusFinanceiro}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Não Cobrado">Não Cobrado</SelectItem>
+                    <SelectItem value="Pendente">Pendente</SelectItem>
+                    <SelectItem value="Pago">Pago</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="space-y-1.5">
                 <Label className="text-xs">Data e hora</Label>
                 <Input
@@ -210,7 +230,7 @@ function InteracoesPage() {
                   value={feedback}
                   onChange={(e) => setFeedback(e.target.value)}
                   rows={4}
-                  placeholder="Notas da visita, próximos passos, percepções..."
+                  placeholder="Notas da visita, próximos passos, perceções..."
                 />
               </div>
             </div>
@@ -234,7 +254,7 @@ function InteracoesPage() {
           <div>
             <h2 className="text-xl font-semibold tracking-tight">Linha do Tempo de Atendimento</h2>
             <p className="text-sm text-muted-foreground">
-              {idCliente ? "Registros de interações encontrados para este cliente." : "Selecione uma empresa para carregar os registros."}
+              {idCliente ? "Registros de interações encontrados para este cliente." : "Selecione uma empresa para carregar os registos."}
             </p>
           </div>
 
@@ -257,11 +277,11 @@ function InteracoesPage() {
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="space-y-1 flex-1">
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <span className="rounded bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
                             {item.tipo_interacao}
                           </span>
-                          {/* Exibindo o grau de urgência na interface */}
+                          
                           {item.grau_urgencia && (
                             <span className={`rounded px-2 py-0.5 text-xs font-semibold ${
                               item.grau_urgencia === 'Alto' ? 'bg-red-100 text-red-700' : 
@@ -271,6 +291,17 @@ function InteracoesPage() {
                               Urgência: {item.grau_urgencia}
                             </span>
                           )}
+
+                          {/* NOVA TAG VISUAL: STATUS FINANCEIRO */}
+                          {item.status_financeiro && item.status_financeiro !== "Não Cobrado" && (
+                            <span className={`rounded px-2 py-0.5 text-xs font-semibold ${
+                              item.status_financeiro === 'Pendente' ? 'bg-orange-100 text-orange-700 border border-orange-200' : 
+                              'bg-emerald-100 text-emerald-700 border border-emerald-200'
+                            }`}>
+                              {item.status_financeiro === 'Pendente' ? 'A Cobrar' : 'Pago'}
+                            </span>
+                          )}
+
                           <span className="text-xs text-muted-foreground">
                             {item.data_hora
                               ? new Date(item.data_hora).toLocaleString("pt-BR", {
@@ -285,7 +316,7 @@ function InteracoesPage() {
                         </div>
                         
                         <p className="text-sm whitespace-pre-wrap pt-1 font-medium text-foreground">
-                          {item.feedback_anotacoes || <span className="text-muted-foreground italic text-xs">Sem anotações registradas.</span>}
+                          {item.feedback_anotacoes || <span className="text-muted-foreground italic text-xs">Sem anotações registadas.</span>}
                         </p>
                       </div>
 

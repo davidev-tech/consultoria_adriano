@@ -81,6 +81,7 @@ class HistoricoInteracoes(Base):
     tipo_interacao = Column(String(100))
     data_hora = Column(TIMESTAMP)
     grau_urgencia = Column(String(50))
+    status_financeiro = Column(String(50), default="Não Cobrado")
     feedback_anotacoes = Column(Text)
     empresa = relationship("EmpresaCliente", back_populates="interacoes")
 

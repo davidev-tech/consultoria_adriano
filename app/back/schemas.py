@@ -199,6 +199,7 @@ class InteracaoBase(BaseModel):
     data_hora: Optional[datetime] = None
     feedback_anotacoes: Optional[str] = None
     grau_urgencia: Optional[str] = "Baixo"
+    status_financeiro: Optional[str] = "Não Cobrado"
 
 class InteracaoCreate(InteracaoBase):
     id_cliente: UUID
