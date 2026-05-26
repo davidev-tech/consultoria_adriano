@@ -207,7 +207,7 @@ class InteracaoCreate(InteracaoBase):
     @field_validator("tipo_interacao")
     @classmethod
     def check_tipo(cls, v):
-        opcoes = ["Visita", "Ligação", "E-mail", "Mensagem", "Reunião Online"]
+        opcoes = ["Visita", "Ligação", "E-mail", "Mensagem", "Reunião"]
         if v: return validate_enum_choice(v.title(), opcoes)
         return v
         
