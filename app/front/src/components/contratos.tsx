@@ -1,23 +1,27 @@
 import React, { useState } from 'react';
 import { Search, Bell, Plus, FileText, ChevronDown, Link as LinkIcon, X } from 'lucide-react';
+// IMPORTANTE: Lembre-se de importar o seu useContratos aqui em cima!
+// import { useContratos } from '../hooks'; 
 
 export default function ContractModels() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState('Todas as empresas');
+  
+  // 1. Chamada dos dados reais
+  const { data: contratos = [], isLoading } = useContratos();
 
-  // Dados mockados baseados no vídeo
-  const contracts = [
-    { id: 1, company: 'Lar São Francisco', model: 'Na labia', start: '2026-05-15', end: '2026-05-15', status: 'Encerrado', value: 'R$ 4' },
-    { id: 2, company: 'FarmaVida', model: 'Gestão de Dispensação', start: '2026-05-05', end: '2026-05-14', status: 'Ativo', value: 'R$ 4' },
-  ];
+  // 2. Lógica de Filtragem ÚNICA (Resolve o erro do select e da variável duplicada)
+  const filteredContracts = contratos.filter((c: any) => {
+    if (selectedCompany === 'Todas as empresas') return true;
+    return c.empresa?.nome_empresa === selectedCompany;
+  });
 
-  // Filtra os contratos com base na seleção
-  const filteredContracts = selectedCompany === 'Todas as empresas' 
-    ? contracts 
-    : contracts.filter(c => c.company === selectedCompany);
-  const totalAtivos = filteredContracts.filter(c => c.status === "Ativo").length;
+  // 3. Contagem de ativos
+  const totalAtivos = contratos.filter((c: any) => c.status_contrato === "Ativo").length;
+
   return (
     <div className="min-h-screen bg-[#09090b] text-zinc-100 font-sans">
+      
       {/* Top Navigation Bar */}
       <header className="flex items-center justify-between px-6 py-4 border-b border-zinc-800 bg-[#09090b]">
         <div className="flex items-center bg-zinc-900 border border-zinc-800 rounded-md px-3 py-2 w-96">
@@ -40,6 +44,7 @@ export default function ContractModels() {
 
       {/* Main Content */}
       <main className="p-8 max-w-7xl mx-auto">
+        
         {/* Page Header */}
         <div className="flex justify-between items-start mb-8">
           <div>
@@ -85,7 +90,7 @@ export default function ContractModels() {
           <div className="flex justify-between items-end mb-4">
             <div>
               <h2 className="text-xl font-semibold text-zinc-100 mb-1">Contratos Vinculados</h2>
-              <p className="text-zinc-400 text-sm">Vínculos ativos entre empresas clientes e modelos contratuais.</p>
+              <p className="text-zinc-400 text-sm">Vínculos ativos entre empresas clientes e modelos contratuais ({totalAtivos} ativos).</p>
             </div>
             
             <div className="flex gap-3">
@@ -126,25 +131,49 @@ export default function ContractModels() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-800/50 text-zinc-300">
-                {filteredContracts.length > 0 ? (
-                  filteredContracts.map((contract) => (
-                    <tr key={contract.id} className="hover:bg-zinc-800/20 transition-colors">
-                      <td className="px-6 py-4 font-medium text-zinc-100">{contract.company}</td>
-                      <td className="px-6 py-4">{contract.model}</td>
-                      <td className="px-6 py-4 text-zinc-400">{contract.start}</td>
-                      <td className="px-6 py-4 text-zinc-400">{contract.end}</td>
-                      <td className="px-6 py-4">
-                        <span className={`font-medium ${contract.status === 'Ativo' ? 'text-emerald-500' : 'text-zinc-500'}`}>
-                          {contract.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-right font-medium">{contract.value}</td>
-                    </tr>
-                  ))
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-8 text-center text-zinc-500">
+                      Carregando contratos...
+                    </td>
+                  </tr>
+                ) : filteredContracts.length > 0 ? (
+                  filteredContracts.map((contract) => {
+                    const nomeEmpresa = contract.empresa?.nome_empresa || "Empresa não identificada";
+                    const nomeModelo = contract.modelo?.nome_modelo || "Modelo não identificado";
+                    const status = contract.status_contrato || "Indisponível";
+
+                    const valorFormatado = contract.valor_acordado 
+                      ? `R$ ${contract.valor_acordado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` 
+                      : "—";
+
+                    const dataInicioFormatada = contract.data_inicio 
+                      ? new Date(contract.data_inicio).toLocaleDateString("pt-BR") 
+                      : "—";
+
+                    const dataFimFormatada = contract.data_fim 
+                      ? new Date(contract.data_fim).toLocaleDateString("pt-BR") 
+                      : "—";
+
+                    return (
+                      <tr key={contract.id_contrato || Math.random()} className="hover:bg-zinc-800/20 transition-colors">
+                        <td className="px-6 py-4 text-sm font-medium text-zinc-100">{nomeEmpresa}</td>
+                        <td className="px-6 py-4 text-sm text-zinc-400">{nomeModelo}</td>
+                        <td className="px-6 py-4 text-sm text-zinc-400">{dataInicioFormatada}</td>
+                        <td className="px-6 py-4 text-sm text-zinc-400">{dataFimFormatada}</td>
+                        <td className="px-6 py-4 text-sm">
+                          <span className={`font-medium ${status === 'Ativo' ? 'text-emerald-500' : 'text-zinc-500'}`}>
+                            {status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-right font-medium text-zinc-100">{valorFormatado}</td>
+                      </tr>
+                    );
+                  })
                 ) : (
                   <tr>
                     <td colSpan={6} className="px-6 py-8 text-center text-zinc-500">
-                      Nenhum contrato cadastrado.
+                      Nenhum contrato encontrado.
                     </td>
                   </tr>
                 )}
@@ -152,7 +181,7 @@ export default function ContractModels() {
             </table>
           </div>
         </div>
-      </main>
+      </main> {/* <-- TAG MAIN FECHADA AQUI */}
 
       {/* Modal Vincular Contrato */}
       {isModalOpen && (

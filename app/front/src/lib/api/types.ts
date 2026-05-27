@@ -15,13 +15,13 @@ export interface Empresa {
   
   // --- COLUNAS ATÔMICAS DE LOCALIZAÇÃO ---
   cep?: string | null;
-  estado?: string | null;
-  cidade?: string | null;
-  bairro?: string | null;
+  localizacao_estado?: string | null;
+  localizacao_cidade?: string | null;
+  localizacao_bairro?: string | null;
   logradouro?: string | null;
   
   // --- SERVIÇOS VINCULADOS ---
-  servicos_contratados?: ServicoDetalhe[];
+   servicos_contratados: ServicoDetalhe[];  // Obrigatório, sempre array
   
   // Arrays para suportar a EmpresaResponseCompleta (usado nas tabelas do front)
   interacoes?: any[];
@@ -36,9 +36,9 @@ export interface EmpresaCreate {
   
   // --- COLUNAS ATÔMICAS DE LOCALIZAÇÃO ---
   cep?: string | null;
-  estado?: string | null;
-  cidade?: string | null;
-  bairro?: string | null;
+  localizacao_estado?: string | null;
+  localizacao_cidade?: string | null;
+  localizacao_bairro?: string | null;
   logradouro?: string | null;
   
   // Array de UUIDs para enviar ao back-end na hora de salvar

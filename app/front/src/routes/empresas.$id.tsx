@@ -68,8 +68,14 @@ function EmpresaDetailPage() {
             </h1>
             <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
               <span className="font-mono">{empresa?.cnpj ?? "—"}</span>
-              <span>{empresa?.localizacao ?? "—"}</span>
-              <span>{empresa?.servico_prestado ?? "—"}</span>
+              <span className="text-sm text-muted-foreground">
+  {empresa?.localizacao_cidade ? `${empresa?.localizacao_cidade} - ${empresa?.localizacao_bairro}` : "-"}
+</span>
+<span className="text-sm text-muted-foreground">
+  {empresa?.servicos_contratados?.length > 0 
+    ? empresa?.servicos_contratados?.map((s) => s.tipo_servico).join(', ') || "Nenhum serviço contratado"
+    : "-"}
+</span>
             </div>
           </div>
           <div className="text-right">

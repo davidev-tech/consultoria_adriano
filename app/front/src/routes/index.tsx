@@ -1,13 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react"; // <-- Importamos o useState
+import { useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { MetricCard } from "@/components/MetricCard";
 import { ActivityTable } from "@/components/ActivityTable";
 import { useEmpresas, useTodosContratos } from "@/lib/api/hooks"; 
 import { Building2, FileText, Wallet, ExternalLink, BarChart3, PieChart, TrendingUp } from "lucide-react";
 
-// 📋 LISTA DE DASHBOARDS (COLE SEUS LINKS AQUI)
-// Você pode adicionar quantas opções quiser copiando e colando os blocos abaixo.
 const DASHBOARDS = [
   {
     id: "geral",
@@ -37,41 +35,53 @@ function Index() {
   const { data: empresasData, isLoading: empresasLoading } = useEmpresas();
   const { data: todosContratos, isLoading: contratosLoading } = useTodosContratos();
   
-  // Controle de estado para saber qual aba está selecionada (Começa com a primeira da lista)
   const [dashboardAtivo, setDashboardAtivo] = useState(DASHBOARDS[0]);
   
   const empresas = (empresasData as any[]) || [];
-  console.log("CONTRATOS DA PRIMEIRA EMPRESA:", empresas[0]?.contratos);
   const totalEmpresas = empresas.length;
 
- 
-// 1. CÁLCULO DE CONTRATOS ATIVOS (Com trim() para limpar espaços invisíveis)
-  // Substitua as linhas 26 a 31 por isto:
-const totalContratosAtivos = todosContratos?.filter((c: any) => c.status === 'Ativo').length || 0;
-  
-  // 2. CÁLCULO DE RECEITA ACORDADA (Com conversor inteligente de números)
-  const receitaTotal = empresas.reduce((acc: number, empresa: any) => {
-    let somaContratos = 0;
+  // ✅ CORRIGIDO: Filtra contratos ativos
+  const contratosAtivos = todosContratos?.filter(
+    (c: any) => {
+      const status = (c.status_contrato || "").toString().trim().toLowerCase();
+      return status === "ativo";
+    }
+  ) || [];
+
+  const totalContratosAtivos = contratosAtivos.length;
+
+  // ✅ CORRIGIDO: Calcula receita SOMENTE dos contratos ativos
+  const receitaTotal = contratosAtivos.reduce((acc: number, contrato: any) => {
+    // Converte o valor para número (tratando formato brasileiro)
+    let valor = contrato.valor_acordado;
     
-    if (empresa.contratos && Array.isArray(empresa.contratos)) {
-      somaContratos = empresa.contratos.reduce((soma: number, contrato: any) => {
-        // Verifica se é ativo, removendo espaços em branco acidentais do banco
-        if (contrato.status_contrato?.trim().toLowerCase() === "Ativo") {
-          
-          // Tenta converter o valor. Se vier "1500,00", ele troca por "1500.00" para o JS conseguir somar
-          let valorConvertido = Number(contrato.valor_acordado);
-          if (isNaN(valorConvertido)) {
-            valorConvertido = Number(String(contrato.valor_acordado || 0).replace(",", "."));
-          }
-          
-          return soma + (valorConvertido || 0);
-        }
-        return soma;
-      }, 0);
+    if (typeof valor === 'string') {
+      // Remove pontos de milhar e substitui vírgula por ponto
+      valor = valor.replace(/\./g, '').replace(',', '.');
     }
     
-    return acc + somaContratos;
+    const valorNumerico = Number(valor);
+    
+    if (isNaN(valorNumerico)) {
+      console.warn('Valor inválido encontrado:', contrato.valor_acordado);
+      return acc;
+    }
+    
+    return acc + valorNumerico;
   }, 0);
+
+  // Debug: Verificar os contratos no console
+  console.log('📊 DEBUG RECEITA:', {
+    totalContratos: todosContratos?.length || 0,
+    contratosAtivos: contratosAtivos.length,
+    receitaCalculada: receitaTotal,
+    amostra: contratosAtivos.slice(0, 2).map((c: any) => ({
+      id: c.id_contrato,
+      status: c.status_contrato,
+      valor: c.valor_acordado
+    }))
+  });
+
   return (
     <DashboardLayout>
       <div className="mx-auto flex max-w-7xl flex-col gap-6">
@@ -87,39 +97,42 @@ const totalContratosAtivos = todosContratos?.filter((c: any) => c.status === 'At
           </p>
         </div>
 
-        {/* GRID DE METRIC CARDS */}
         <div className="grid gap-4 md:grid-cols-3">
           <MetricCard
-            label="Empresas"
+            label="Total de Empresas"
             isLoading={empresasLoading}
             value={totalEmpresas.toString()}
+            delta={`+${totalEmpresas}`}
             trend="up"
             helper="clientes ativos na base"
             icon={Building2}
           />
           <MetricCard
             label="Contratos Ativos"
-            isLoading={empresasLoading}
-            value={totalContratosAtivos.toString()} 
+            isLoading={contratosLoading}
+            value={totalContratosAtivos.toString()}
+            delta={`+${totalContratosAtivos}`}
             trend="up"
             helper="total no portfólio"
             icon={FileText}
           />
-          {/* <MetricCard
+          <MetricCard
             label="Receita Acordada"
-            isLoading={empresasLoading}
+            isLoading={contratosLoading}
             value={receitaTotal.toLocaleString("pt-BR", {
               style: "currency",
               currency: "BRL",
-              maximumFractionDigits: 0,
+              minimumFractionDigits: 2,
             })}
+            delta="+12.5%"
             trend="up"
-            helper="soma estimada"
+            helper="soma dos contratos ativos"
             icon={Wallet}
-          /> */}
+          />
         </div>
 
-        {/* SEÇÃO DO METABASE COM ABAS DE NAVEGAÇÃO */}
+
+        {/* SEÇÃO DO METABASE */}
         <section className="rounded-lg border border-border bg-card shadow-card overflow-hidden w-full mt-2">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-border px-5 py-4 gap-4">
             <div>
@@ -139,7 +152,6 @@ const totalContratosAtivos = todosContratos?.filter((c: any) => c.status === 'At
             </a>
           </div>
 
-          {/* BOTÕES DAS ABAS */}
           <div className="bg-muted/30 px-5 py-3 border-b border-border flex flex-wrap gap-2">
             {DASHBOARDS.map((dash) => {
               const Icone = dash.icon;
@@ -162,10 +174,9 @@ const totalContratosAtivos = todosContratos?.filter((c: any) => c.status === 'At
             })}
           </div>
 
-          {/* IFRAME DINÂMICO */}
           <div className="w-full min-h-[500px] bg-white">
             <iframe
-              key={dashboardAtivo.id} // Isso força o React a recarregar o iframe bonitinho ao trocar de aba
+              key={dashboardAtivo.id}
               src={dashboardAtivo.url}
               className="w-full min-h-[500px] border-0"
               allowTransparency
@@ -173,7 +184,6 @@ const totalContratosAtivos = todosContratos?.filter((c: any) => c.status === 'At
           </div>
         </section>
 
-        {/* TABELA INFERIOR */}
         <div className="grid gap-6 md:grid-cols-1">
           <ActivityTable />
         </div>

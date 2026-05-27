@@ -42,7 +42,9 @@ class EmpresaBase(BaseModel):
 
 class EmpresaCreate(EmpresaBase):
     ids_servicos_contratados: List[UUID] = []
-
+    localizacao_estado: Optional[str] = None
+    localizacao_cidade: Optional[str] = None
+    localizacao_bairro: Optional[str] = None
     @field_validator("cnpj")
     @classmethod
     def check_cnpj(cls, v):
@@ -70,6 +72,9 @@ class EmpresaCreate(EmpresaBase):
 class EmpresaResponse(EmpresaBase):
     id_cliente: UUID
     servicos_contratados: List[ServicoDetalhe] = []
+    localizacao: Optional[str] = None
+    servico_prestado: Optional[str] = None
+    
     
     model_config = ConfigDict(from_attributes=True)
 

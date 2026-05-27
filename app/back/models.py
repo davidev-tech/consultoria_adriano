@@ -12,10 +12,8 @@ import datetime
 class CatalogoServico(Base):
     __tablename__ = "catalogo_servico"
     id_servico = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tipo_servico = Column(String(255), nullable=False, unique=True) # Nome exato do Supabase
-    descricao_servico = Column(Text)
-    created_at = Column(TIMESTAMP, default=datetime.datetime.utcnow)
-
+    tipo_servico = Column(Text)  # ✅ ALINHADO: text, não String(255)    descricao_servico = Column(Text)
+    created_at = Column(TIMESTAMP(timezone=True), default=datetime.datetime.utcnow)  # ✅ timestampt
     vinculos = relationship("ServicoPrestado", back_populates="servico_catalogo")
 
 class ServicoPrestado(Base):
@@ -23,7 +21,7 @@ class ServicoPrestado(Base):
     id_vinculo = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     id_cliente = Column(UUID(as_uuid=True), ForeignKey("empresa_cliente.id_cliente", ondelete="CASCADE"))
     id_servico = Column(UUID(as_uuid=True), ForeignKey("catalogo_servico.id_servico", ondelete="RESTRICT"))
-    data_inicio = Column(TIMESTAMP, default=datetime.datetime.utcnow)
+    data_inicio = Column(DATE, default=datetime.date.today)  # ✅ CORRIGIDO: DATE, não TIMESTAMP
     
     empresa = relationship("EmpresaCliente", back_populates="servicos_contratados")
     servico_catalogo = relationship("CatalogoServico", back_populates="vinculos")

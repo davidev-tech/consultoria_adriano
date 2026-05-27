@@ -154,8 +154,11 @@ export function ResumoClientes({ empresas, isLoading, limit = 6 }: Props) {
                     {empresa.nome_empresa}
                   </h3>
                   <p className="truncate text-[11px] font-mono text-muted-foreground">
-                    {empresa.servico_prestado ?? empresa.localizacao ?? "—"}
-                  </p>
+  {/* ✅ CORRIGIDO: usar campos que existem */}
+  {empresa.localizacao_cidade 
+    ? `${empresa.localizacao_cidade}${empresa.localizacao_estado ? `/${empresa.localizacao_estado}` : ''}`
+    : empresa.servicos_contratados?.[0]?.tipo_servico || "—"}
+</p>
                 </div>
                 <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
               </header>

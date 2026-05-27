@@ -14,7 +14,7 @@ export default function ContractModels() {
   // Filtra os contratos com base na seleção
   const filteredContracts = selectedCompany === 'Todas as empresas' 
     ? contracts 
-    : contracts.filter(c => c.company === selectedCompany);
+    : contracts.filter(c => c.empresa?.nome_empresa === selectedCompany);
 
   return (
     <div className="min-h-screen bg-[#09090b] text-zinc-100 font-sans">

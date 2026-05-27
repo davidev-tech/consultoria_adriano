@@ -35,6 +35,7 @@ function EmpresasPage() {
   const { data: empresas, isLoading } = useEmpresas();
   const [open, setOpen] = useState(false);
   const [empresaEditando, setEmpresaEditando] = useState<Empresa | null>(null);
+  
 
   const handleEditClick = (empresa: Empresa) => {
     setEmpresaEditando(empresa);
@@ -190,9 +191,26 @@ function EmpresasPage() {
                     </div>
 
                     <div className="mt-3 border-t border-border/60 pt-2 space-y-0.5 text-[11px] text-muted-foreground">
-                      <p className="truncate">📍 <span className="font-medium text-foreground/70">Localização:</span> {e.localizacao || "Não informada"}</p>
-                      <p className="truncate">🛠️ <span className="font-medium text-foreground/70">Serviço:</span> {e.servico_prestado || "Não detalhado"}</p>
-                    </div>
+                      {/* Puxa a cidade e o bairro reais da API */}
+{/* Puxa a cidade e o bairro reais da API */}
+<p>
+  {e.localizacao_cidade && e.localizacao_estado
+    ? `${e.localizacao_cidade} - ${e.localizacao_estado}`
+    : "Não informada"}
+</p>
+
+<p className="truncate text-[11px] text-muted-foreground mt-1">
+  <span className="font-medium text-foreground block mb-0.5">Serviços Contratados:</span>
+  {e.contratos && e.contratos.length > 0 ? (
+    // Pega os últimos 3 contratos, extrai o serviço/plano e junta com vírgula
+    [...e.contratos]
+      .slice(0, 3)
+      .map((c: any) => c.tipo_servico || c.nome_servico || c.plano || "Contrato Ativo")
+      .join(", ")
+  ) : (
+    "Nenhum contrato ativo"
+  )}
+</p>        </div>
 
                     <div className="mt-4 grid grid-cols-2 gap-3 rounded-lg bg-muted/40 p-3 text-left border border-border/40">
                       <div className="space-y-0.5">

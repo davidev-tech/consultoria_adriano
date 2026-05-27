@@ -15,7 +15,7 @@ import type { Empresa } from "@/lib/api/types";
 
 export function ActivityTable() {
   const { data, isLoading, error } = useQuery({
-    queryKey: ["empresas"],
+    queryKey: ["empresas-recentes"],
     queryFn: () => api<Empresa[]>("/empresas"),
   });
 
@@ -87,9 +87,15 @@ export function ActivityTable() {
                 <TableCell className="text-muted-foreground font-mono text-xs">
                   {e.cnpj ?? "—"}
                 </TableCell>
-                <TableCell className="text-muted-foreground">{e.localizacao ?? "—"}</TableCell>
+                
+                {/* ✅ COLUNA DE LOCALIZAÇÃO CORRIGIDA */}
                 <TableCell className="text-muted-foreground">
-                  {e.servico_prestado ?? "—"}
+                  {formatarLocalizacao(e)}
+                </TableCell>
+                
+                {/* ✅ COLUNA DE SERVIÇO CORRIGIDA */}
+                <TableCell className="text-muted-foreground">
+                  {formatarServicos(e)}
                 </TableCell>
               </TableRow>
             ))}
@@ -98,4 +104,58 @@ export function ActivityTable() {
       </div>
     </section>
   );
+}
+
+// ✅ FUNÇÕES AUXILIARES PARA FORMATAÇÃO
+
+/**
+ * Formata a localização da empresa (Cidade/UF)
+ */
+function formatarLocalizacao(empresa: Empresa): string {
+  const partes: string[] = [];
+  
+  if (empresa.localizacao_cidade) {
+    partes.push(empresa.localizacao_cidade);
+  }
+  
+  if (empresa.localizacao_estado) {
+    // Se tem cidade, formata como "Cidade/UF"
+    if (partes.length > 0) {
+      partes[0] = `${partes[0]}/${empresa.localizacao_estado}`;
+    } else {
+      partes.push(empresa.localizacao_estado);
+    }
+  }
+  
+  if (empresa.localizacao_bairro && partes.length === 0) {
+    partes.push(empresa.localizacao_bairro);
+  }
+  
+  return partes.length > 0 ? partes.join(' - ') : "—";
+}
+
+/**
+ * Formata a lista de serviços contratados
+ */
+function formatarServicos(empresa: any): string {
+  // Tenta obter serviços do array servicos_contratados
+  if (empresa.servicos_contratados && Array.isArray(empresa.servicos_contratados) && empresa.servicos_contratados.length > 0) {
+    return empresa.servicos_contratados
+      .map((s: any) => s.tipo_servico)
+      .filter(Boolean)
+      .join(", ");
+  }
+  
+  // Fallback: tenta obter de contratos (se disponível)
+  if (empresa.contratos && Array.isArray(empresa.contratos) && empresa.contratos.length > 0) {
+    const servicos = empresa.contratos
+      .map((c: any) => c.modelo_nome || c.nome_servico || c.tipo_servico)
+      .filter(Boolean);
+    
+    // Remove duplicados
+    const servicosUnicos = [...new Set(servicos)];
+    return servicosUnicos.length > 0 ? servicosUnicos.join(", ") : "—";
+  }
+  
+  return "—";
 }
