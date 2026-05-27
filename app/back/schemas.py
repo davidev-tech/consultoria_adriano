@@ -199,10 +199,12 @@ class ContratoResponse(ContratoBase):
 # ==========================================
 
 class InteracaoBase(BaseModel):
+    id_cliente: UUID
     tipo_interacao: Optional[str] = "Visita"
     data_hora: Optional[datetime] = None
     feedback_anotacoes: Optional[str] = None
     grau_urgencia: Optional[str] = "Baixo"
+    status_financeiro: Optional[str] = "Não Cobrado"
 
 class InteracaoCreate(InteracaoBase):
     id_cliente: UUID
@@ -210,7 +212,7 @@ class InteracaoCreate(InteracaoBase):
     @field_validator("tipo_interacao")
     @classmethod
     def check_tipo(cls, v):
-        opcoes = ["Visita", "Ligação", "E-mail", "Mensagem", "Reunião Online"]
+        opcoes = ["Visita", "Ligação", "E-mail", "Mensagem", "Reunião"]
         if v: return validate_enum_choice(v.title(), opcoes)
         return v
         

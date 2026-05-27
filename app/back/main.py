@@ -413,7 +413,13 @@ def atualizar_interacao(id_interacao: UUID, payload: dict, db: Session = Depends
         db_interacao.data_hora = payload["data_hora"]
     if "feedback_anotacoes" in payload:
         db_interacao.feedback_anotacoes = payload["feedback_anotacoes"]
-        
+    
+    if "grau_urgencia" in payload:
+        db_interacao.grau_urgencia = payload["grau_urgencia"]
+
+    if "status_financeiro" in payload:
+        db_interacao.status_financeiro = payload["status_financeiro"]
+
     try:
         db.commit()
         db.refresh(db_interacao)

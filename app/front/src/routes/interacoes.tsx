@@ -21,9 +21,10 @@ import {
   useDeleteInteracao 
 } from "@/lib/api/hooks";
 import { toast } from "sonner";
+
 // Utilitário para ajustar o fuso horário (UTC-3) no input datetime-local
 const getLocalDatetimeString = (date = new Date()) => {
-  const tzOffset = date.getTimezoneOffset() * 60000; // Pega a diferença do fuso em milissegundos
+  const tzOffset = date.getTimezoneOffset() * 60000; 
   const localISOTime = new Date(date.getTime() - tzOffset).toISOString().slice(0, 16);
   return localISOTime;
 };
@@ -38,19 +39,23 @@ function InteracoesPage() {
   const create = useCreateInteracao();
   const update = useUpdateInteracao();
   const remove = useDeleteInteracao();
-
+  
+  const [grauUrgencia, setGrauUrgencia] = useState("Baixo");
+  const [statusFinanceiro, setStatusFinanceiro] = useState("Não Cobrado"); // <--- NOVO ESTADO
   const [idCliente, setIdCliente] = useState<string>("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [tipo, setTipo] = useState("Visita");
   const [dataHora, setDataHora] = useState(() => getLocalDatetimeString());
   const [feedback, setFeedback] = useState("");
-
+  
   const { data: listaInteracoes, isLoading: loadingInteracoes } = useInteracoesPorCliente(idCliente || undefined);
 
   const cancelarEdicao = () => {
     setEditingId(null);
     setTipo("Visita");
     setFeedback("");
+    setGrauUrgencia("Baixo");
+    setStatusFinanceiro("Não Cobrado"); // <--- LIMPA O CAMPO NO CANCELAMENTO
     setDataHora(new Date().toISOString().slice(0, 16));
   };
 
@@ -62,11 +67,13 @@ function InteracoesPage() {
     }
 
     const payload = {
-  id_cliente: idCliente,
-  tipo_interacao: tipo,
-  data_hora: dataHora.length === 16 ? `${dataHora}:00` : dataHora, // ✅ Envia o horário local exato com os segundos zerados
-  feedback_anotacoes: feedback || null,
-};
+      id_cliente: idCliente,
+      tipo_interacao: tipo,
+      data_hora: dataHora,
+      feedback_anotacoes: feedback,
+      grau_urgencia: grauUrgencia,
+      status_financeiro: statusFinanceiro, // <--- ADICIONADO AO PAYLOAD PARA O BACKEND
+    };
 
     try {
       if (editingId) {
@@ -77,6 +84,8 @@ function InteracoesPage() {
         await create.mutateAsync(payload);
         toast.success("Interação registrada com sucesso!");
         setFeedback("");
+        setGrauUrgencia("Baixo");
+        setStatusFinanceiro("Não Cobrado"); // <--- LIMPA APÓS SUCESSO
       }
     } catch (err) {
       toast.error("Erro ao processar a requisição.");
@@ -87,6 +96,8 @@ function InteracoesPage() {
     setEditingId(item.id_interacao);
     setTipo(item.tipo_interacao || "Visita");
     setFeedback(item.feedback_anotacoes || "");
+    setGrauUrgencia(item.grau_urgencia || "Baixo");
+    setStatusFinanceiro(item.status_financeiro || "Não Cobrado"); // <--- PREENCHE AO EDITAR
     if (item.data_hora) {
       setDataHora(getLocalDatetimeString(new Date(item.data_hora)));
     }
@@ -150,7 +161,7 @@ function InteracoesPage() {
                     <SelectValue placeholder="Selecione a empresa..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {empresas.data?.map((e) => (
+                    {empresas.data?.map((e: any) => (
                       <SelectItem key={e.id_cliente} value={e.id_cliente}>
                         {e.nome_empresa}
                       </SelectItem>
@@ -176,6 +187,35 @@ function InteracoesPage() {
               </div>
 
               <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-muted-foreground">Grau de Urgência</label>
+                <Select value={grauUrgencia} onValueChange={setGrauUrgencia}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o grau" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Baixo">Baixo</SelectItem>
+                    <SelectItem value="Médio">Médio</SelectItem>
+                    <SelectItem value="Alto">Alto</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* NOVO CAMPO: STATUS FINANCEIRO */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-muted-foreground">Status Financeiro</label>
+                <Select value={statusFinanceiro} onValueChange={setStatusFinanceiro}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Não Cobrado">Não Cobrado</SelectItem>
+                    <SelectItem value="Pendente">Pendente</SelectItem>
+                    <SelectItem value="Pago">Pago</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
                 <Label className="text-xs">Data e hora</Label>
                 <Input
                   type="datetime-local"
@@ -183,13 +223,14 @@ function InteracoesPage() {
                   onChange={(e) => setDataHora(e.target.value)}
                 />
               </div>
+              
               <div className="space-y-1.5">
                 <Label className="text-xs">Feedback / Anotações</Label>
                 <Textarea
                   value={feedback}
                   onChange={(e) => setFeedback(e.target.value)}
                   rows={4}
-                  placeholder="Notas da visita, próximos passos, percepções..."
+                  placeholder="Notas da visita, próximos passos, perceções..."
                 />
               </div>
             </div>
@@ -213,7 +254,7 @@ function InteracoesPage() {
           <div>
             <h2 className="text-xl font-semibold tracking-tight">Linha do Tempo de Atendimento</h2>
             <p className="text-sm text-muted-foreground">
-              {idCliente ? "Registros de interações encontrados para este cliente." : "Selecione uma empresa para carregar os registros."}
+              {idCliente ? "Registros de interações encontrados para este cliente." : "Selecione uma empresa para carregar os registos."}
             </p>
           </div>
 
@@ -223,7 +264,7 @@ function InteracoesPage() {
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
             ) : listaInteracoes && listaInteracoes.length > 0 ? (
-              listaInteracoes.map((item) => {
+              listaInteracoes.map((item: any) => {
                 const idInteracao = item.id_interacao;
                 if (!idInteracao) return null;
 
@@ -236,10 +277,31 @@ function InteracoesPage() {
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="space-y-1 flex-1">
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <span className="rounded bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
                             {item.tipo_interacao}
                           </span>
+                          
+                          {item.grau_urgencia && (
+                            <span className={`rounded px-2 py-0.5 text-xs font-semibold ${
+                              item.grau_urgencia === 'Alto' ? 'bg-red-100 text-red-700' : 
+                              item.grau_urgencia === 'Médio' ? 'bg-yellow-100 text-yellow-700' : 
+                              'bg-green-100 text-green-700'
+                            }`}>
+                              Urgência: {item.grau_urgencia}
+                            </span>
+                          )}
+
+                          {/* NOVA TAG VISUAL: STATUS FINANCEIRO */}
+                          {item.status_financeiro && item.status_financeiro !== "Não Cobrado" && (
+                            <span className={`rounded px-2 py-0.5 text-xs font-semibold ${
+                              item.status_financeiro === 'Pendente' ? 'bg-orange-100 text-orange-700 border border-orange-200' : 
+                              'bg-emerald-100 text-emerald-700 border border-emerald-200'
+                            }`}>
+                              {item.status_financeiro === 'Pendente' ? 'A Cobrar' : 'Pago'}
+                            </span>
+                          )}
+
                           <span className="text-xs text-muted-foreground">
                             {item.data_hora
                               ? new Date(item.data_hora).toLocaleString("pt-BR", {
@@ -254,7 +316,7 @@ function InteracoesPage() {
                         </div>
                         
                         <p className="text-sm whitespace-pre-wrap pt-1 font-medium text-foreground">
-                          {item.feedback_anotacoes || <span className="text-muted-foreground italic text-xs">Sem anotações registradas.</span>}
+                          {item.feedback_anotacoes || <span className="text-muted-foreground italic text-xs">Sem anotações registadas.</span>}
                         </p>
                       </div>
 

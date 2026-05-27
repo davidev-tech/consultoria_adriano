@@ -112,6 +112,7 @@ export interface HistoricoInteracao {
   data_hora?: string | null;
   coordenadas_geo?: string | null;
   feedback_anotacoes?: string | null;
+  grau_urgencia?: string | null;
 }
 export interface HistoricoInteracaoCreate {
   id_cliente: UUID;
