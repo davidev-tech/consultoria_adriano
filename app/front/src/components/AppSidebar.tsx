@@ -8,6 +8,8 @@ import {
   Wallet,
   Cog,
   Radar,
+  CalendarDays,
+  AlertTriangle,
 } from "lucide-react";
 import {
   Sidebar,
@@ -26,6 +28,8 @@ const items = [
   { title: "Empresas", url: "/empresas", icon: Building2, group: "Cadastros" },
   { title: "Contratos", url: "/contratos", icon: FileText, group: "Cadastros" },
   { title: "Interações", url: "/interacoes", icon: ClipboardList, group: "Operacional" },
+  { title: "Entregas e Prazos", url: "/entregas_prazos", icon: CalendarDays, group: "Operacional" },  // 👈 nova linha
+  { title: "Pendências", url: "/pendencias", icon: AlertTriangle, group: "Operacional" },
   { title: "Financeiro", url: "/financeiro", icon: Wallet, group: "Financeiro" },
   // Comentado para ocultar a visão de desenvolvedor
   // { title: "Configurações", url: "/configuracoes", icon: Cog, group: "Sistema" },

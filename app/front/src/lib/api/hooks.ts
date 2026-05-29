@@ -118,6 +118,54 @@ export const useCreateContrato = () => {
   });
 };
 
+// --- ENTREGAS E PRAZOS ---
+
+export const useCreateEntrega = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: EntregaCreate) =>
+      api<Entrega>("/entregas", { method: "POST", json: data }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["entregas"] }),
+  });
+};
+
+export const useUpdateEntrega = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (args: { id: string; data: Partial<EntregaCreate> & { status_entrega?: string; data_conclusao?: string } }) =>
+      api<Entrega>(`/entregas/${args.id}`, { method: "PUT", json: args.data }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["entregas"] }),
+  });
+};
+
+export const useDeleteEntrega = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      api<{ mensagem: string }>(`/entregas/${id}`, { method: "DELETE" }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["entregas"] }),
+  });
+};
+
+export const useEntregas = (filtros?: {
+  id_contrato?: string;
+  status_entrega?: string;
+  data_inicio?: string;
+  data_fim?: string;
+}) => {
+  return useQuery({
+    queryKey: ["entregas", filtros],
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (filtros?.id_contrato) params.append("id_contrato", filtros.id_contrato);
+      if (filtros?.status_entrega) params.append("status_entrega", filtros.status_entrega);
+      if (filtros?.data_inicio) params.append("data_inicio", filtros.data_inicio);
+      if (filtros?.data_fim) params.append("data_fim", filtros.data_fim);
+      return api<Entrega[]>(`/entregas?${params.toString()}`);
+    },
+  });
+};
+
 // --- MÓDULO 6: INTERAÇÕES ---
 export const useCreateInteracao = () => {
   const qc = useQueryClient();

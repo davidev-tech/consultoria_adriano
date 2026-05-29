@@ -267,11 +267,22 @@ class EntregaCreate(EntregaBase):
 class EntregaResponse(EntregaBase):
     id_entrega: UUID
     id_contrato: UUID
-    
+    data_conclusao: Optional[date] = None
     model_config = ConfigDict(from_attributes=True)
 
 
+# schemas.py – adicione no final
+class PendenciaResponse(BaseModel):
+    id: str
+    tipo: str  # "financeira" ou "entrega"
+    empresa_nome: str
+    descricao: str
+    status: str
+    data_limite: Optional[date] = None
+    valor: Optional[float] = None
+    id_referencia: str
 
+    model_config = ConfigDict(from_attributes=True)
 
 # ==========================================
 # 7. MÓDULO: PAGAMENTOS

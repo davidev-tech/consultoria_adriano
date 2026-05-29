@@ -100,7 +100,7 @@ class Contrato(Base):
 
     empresa = relationship("EmpresaCliente", back_populates="contratos")
     modelo = relationship("ModeloContrato", back_populates="contratos")
-    entregas = relationship("EntregasPrazos", back_populates="contrato", cascade="all, delete-orphan")
+    entregas = relationship("Entrega", back_populates="contrato", cascade="all, delete-orphan")
     pagamentos = relationship("Pagamento", cascade="all, delete-orphan")
     faturas = relationship("Fatura", back_populates="contrato", cascade="all, delete-orphan")
 
@@ -108,15 +108,17 @@ class Contrato(Base):
 # 3. SEGUNDO E TERCEIRO NÍVEL
 # ==========================================
 
-class EntregasPrazos(Base):
+class Entrega(Base):
     __tablename__ = "entregas_prazos"
-    id_entrega = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    id_contrato = Column(UUID(as_uuid=True), ForeignKey("contrato.id_contrato", ondelete="CASCADE"))
-    descricao_entrega = Column(Text, nullable=False)
-    data_prazo_limite = Column(DATE)
-    status_entrega = Column(String(50))
 
-    contrato = relationship("Contrato", back_populates="entregas")
+    id_entrega = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id_contrato = Column(UUID(as_uuid=True), ForeignKey("contrato.id_contrato"), nullable=False)
+    descricao_entrega = Column(Text, nullable=False)
+    data_prazo_limite = Column(DATE, nullable=False)
+    status_entrega = Column(String(50), default="Pendente")
+    data_conclusao = Column(DateTime, nullable=True)
+
+    contrato = relationship("Contrato", back_populates="entregas") # 👈 Agora `Date` está definido
 
 
 class Pagamento(Base):
