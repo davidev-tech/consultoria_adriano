@@ -3,7 +3,6 @@ import { useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -11,12 +10,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CalendarDays, Loader2, AlertTriangle, DollarSign, ClipboardList, FilterX, Search } from "lucide-react";
+import { AlertTriangle, DollarSign, ClipboardList, FilterX, Search, Loader2 } from "lucide-react";
 import { useEmpresas } from "@/lib/api/hooks";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
-import { toast } from "sonner";
-import type { UUID } from "@/lib/api/types";
 
 interface Pendencia {
   id: string;
@@ -93,34 +90,50 @@ function PendenciasPage() {
 
         {/* CARDS DE RESUMO */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:bg-amber-950 dark:border-amber-800">
-            <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
-              <DollarSign className="h-5 w-5" />
-              <span className="text-lg font-bold">{totalFinanceiro} financeira(s)</span>
+          {/* Card Financeiro */}
+          <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-yellow-500/10 text-yellow-600 ring-1 ring-yellow-500/20">
+                <DollarSign className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Financeiro</p>
+                <p className="text-xl font-semibold">{totalFinanceiro} pendência(s)</p>
+                <p className="text-sm text-muted-foreground">{formatarMoeda(valorTotalPendente)} em aberto</p>
+              </div>
             </div>
-            <p className="text-sm text-muted-foreground mt-1">
-              {formatarMoeda(valorTotalPendente)} pendentes
-            </p>
           </div>
 
-          <div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:bg-red-950 dark:border-red-800">
-            <div className="flex items-center gap-2 text-red-800 dark:text-red-200">
-              <ClipboardList className="h-5 w-5" />
-              <span className="text-lg font-bold">{totalEntregas} entrega(s)</span>
+          {/* Card Entregas */}
+          <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-500/10 text-red-600 ring-1 ring-red-500/20">
+                <ClipboardList className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Entregas</p>
+                <p className="text-xl font-semibold">{totalEntregas} pendência(s)</p>
+                <p className="text-sm text-muted-foreground">com prazo não concluído</p>
+              </div>
             </div>
-            <p className="text-sm text-muted-foreground mt-1">com prazo não concluído</p>
           </div>
 
-          <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:bg-blue-950 dark:border-blue-800">
-            <div className="flex items-center gap-2 text-blue-800 dark:text-blue-200">
-              <AlertTriangle className="h-5 w-5" />
-              <span className="text-lg font-bold">{pendenciasFiltradas.length} pendência(s)</span>
+          {/* Card Total */}
+          <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary ring-1 ring-primary/20">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Total</p>
+                <p className="text-xl font-semibold">{pendenciasFiltradas.length} pendência(s)</p>
+                <p className="text-sm text-muted-foreground">no total</p>
+              </div>
             </div>
-            <p className="text-sm text-muted-foreground mt-1">no total</p>
           </div>
         </div>
 
-        {/* FILTROS */}
+        {/* FILTROS (inalterados) */}
         <div className="flex flex-col sm:flex-row gap-3">
           <Select value={idEmpresa} onValueChange={(v) => { setIdEmpresa(v); }}>
             <SelectTrigger className="w-full sm:w-60">
@@ -178,8 +191,14 @@ function PendenciasPage() {
                 </thead>
                 <tbody className="divide-y">
                   {pendenciasFiltradas.map((p) => {
-                    const tipoColor = p.tipo === "financeira" ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700";
-                    const statusColor = p.status === "Atrasado" ? "text-red-600 font-bold" : p.status === "Pendente" ? "text-amber-600" : "text-blue-600";
+                    const tipoColor = p.tipo === "financeira" 
+                      ? "bg-yellow-500/10 text-yellow-600" 
+                      : "bg-red-500/10 text-red-600";
+                    const statusColor = p.status === "Atrasado" 
+                      ? "text-red-600 font-medium" 
+                      : p.status === "Pendente" 
+                        ? "text-yellow-600" 
+                        : "text-emerald-600";
                     return (
                       <tr key={p.id} className="hover:bg-muted/20">
                         <td className="px-4 py-3">{p.empresa_nome}</td>
