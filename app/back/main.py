@@ -402,13 +402,13 @@ def atualizar_interacao(id_interacao: UUID, payload: dict, db: Session = Depends
     
     if not db_interacao:
         raise HTTPException(status_code=404, detail="Interação não encontrada")
-    
+    #
     if "tipo_interacao" in payload and payload["tipo_interacao"]:
-        tipo_formatado = payload["tipo_interacao"].strip().title()
-        if tipo_formatado not in ["Visita", "Reunião", "Mensagem", "Ligação", "E-mail"]:
-            raise HTTPException(status_code=400, detail="Valor inválido. Use: Visita, Reunião, Mensagem, Ligação, E-mail")
+        tipo_formatado = payload["tipo_interacao"].strip().lower()
+        if tipo_formatado not in ["Visita", "Reunião", "Mensagem", "Ligação", "e-mail"]:
+            raise HTTPException(status_code=400, detail="Valor inválido. Use: Visita, Reunião, Mensagem, Ligação, e-mail")
         db_interacao.tipo_interacao = tipo_formatado
-        
+ 
     if "data_hora" in payload:
         db_interacao.data_hora = payload["data_hora"]
     if "feedback_anotacoes" in payload:
@@ -442,8 +442,7 @@ def deletar_interacao(id_interacao: UUID, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Erro ao deletar: {str(e)}")
 
 ## --- MÓDULO 7: PAGAMENTOS ---
-## --- MÓDULO 7: PAGAMENTOS ---
-## --- MÓDULO 7: PAGAMENTOS ---
+
 @app.post("/pagamentos", response_model=schemas.PagamentoResponse, tags=["Pagamentos"])
 def criar_pagamento(pagamento_in: schemas.PagamentoCreate, db: Session = Depends(get_db)):
     try:

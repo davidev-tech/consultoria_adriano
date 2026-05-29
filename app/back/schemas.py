@@ -209,10 +209,10 @@ class InteracaoBase(BaseModel):
 class InteracaoCreate(InteracaoBase):
     id_cliente: UUID
 
-    @field_validator("tipo_interacao")
+  #  @field_validator("tipo_interacao")
     @classmethod
     def check_tipo(cls, v):
-        opcoes = ["Visita", "Ligação", "E-mail", "Mensagem", "Reunião"]
+        opcoes = ["Visita", "Ligação", "e-mail", "Mensagem", "Reunião"]
         if v: return validate_enum_choice(v.title(), opcoes)
         return v
         

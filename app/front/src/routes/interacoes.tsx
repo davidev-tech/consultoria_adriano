@@ -181,7 +181,7 @@ function InteracoesPage() {
                     <SelectItem value="Reunião">Reunião</SelectItem>
                     <SelectItem value="Mensagem">Mensagem</SelectItem>
                     <SelectItem value="Ligação">Ligação</SelectItem>
-                    <SelectItem value="E-mail">E-mail</SelectItem>
+                    <SelectItem value="e-mail">e-mail</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
