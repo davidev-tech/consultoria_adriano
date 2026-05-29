@@ -117,13 +117,22 @@ def listar_empresas(
     busca: Optional[str] = Query(None, description="Busca por nome ou CNPJ"),
     db: Session = Depends(get_db)
 ):
-    # O joinedload desce pelas hierarquias para evitar queries em loop (N+1)
+    # ✅ CARREGAR TUDO que o frontend precisa
     query = db.query(models.EmpresaCliente).options(
-        joinedload(models.EmpresaCliente.servicos_contratados).joinedload(models.ServicoPrestado.servico_catalogo),
+        # Serviços contratados
+        joinedload(models.EmpresaCliente.servicos_contratados)
+            .joinedload(models.ServicoPrestado.servico_catalogo),
+        
+        # Interações (para última visita e notas)
         joinedload(models.EmpresaCliente.interacoes),
-        # AQUI: Carregando os contratos com seus pagamentos E com suas faturas
-        joinedload(models.EmpresaCliente.contratos).joinedload(models.Contrato.pagamentos),
-        joinedload(models.EmpresaCliente.contratos).joinedload(models.Contrato.faturas)
+        
+        # Contratos com seus pagamentos, faturas e entregas
+        joinedload(models.EmpresaCliente.contratos)
+            .joinedload(models.Contrato.pagamentos),
+        joinedload(models.EmpresaCliente.contratos)
+            .joinedload(models.Contrato.faturas),
+        joinedload(models.EmpresaCliente.contratos)
+            .joinedload(models.Contrato.entregas),
     )
     
     if busca:
@@ -131,7 +140,10 @@ def listar_empresas(
             models.EmpresaCliente.nome_empresa.ilike(f"%{busca}%") |
             models.EmpresaCliente.cnpj.ilike(f"%{busca}%")
         )
-        
+    
+    # Ordenar por nome
+    query = query.order_by(models.EmpresaCliente.nome_empresa)
+    
     return query.offset(skip).limit(limit).all()
 
 @app.get("/empresas/{id_cliente}", response_model=schemas.EmpresaResponse, tags=["Empresas"])
