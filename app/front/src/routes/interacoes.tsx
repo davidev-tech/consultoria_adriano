@@ -369,14 +369,18 @@ function InteracoesPage() {
 
                           {/* ✅ TAG PAGA COM VALOR E STATUS PAGAMENTO */}
                           {item.status_financeiro === 'Paga' && (
-                            <span className="rounded px-2 py-0.5 text-xs font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">
+                            <span className={`rounded px-2 py-0.5 text-xs font-semibold border ${
+                              item.status_pagamento === 'Pago' 
+                                ? 'bg-emerald-100 text-emerald-700 border-emerald-200' 
+                                : 'bg-yellow-100 text-yellow-700 border-yellow-200'
+                             }`}>
                               {item.valor_cobrado 
                                 ? `Paga - ${formatarMoeda(item.valor_cobrado)}` 
                                 : 'Paga'}
                               {item.status_pagamento === 'Pago' ? ' ✓ Pago' : ' (Pendente)'}
                             </span>
-                          )}
-
+                                )}
+                                
                           <span className="text-xs text-muted-foreground">
                             {item.data_hora
                               ? new Date(item.data_hora).toLocaleString("pt-BR", {
