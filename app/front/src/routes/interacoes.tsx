@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ClipboardList, Loader2, Pencil, Trash2, X } from "lucide-react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ import {
   useEmpresas, 
   useDeleteInteracao 
 } from "@/lib/api/hooks";
+import type { StatusFinanceiro } from "@/lib/api/types";
 import { toast } from "sonner";
 
 // Utilitário para ajustar o fuso horário (UTC-3) no input datetime-local
@@ -27,6 +28,15 @@ const getLocalDatetimeString = (date = new Date()) => {
   const tzOffset = date.getTimezoneOffset() * 60000; 
   const localISOTime = new Date(date.getTime() - tzOffset).toISOString().slice(0, 16);
   return localISOTime;
+};
+
+// Formata valor para exibição
+const formatarMoeda = (valor: number | null | undefined) => {
+  if (!valor) return '';
+  return new Intl.NumberFormat('pt-BR', { 
+    style: 'currency', 
+    currency: 'BRL' 
+  }).format(valor);
 };
 
 export const Route = createFileRoute("/interacoes")({
@@ -41,7 +51,8 @@ function InteracoesPage() {
   const remove = useDeleteInteracao();
   
   const [grauUrgencia, setGrauUrgencia] = useState("Baixo");
-  const [statusFinanceiro, setStatusFinanceiro] = useState("Não Cobrado"); // <--- NOVO ESTADO
+  const [statusFinanceiro, setStatusFinanceiro] = useState<StatusFinanceiro>("Não Paga");
+  const [valorCobrado, setValorCobrado] = useState<string>("");
   const [idCliente, setIdCliente] = useState<string>("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [tipo, setTipo] = useState("Visita");
@@ -50,13 +61,21 @@ function InteracoesPage() {
   
   const { data: listaInteracoes, isLoading: loadingInteracoes } = useInteracoesPorCliente(idCliente || undefined);
 
+  // Limpa o valor cobrado quando status muda para "Não Paga"
+  useEffect(() => {
+    if (statusFinanceiro === "Não Paga") {
+      setValorCobrado("");
+    }
+  }, [statusFinanceiro]);
+
   const cancelarEdicao = () => {
     setEditingId(null);
     setTipo("Visita");
     setFeedback("");
     setGrauUrgencia("Baixo");
-    setStatusFinanceiro("Não Cobrado"); // <--- LIMPA O CAMPO NO CANCELAMENTO
-    setDataHora(new Date().toISOString().slice(0, 16));
+    setStatusFinanceiro("Não Paga");
+    setValorCobrado("");
+    setDataHora(getLocalDatetimeString());
   };
 
   const submit = async (e: React.FormEvent) => {
@@ -66,13 +85,23 @@ function InteracoesPage() {
       return;
     }
 
+    // Validação: se Paga, valor é obrigatório
+    if (statusFinanceiro === "Paga") {
+      const valor = parseFloat(valorCobrado);
+      if (!valorCobrado || isNaN(valor) || valor <= 0) {
+        toast.error("Informe um valor cobrado válido para interações pagas");
+        return;
+      }
+    }
+
     const payload = {
       id_cliente: idCliente,
       tipo_interacao: tipo,
       data_hora: dataHora,
       feedback_anotacoes: feedback,
       grau_urgencia: grauUrgencia,
-      status_financeiro: statusFinanceiro, // <--- ADICIONADO AO PAYLOAD PARA O BACKEND
+      status_financeiro: statusFinanceiro,
+      valor_cobrado: statusFinanceiro === "Paga" ? parseFloat(valorCobrado) : null,
     };
 
     try {
@@ -85,7 +114,8 @@ function InteracoesPage() {
         toast.success("Interação registrada com sucesso!");
         setFeedback("");
         setGrauUrgencia("Baixo");
-        setStatusFinanceiro("Não Cobrado"); // <--- LIMPA APÓS SUCESSO
+        setStatusFinanceiro("Não Paga");
+        setValorCobrado("");
       }
     } catch (err) {
       toast.error("Erro ao processar a requisição.");
@@ -97,7 +127,8 @@ function InteracoesPage() {
     setTipo(item.tipo_interacao || "Visita");
     setFeedback(item.feedback_anotacoes || "");
     setGrauUrgencia(item.grau_urgencia || "Baixo");
-    setStatusFinanceiro(item.status_financeiro || "Não Cobrado"); // <--- PREENCHE AO EDITAR
+    setStatusFinanceiro(item.status_financeiro || "Não Paga");
+    setValorCobrado(item.valor_cobrado ? item.valor_cobrado.toString() : "");
     if (item.data_hora) {
       setDataHora(getLocalDatetimeString(new Date(item.data_hora)));
     }
@@ -181,7 +212,7 @@ function InteracoesPage() {
                     <SelectItem value="Reunião">Reunião</SelectItem>
                     <SelectItem value="Mensagem">Mensagem</SelectItem>
                     <SelectItem value="Ligação">Ligação</SelectItem>
-                    <SelectItem value="e-mail">e-mail</SelectItem>
+                    <SelectItem value="e-mail">E-mail</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -200,20 +231,44 @@ function InteracoesPage() {
                 </Select>
               </div>
 
-              {/* NOVO CAMPO: STATUS FINANCEIRO */}
+              {/* STATUS FINANCEIRO */}
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-muted-foreground">Status Financeiro</label>
-                <Select value={statusFinanceiro} onValueChange={setStatusFinanceiro}>
+                <Select value={statusFinanceiro} onValueChange={(value: StatusFinanceiro) => setStatusFinanceiro(value)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione o status" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Não Cobrado">Não Cobrado</SelectItem>
-                    <SelectItem value="Pendente">Pendente</SelectItem>
-                    <SelectItem value="Pago">Pago</SelectItem>
+                    <SelectItem value="Não Paga">Não Paga</SelectItem>
+                    <SelectItem value="Paga">Paga</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* ✅ CAMPO VALOR COBRADO - CONDICIONAL */}
+              {statusFinanceiro === "Paga" && (
+                <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <Label className="text-xs">Valor Cobrado (R$) *</Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                      R$
+                    </span>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0.01"
+                      value={valorCobrado}
+                      onChange={(e) => setValorCobrado(e.target.value)}
+                      placeholder="0,00"
+                      className="pl-10"
+                      required
+                    />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">
+                    Valor efetivamente cobrado nesta interação
+                  </p>
+                </div>
+              )}
 
               <div className="space-y-1.5">
                 <Label className="text-xs">Data e hora</Label>
@@ -238,7 +293,7 @@ function InteracoesPage() {
             <div className="flex justify-end gap-2">
               {editingId && (
                 <Button type="button" variant="outline" onClick={cancelarEdicao}>
-                  Cancel
+                  Cancelar
                 </Button>
               )}
               <Button type="submit" disabled={create.isPending || update.isPending} className="gap-2">
@@ -292,13 +347,12 @@ function InteracoesPage() {
                             </span>
                           )}
 
-                          {/* NOVA TAG VISUAL: STATUS FINANCEIRO */}
-                          {item.status_financeiro && item.status_financeiro !== "Não Cobrado" && (
-                            <span className={`rounded px-2 py-0.5 text-xs font-semibold ${
-                              item.status_financeiro === 'Pendente' ? 'bg-orange-100 text-orange-700 border border-orange-200' : 
-                              'bg-emerald-100 text-emerald-700 border border-emerald-200'
-                            }`}>
-                              {item.status_financeiro === 'Pendente' ? 'A Cobrar' : 'Pago'}
+                          {/* ✅ TAG PAGA COM VALOR */}
+                          {item.status_financeiro === 'Paga' && (
+                            <span className="rounded px-2 py-0.5 text-xs font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">
+                              {item.valor_cobrado 
+                                ? `Paga - ${formatarMoeda(item.valor_cobrado)}` 
+                                : 'Paga'}
                             </span>
                           )}
 

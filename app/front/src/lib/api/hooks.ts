@@ -9,6 +9,7 @@ import type {
   Entrega,
   HistoricoInteracao,
   HistoricoInteracaoCreate,
+  InteracoesPagasResumo,
   ModeloContrato,
   ModeloContratoCreate,
   Pagamento,
@@ -136,11 +137,12 @@ export const useInteracoesPorCliente = (idCliente?: UUID) => {
   });
 };
 
+// ✅ CÓDIGO CORRIGIDO
 export const useUpdateInteracao = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (args: { id: string; data: any }) =>
-      api<{ mensagem: string }>(`/interacoes/${args.id}`, { 
+    mutationFn: (args: { id: string; data: HistoricoInteracaoCreate }) =>
+      api<HistoricoInteracao>(`/interacoes/${args.id}`, { 
         method: "PUT", 
         json: args.data 
       }),
@@ -156,7 +158,34 @@ export const useDeleteInteracao = () => {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["interacoes"] }),
   });
 };
+// hooks.ts - Adicionar após os hooks de interação
 
+export const useInteracoesPagas = (idCliente?: string) => {
+  // Se for "todas" ou undefined, não filtra por empresa
+  const clienteFiltro = idCliente && idCliente !== "todas" ? idCliente : undefined;
+
+  return useQuery({
+    queryKey: ["interacoes-pagas", clienteFiltro ?? "todas"],
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (clienteFiltro) params.append("id_cliente", clienteFiltro);
+      return api<HistoricoInteracao[]>(`/interacoes-pagas?${params.toString()}`);
+    },
+  });
+};
+
+export const useTotalInteracoesPagas = (idCliente?: string) => {
+  const clienteFiltro = idCliente && idCliente !== "todas" ? idCliente : undefined;
+
+  return useQuery({
+    queryKey: ["interacoes-pagas-total", clienteFiltro ?? "todas"],
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (clienteFiltro) params.append("id_cliente", clienteFiltro);
+      return api<InteracoesPagasResumo>(`/interacoes-pagas/total?${params.toString()}`);
+    },
+  });
+};
 // --- MÓDULO 7: FINANCEIRO (PAGAMENTOS) ---
 export const usePagamentosPorContrato = (idContrato?: UUID) => {
   const { searchTerm } = useSearch();

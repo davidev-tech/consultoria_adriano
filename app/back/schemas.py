@@ -198,28 +198,39 @@ class ContratoResponse(ContratoBase):
 # 5. MÓDULO: HISTÓRICO DE INTERAÇÕES
 # ==========================================
 
+# schemas.py
+
 class InteracaoBase(BaseModel):
     id_cliente: UUID
     tipo_interacao: Optional[str] = "Visita"
     data_hora: Optional[datetime] = None
     feedback_anotacoes: Optional[str] = None
     grau_urgencia: Optional[str] = "Baixo"
-    status_financeiro: Optional[str] = "Não Cobrado"
+    status_financeiro: Optional[str] = "Não Paga"  # ✅ Padronizado
+    valor_cobrado: Optional[float] = None
 
 class InteracaoCreate(InteracaoBase):
     id_cliente: UUID
 
-  #  @field_validator("tipo_interacao")
+    @field_validator("status_financeiro")
     @classmethod
-    def check_tipo(cls, v):
-        opcoes = ["Visita", "Ligação", "e-mail", "Mensagem", "Reunião"]
-        if v: return validate_enum_choice(v.title(), opcoes)
+    def check_status_financeiro(cls, v):
+        if v is not None:
+            opcoes_validas = ["Não Paga", "Paga"]  # ✅ Padronizado
+            if v not in opcoes_validas:
+                raise ValueError(f"Status financeiro inválido. Use: {', '.join(opcoes_validas)}")
         return v
-        
-    @field_validator("grau_urgencia")
+
+    @field_validator("valor_cobrado")
     @classmethod
-    def check_urgencia(cls, v):
-        if v: return validate_enum_choice(v.title(), ["Baixo", "Médio", "Alto"])
+    def check_valor_cobrado(cls, v, info: ValidationInfo):
+        if v is not None and v < 0:
+            raise ValueError("Valor cobrado não pode ser negativo")
+        
+        status = info.data.get('status_financeiro') if info.data else None
+        if status == "Paga" and (v is None or v <= 0):
+            raise ValueError("Valor cobrado é obrigatório quando status for 'Paga'")
+        
         return v
 
 class InteracaoResponse(InteracaoBase):
@@ -227,7 +238,7 @@ class InteracaoResponse(InteracaoBase):
     id_cliente: UUID
     
     model_config = ConfigDict(from_attributes=True)
-
+    # ✅ Apenas UMA definição
 # ==========================================
 # 6. MÓDULO: ENTREGAS E PRAZOS
 # ==========================================
@@ -256,6 +267,9 @@ class EntregaResponse(EntregaBase):
     id_contrato: UUID
     
     model_config = ConfigDict(from_attributes=True)
+
+
+
 
 # ==========================================
 # 7. MÓDULO: PAGAMENTOS

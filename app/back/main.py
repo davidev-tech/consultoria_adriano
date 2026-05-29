@@ -19,40 +19,11 @@ import calendar
 # 1. INICIALIZAÇÃO DO BANCO
 models.Base.metadata.create_all(bind=engine)
 
-def ensure_empresa_cliente_columns() -> None:
-    dialect = engine.dialect.name
-    statements = []
-    
-    if dialect == "postgresql":
-        statements = [
-            "ALTER TABLE empresa_cliente ADD COLUMN IF NOT EXISTS email VARCHAR(255)",
-            "ALTER TABLE empresa_cliente ADD COLUMN IF NOT EXISTS cep VARCHAR(8)",
-            "ALTER TABLE empresa_cliente ADD COLUMN IF NOT EXISTS estado VARCHAR(2)",
-            "ALTER TABLE empresa_cliente ADD COLUMN IF NOT EXISTS cidade VARCHAR(100)",
-            "ALTER TABLE empresa_cliente ADD COLUMN IF NOT EXISTS bairro VARCHAR(100)",
-            "ALTER TABLE empresa_cliente ADD COLUMN IF NOT EXISTS logradouro VARCHAR(255)",
-        ]
-    elif dialect == "sqlite":
-        with engine.connect() as conn:
-            result = conn.execute(text("PRAGMA table_info('empresa_cliente')")).mappings()
-            existing = [row["name"] for row in result]
-            for col, tipo in [("email", "VARCHAR(255)"), ("cep", "VARCHAR(8)"), ("estado", "VARCHAR(2)"), ("cidade", "VARCHAR(100)"), ("bairro", "VARCHAR(100)"), ("logradouro", "VARCHAR(255)")]:
-                if col not in existing:
-                    statements.append(f"ALTER TABLE empresa_cliente ADD COLUMN {col} {tipo}")
-                
-    if not statements:
-        return
-        
-    with engine.begin() as conn:
-        for statement in statements:
-            conn.execute(text(statement))
-
-ensure_empresa_cliente_columns()
-
 app = FastAPI(
     title="Gestão do Cuidado (PSA)",
     version="2.0.0",
-    description="Backend PSA focado em consultoria B2B, com tracking de visitas e auditoria financeira."
+    description="Backend PSA focado em consultoria B2B, com tracking de visitas e auditoria financeira.",
+    redirect_slashes=False  # 👈 ADICIONE ESTA LINHA
 )
 
 # 2. CONFIGURACAO DE SEGURANCA (CORS)
@@ -395,6 +366,85 @@ def get_interacoes_por_cliente(id_cliente: UUID, db: Session = Depends(get_db)):
         return interacoes
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao buscar interações: {str(e)}")
+    
+@app.delete("/interacoes/{id_interacao}", tags=["Interações"])
+def deletar_interacao(id_interacao: UUID, db: Session = Depends(get_db)):
+    db_interacao = db.query(models.HistoricoInteracoes)\
+        .filter(models.HistoricoInteracoes.id_interacao == id_interacao)\
+        .first()
+    
+    if not db_interacao:
+        raise HTTPException(status_code=404, detail="Interação não encontrada")
+    
+    try:
+        db.delete(db_interacao)
+        db.commit()
+        return {"mensagem": "Interação removida com sucesso"}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Erro ao deletar: {str(e)}")
+
+@app.get("/interacoes-pagas", response_model=List[schemas.InteracaoResponse], tags=["Interações"])
+def listar_interacoes_pagas(
+    id_cliente: Optional[UUID] = Query(None, description="Filtrar por empresa específica"),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, le=100),
+    db: Session = Depends(get_db)
+):
+    """
+    Retorna todas as interações com status_financeiro = 'Paga'.
+    Opcionalmente filtra por id_cliente.
+    """
+    try:
+        query = db.query(models.HistoricoInteracoes)\
+            .filter(models.HistoricoInteracoes.status_financeiro == "Paga")
+        
+        if id_cliente:
+            if not db.query(models.EmpresaCliente).filter(models.EmpresaCliente.id_cliente == id_cliente).first():
+                raise HTTPException(status_code=404, detail="Empresa não encontrada.")
+            query = query.filter(models.HistoricoInteracoes.id_cliente == id_cliente)
+        
+        interacoes = query\
+            .order_by(models.HistoricoInteracoes.data_hora.desc())\
+            .offset(skip)\
+            .limit(limit)\
+            .all()
+        
+        return interacoes
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao buscar interações pagas: {str(e)}")
+
+
+@app.get("/interacoes-pagas/total", tags=["Interações"])
+def total_interacoes_pagas(
+    id_cliente: Optional[UUID] = Query(None, description="Filtrar por empresa"),
+    db: Session = Depends(get_db)
+):
+    """
+    Retorna o total de interações pagas e soma dos valores cobrados.
+    """
+    try:
+        query = db.query(
+            func.count(models.HistoricoInteracoes.id_interacao).label('total_interacoes'),
+            func.coalesce(func.sum(models.HistoricoInteracoes.valor_cobrado), 0).label('total_valor')
+        ).filter(models.HistoricoInteracoes.status_financeiro == "Paga")
+        
+        if id_cliente:
+            query = query.filter(models.HistoricoInteracoes.id_cliente == id_cliente)
+        
+        resultado = query.first()
+        
+        return {
+            "total_interacoes": resultado.total_interacoes,
+            "total_valor": float(resultado.total_valor)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao calcular totais: {str(e)}")
+
+# ==========================================
+# FIM DOS NOVOS ENDPOINTS
 
 @app.put("/interacoes/{id_interacao}", response_model=schemas.InteracaoResponse, tags=["Interações"])
 def atualizar_interacao(id_interacao: UUID, payload: dict, db: Session = Depends(get_db)):
@@ -402,23 +452,23 @@ def atualizar_interacao(id_interacao: UUID, payload: dict, db: Session = Depends
     
     if not db_interacao:
         raise HTTPException(status_code=404, detail="Interação não encontrada")
-    #
+    
     if "tipo_interacao" in payload and payload["tipo_interacao"]:
         tipo_formatado = payload["tipo_interacao"].strip().lower()
-        if tipo_formatado not in ["Visita", "Reunião", "Mensagem", "Ligação", "e-mail"]:
-            raise HTTPException(status_code=400, detail="Valor inválido. Use: Visita, Reunião, Mensagem, Ligação, e-mail")
+        if tipo_formatado not in ["visita", "reunião", "mensagem", "ligação", "e-mail"]:
+            raise HTTPException(status_code=400, detail="Valor inválido. Use: visita, reunião, mensagem, ligação, e-mail")
         db_interacao.tipo_interacao = tipo_formatado
  
     if "data_hora" in payload:
         db_interacao.data_hora = payload["data_hora"]
     if "feedback_anotacoes" in payload:
         db_interacao.feedback_anotacoes = payload["feedback_anotacoes"]
-    
     if "grau_urgencia" in payload:
         db_interacao.grau_urgencia = payload["grau_urgencia"]
-
     if "status_financeiro" in payload:
         db_interacao.status_financeiro = payload["status_financeiro"]
+    if "valor_cobrado" in payload:  # ✅ NOVO CAMPO
+        db_interacao.valor_cobrado = payload["valor_cobrado"]
 
     try:
         db.commit()
@@ -427,19 +477,6 @@ def atualizar_interacao(id_interacao: UUID, payload: dict, db: Session = Depends
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Erro ao atualizar: {str(e)}")
-
-@app.delete("/interacoes/{id_interacao}", tags=["Interações"])
-def deletar_interacao(id_interacao: UUID, db: Session = Depends(get_db)):
-    db_interacao = db.query(models.HistoricoInteracoes).filter(models.HistoricoInteracoes.id_interacao == id_interacao).first()
-    if not db_interacao:
-        raise HTTPException(status_code=404, detail="Interação não encontrada")
-    try:
-        db.delete(db_interacao)
-        db.commit()
-        return {"mensagem": "Interação removida com sucesso"}
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"Erro ao deletar: {str(e)}")
 
 ## --- MÓDULO 7: PAGAMENTOS ---
 

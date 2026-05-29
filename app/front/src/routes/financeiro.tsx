@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Wallet, Loader2, Plus, Pencil, Trash2 } from "lucide-react";
+import { Wallet, Loader2, Plus, Pencil, Trash2, DollarSign, Receipt, TrendingUp, Search, FilterX } from "lucide-react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -11,41 +11,114 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import {
   useEmpresas,
   useTodosContratos,
-  useFaturasPorContrato, // Substituindo a chamada antiga de pagamentos
+  useFaturasPorContrato,
   useCreateFatura,
   useUpdateFatura,
+  useInteracoesPagas,
+  useTotalInteracoesPagas,
 } from "@/lib/api/hooks"; 
 import { toast } from "sonner";
+import type { UUID } from "@/lib/api/types";
+
 export const Route = createFileRoute("/financeiro")({
   head: () => ({ meta: [{ title: "Financeiro — Gestão do Cuidado" }] }),
   component: FinanceiroPage,
 });
 
+// ==========================================
+// UTILITÁRIOS
+// ==========================================
+const formatarMoeda = (valor: number | null | undefined) => {
+  if (!valor) return 'R$ 0,00';
+  return new Intl.NumberFormat('pt-BR', { 
+    style: 'currency', 
+    currency: 'BRL' 
+  }).format(valor);
+};
+
+const formatarData = (data: string | null | undefined) => {
+  if (!data) return "—";
+  return new Date(data).toLocaleString("pt-BR", {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+};
+
+const formatarDataCurta = (data: string | null | undefined) => {
+  if (!data) return "—";
+  return new Date(data).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+};
+
+// ==========================================
+// COMPONENTE PRINCIPAL
+// ==========================================
 function FinanceiroPage() {
-  const [mesFiltro, setMesFiltro] = useState<string>(''); // Formato esperado: "YYYY-MM"
+  const [abaAtiva, setAbaAtiva] = useState("faturas");
+  
+  return (
+    <DashboardLayout>
+      <div className="mx-auto flex max-w-6xl flex-col gap-6">
+        <div>
+          <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-primary">
+            // financeiro
+          </span>
+          <h1 className="text-2xl font-semibold tracking-tight">Financeiro</h1>
+          <p className="text-sm text-muted-foreground">Controle de faturas, pagamentos e interações cobradas.</p>
+        </div>
+
+        <Tabs value={abaAtiva} onValueChange={setAbaAtiva} className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="faturas" className="gap-2">
+              <Receipt className="h-4 w-4" />
+              Faturas e Parcelas
+            </TabsTrigger>
+            <TabsTrigger value="interacoes-pagas" className="gap-2">
+              <DollarSign className="h-4 w-4" />
+              Interações Pagas
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="faturas" className="mt-6">
+            <FaturasTab />
+          </TabsContent>
+
+          <TabsContent value="interacoes-pagas" className="mt-6">
+            <InteracoesPagasTab />
+          </TabsContent>
+        </Tabs>
+      </div>
+    </DashboardLayout>
+  );
+}
+
+// ==========================================
+// ABA 1: FATURAS E PARCELAS (SEU CÓDIGO EXISTENTE)
+// ==========================================
+function FaturasTab() {
+  const [mesFiltro, setMesFiltro] = useState<string>('');
   const empresas = useEmpresas();
   const contratos = useTodosContratos();
-  // fallback deletion using fetch when hook is not available
   const deleteFatura = async (id: string) => {
     const res = await fetch(`/api/faturas/${id}`, { method: "DELETE" });
     if (!res.ok) throw new Error("Failed to delete");
     return await res.json();
   };
   const [idContrato, setIdContrato] = useState("");
-  
-  // Agora puxamos faturas diretamente da tabela nova!
   const faturasQuery = useFaturasPorContrato(idContrato || undefined);
-  
   const [open, setOpen] = useState(false);
   const [editingFatura, setEditingFatura] = useState<any>(null);
 
-  // Mapeia qual é o contrato que o usuário selecionou na tela
   const contratoSelecionado = useMemo(() => {
     return contratos.data?.find((c) => c.id_contrato === idContrato);
   }, [contratos.data, idContrato]);
@@ -59,14 +132,12 @@ function FinanceiroPage() {
       currency: "BRL",
     })}`;
 
-  // INTELIGÊNCIA FINANCEIRA: CÁLCULO DINÂMICO DE ATRAZOS E JUROS
   function calcularFaturamento(fatura: any) {
-if (fatura.status === "Pago" || fatura.data_pagamento) {
+    if (fatura.status === "Pago" || fatura.data_pagamento) {
       return {
         ...fatura,
         status: "Pago",
         valorOriginal: Number(fatura.valor_original),
-        // Soma o original com os juros pagos (usando 0 se for null/undefined)
         valorAtualizado: Number(fatura.valor_original) + Number(fatura.valor_juros_pago || 0),
         cor: "text-emerald-600 font-medium"
       };
@@ -86,7 +157,6 @@ if (fatura.status === "Pago" || fatura.data_pagamento) {
       };
     }
 
-    // Regra de Juros Dinâmicos do Contrato Selecionado
     const cobraJuros = contratoSelecionado?.cobra_juros === true || contratoSelecionado?.cobra_juros === "true";
     const taxaJuros = Number(contratoSelecionado?.taxa_juros || 0);
     
@@ -107,7 +177,6 @@ if (fatura.status === "Pago" || fatura.data_pagamento) {
     };
   }
 
-  // PROCESSA E FILTRA AS FATURAS EM TEMPO REAL
   const faturasProcessadas = useMemo(() => {
     const list = faturasQuery.data ?? [];
     
@@ -121,33 +190,21 @@ if (fatura.status === "Pago" || fatura.data_pagamento) {
       };
     }).filter((fatura) => {
       if (!mesFiltro) return true;
-      // Filtra pelo padrão do input type="month" (YYYY-MM)
       return fatura.data_vencimento.startsWith(mesFiltro);
     });
   }, [faturasQuery.data, mesFiltro, contratoSelecionado]);
 
-  // AUTOMATIZAÇÃO DOS VALORES DOS CARDS (KPIs)
   const totals = useMemo(() => {
     const list = faturasQuery.data ?? [];
-    
-    // Soma o valor mestre de todas as parcelas geradas
     const receitaAcordada = list.reduce((a, f) => a + Number(f.valor_original), 0);
-    
-    // Soma o que já entrou em caixa líquido
     const pago = list
       .filter((f) => f.status === "Pago" || f.data_pagamento)
       .reduce((a, f) => a + Number(f.valor_pago || f.valor_original), 0);
-
-    // Soma o valor total atualizado (com juros se houver) de tudo que está em aberto
     const falta = faturasProcessadas
       .filter((f) => f.statusCalculado !== "Pago")
       .reduce((a, f) => a + f.valorAtualizado, 0);
 
-    return {
-      receitaAcordada,
-      pago,
-      falta,
-    };
+    return { receitaAcordada, pago, falta };
   }, [faturasQuery.data, faturasProcessadas]);
 
   const handleEditClick = (fatura: any) => {
@@ -168,145 +225,330 @@ if (fatura.status === "Pago" || fatura.data_pagamento) {
   };
 
   return (
-    <DashboardLayout>
-      <div className="mx-auto flex max-w-6xl flex-col gap-6">
-        <div className="flex items-end justify-between">
-          <div>
-            <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-primary">
-              // financeiro
-            </span>
-            <h1 className="text-2xl font-semibold tracking-tight">Faturamento e Parcelas</h1>
-            <p className="text-sm text-muted-foreground">Controle mensal do contrato ativo.</p>
+    <div className="flex flex-col gap-6">
+      <div className="flex items-end justify-between">
+        <div />
+        <Button 
+          className="gap-2" 
+          onClick={() => {
+            setEditingFatura({ id_fatura: "novo" });
+            setOpen(true);
+          }}
+        >
+          <Plus className="h-4 w-4" /> Nova Fatura Manual
+        </Button>
+
+        {open && (
+          <FaturaDialog 
+            key={editingFatura?.id_fatura || "novo"} 
+            id_contrato={idContrato} 
+            fatura={editingFatura?.id_fatura === "novo" ? null : editingFatura} 
+            onClose={() => {
+              setOpen(false);
+              setEditingFatura(null);
+            }} 
+          />
+        )}
+      </div>
+
+      <div className="rounded-lg border border-border bg-card p-5 shadow-card">
+        <Label className="text-xs">Selecione um contrato</Label>
+        <Select value={idContrato} onValueChange={setIdContrato}>
+          <SelectTrigger className="mt-1.5">
+            <SelectValue placeholder="Escolha o contrato..." />
+          </SelectTrigger>
+          <SelectContent>
+            {contratos.data?.map((c) => (
+              <SelectItem key={c.id_contrato} value={c.id_contrato}>
+                {contratoLabel(c)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {idContrato && (
+        <>
+          <div className="grid gap-3 md:grid-cols-3">
+            <KpiCard label="Receita Total Contrato" value={totals.receitaAcordada} variant="info" />
+            <KpiCard label="Total Arrecadado" value={totals.pago} variant="success" />
+            <KpiCard label="Saldo Restante" value={totals.falta} variant="warning" />
           </div>
-          {/* Substitua da linha 182 até a 198 por isto: */}
-<Button 
-  className="gap-2" 
-  onClick={() => {
-    setEditingFatura({ id_fatura: "novo" });
-    setOpen(true);
-  }}
->
-  <Plus className="h-4 w-4" /> Nova Fatura Manual
-</Button>
 
-{open && (
-  <FaturaDialog 
-    key={editingFatura?.id_fatura || "novo"} 
-    id_contrato={idContrato} 
-    fatura={editingFatura?.id_fatura === "novo" ? null : editingFatura} 
-    onClose={() => {
-      setOpen(false);
-      setEditingFatura(null);
-    }} 
-  />
-)}
-        </div>
+          <div className="flex items-center gap-4 mt-2">
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-xs font-medium">Filtrar por Mês de Vencimento:</Label>
+              <div className="flex items-center gap-2">
+                <input 
+                  type="month" 
+                  className="border bg-background rounded px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-primary"
+                  value={mesFiltro}
+                  onChange={(e) => setMesFiltro(e.target.value)}
+                />
+                {mesFiltro && (
+                  <Button onClick={() => setMesFiltro('')} variant="ghost" size="sm" className="text-xs underline">
+                    Limpar Filtro
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
 
-        <div className="rounded-lg border border-border bg-card p-5 shadow-card">
-          <Label className="text-xs">Selecione um contrato</Label>
-          <Select value={idContrato} onValueChange={setIdContrato}>
-            <SelectTrigger className="mt-1.5">
-              <SelectValue placeholder="Escolha o contrato..." />
+          <div className="overflow-hidden rounded-lg border border-border bg-card shadow-card">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/40 text-muted-foreground">
+                  <th className="text-left px-4 py-3 font-medium">Vencimento</th>
+                  <th className="text-left px-4 py-3 font-medium">Data Recibo</th>
+                  <th className="text-left px-4 py-3 font-medium">Status</th>
+                  <th className="text-right px-4 py-3 font-medium">Valor Base</th>
+                  <th className="text-right px-4 py-3 font-medium">Valor Atualizado</th>
+                  <th className="w-[100px]"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {faturasProcessadas.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="text-center p-8 text-muted-foreground">
+                      Nenhuma fatura encontrada para este período.
+                    </td>
+                  </tr>
+                ) : (
+                  faturasProcessadas.map((f) => (
+                    <tr key={f.id_fatura} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
+                      <td className="px-4 py-3 font-mono font-medium">
+                        {formatarDataCurta(f.data_vencimento)}
+                      </td>
+                      <td className="px-4 py-3 font-mono text-muted-foreground">
+                        {f.data_pagamento ? formatarDataCurta(f.data_pagamento) : '—'}
+                      </td>
+                      <td className={`px-4 py-3 ${f.cor}`}>
+                        {f.statusCalculado}
+                      </td>
+                      <td className="px-4 py-3 text-right text-muted-foreground">
+                        {Number(f.valor_original).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      </td>
+                      <td className="px-4 py-3 text-right font-semibold text-foreground">
+                        {Number(f.valorAtualizado).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <div className="flex justify-end gap-2">
+                          <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground" onClick={() => handleEditClick(f)}>
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => handleDeleteClick(f.id_fatura)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ==========================================
+// ABA 2: INTERAÇÕES PAGAS (NOVO)
+// ==========================================
+function InteracoesPagasTab() {
+  const empresas = useEmpresas();
+  const [idClienteSelecionado, setIdClienteSelecionado] = useState<string>("");
+  const [buscaLocal, setBuscaLocal] = useState("");
+  
+  const { data: interacoesPagas, isLoading } = useInteracoesPagas(
+    idClienteSelecionado || undefined
+  );
+  
+  const { data: resumo } = useTotalInteracoesPagas(
+    idClienteSelecionado || undefined
+  );
+
+  const interacoesFiltradas = interacoesPagas?.filter(item => {
+    if (!buscaLocal) return true;
+    const termo = buscaLocal.toLowerCase();
+    return (
+      item.feedback_anotacoes?.toLowerCase().includes(termo) ||
+      item.tipo_interacao?.toLowerCase().includes(termo) ||
+      item.grau_urgencia?.toLowerCase().includes(termo)
+    );
+  }) ?? [];
+
+  const limparFiltros = () => {
+    setIdClienteSelecionado("");
+    setBuscaLocal("");
+  };
+
+  const empresaSelecionada = empresas.data?.find(e => e.id_cliente === idClienteSelecionado);
+
+  return (
+    <div className="flex flex-col gap-6">
+      {/* CARDS DE RESUMO */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="bg-emerald-500/5 border-emerald-500/20">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total de Interações</CardTitle>
+            <Receipt className="h-4 w-4 text-emerald-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-emerald-500">
+              {resumo?.total_interacoes ?? 0}
+            </div>
+            <p className="text-xs text-muted-foreground">interações cobradas</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-emerald-500/5 border-emerald-500/20">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Valor Total Cobrado</CardTitle>
+            <DollarSign className="h-4 w-4 text-emerald-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-emerald-500">
+              {formatarMoeda(resumo?.total_valor)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {empresaSelecionada ? `Empresa: ${empresaSelecionada.nome_empresa}` : 'Todas as empresas'}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-emerald-500/5 border-emerald-500/20">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Ticket Médio</CardTitle>
+            <TrendingUp className="h-4 w-4 text-emerald-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-emerald-500">
+              {resumo && resumo.total_interacoes > 0
+                ? formatarMoeda(resumo.total_valor / resumo.total_interacoes)
+                : 'R$ 0,00'}
+            </div>
+            <p className="text-xs text-muted-foreground">por interação</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* FILTROS */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex-1">
+          <Select value={idClienteSelecionado} onValueChange={setIdClienteSelecionado}>
+            <SelectTrigger>
+              <SelectValue placeholder="Filtrar por empresa (ou deixe vazio para todas)" />
             </SelectTrigger>
             <SelectContent>
-              {contratos.data?.map((c) => (
-                <SelectItem key={c.id_contrato} value={c.id_contrato}>
-                  {contratoLabel(c)}
+              <SelectItem value="todas">Todas as empresas</SelectItem>
+              {empresas.data?.map((e: any) => (
+                <SelectItem key={e.id_cliente} value={e.id_cliente}>
+                  {e.nome_empresa}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
 
-        {idContrato && (
-          <>
-            <div className="grid gap-3 md:grid-cols-3">
-              <KpiCard label="Receita Total Contrato" value={totals.receitaAcordada} variant="info" />
-              <KpiCard label="Total Arrecadado" value={totals.pago} variant="success" />
-              <KpiCard label="Saldo Restante (A vencer/Atrasos)" value={totals.falta} variant="warning" />
-            </div>
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por feedback, tipo..."
+            value={buscaLocal}
+            onChange={(e) => setBuscaLocal(e.target.value)}
+            className="pl-9"
+          />
+        </div>
 
-            <div className="flex items-center gap-4 mt-2">
-              <div className="flex flex-col gap-1.5">
-                <Label className="text-xs font-medium">Filtrar por Mês de Vencimento:</Label>
-                <div className="flex items-center gap-2">
-                  <input 
-                    type="month" 
-                    className="border bg-background rounded px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-primary"
-                    value={mesFiltro}
-                    onChange={(e) => setMesFiltro(e.target.value)}
-                  />
-                  {mesFiltro && (
-                    <Button onClick={() => setMesFiltro('')} variant="ghost" size="sm" className="text-xs underline">
-                      Limpar Filtro
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </div>
+        <Button variant="outline" onClick={limparFiltros} className="gap-2">
+          <FilterX className="h-4 w-4" />
+          Limpar
+        </Button>
+      </div>
 
-            <div className="overflow-hidden rounded-lg border border-border bg-card shadow-card">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b bg-muted/40 text-muted-foreground">
-                    <th className="text-left px-4 py-3 font-medium">Vencimento</th>
-                    <th className="text-left px-4 py-3 font-medium">Data Recibo</th>
-                    <th className="text-left px-4 py-3 font-medium">Status</th>
-                    <th className="text-right px-4 py-3 font-medium">Valor Base</th>
-                    <th className="text-right px-4 py-3 font-medium">Valor Atualizado / Pago</th>
-                    <th className="w-[100px]"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {faturasProcessadas.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="text-center p-8 text-muted-foreground">
-                        Nenhuma fatura encontrada para este período.
+      {/* TABELA */}
+      <div className="rounded-lg border border-border bg-card overflow-hidden">
+        {isLoading ? (
+          <div className="flex justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : interacoesFiltradas.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border bg-muted/50">
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Empresa</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tipo</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Data/Hora</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Urgência</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Valor</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Feedback</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {interacoesFiltradas.map((item: any) => {
+                  const empresa = empresas.data?.find(e => e.id_cliente === item.id_cliente);
+                  
+                  return (
+                    <tr key={item.id_interacao} className="hover:bg-muted/30 transition-colors">
+                      <td className="px-4 py-3 text-sm">{empresa?.nome_empresa || "—"}</td>
+                      <td className="px-4 py-3">
+                        <span className="inline-flex rounded bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                          {item.tipo_interacao}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground">{formatarData(item.data_hora)}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex rounded px-2 py-0.5 text-xs font-semibold ${
+                          item.grau_urgencia === 'Alto' ? 'bg-red-100 text-red-700' : 
+                          item.grau_urgencia === 'Médio' ? 'bg-yellow-100 text-yellow-700' : 
+                          'bg-green-100 text-green-700'
+                        }`}>
+                          {item.grau_urgencia}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-sm font-semibold text-emerald-600">
+                          {formatarMoeda(item.valor_cobrado)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground max-w-[250px] truncate">
+                        {item.feedback_anotacoes || "—"}
                       </td>
                     </tr>
-                  ) : (
-                    faturasProcessadas.map((f) => (
-                      <tr key={f.id_fatura} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
-                        <td className="px-4 py-3 font-mono font-medium">
-                          {new Date(f.data_vencimento).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
-                        </td>
-                        <td className="px-4 py-3 font-mono text-muted-foreground">
-                          {f.data_pagamento ? new Date(f.data_pagamento).toLocaleDateString('pt-BR') : '—'}
-                        </td>
-                        <td className={`px-4 py-3 ${f.cor}`}>
-                          {f.statusCalculado}
-                        </td>
-                        <td className="px-4 py-3 text-right text-muted-foreground">
-                          {Number(f.valor_original).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                        </td>
-                        <td className="px-4 py-3 text-right font-semibold text-foreground">
-                          {Number(f.valorAtualizado).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <div className="flex justify-end gap-2">
-                            <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground" onClick={() => handleEditClick(f)}>
-                              <Pencil className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => handleDeleteClick(f.id_fatura)}>
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <DollarSign className="h-12 w-12 text-muted-foreground/30 mb-3" />
+            <p className="text-sm text-muted-foreground">
+              {idClienteSelecionado 
+                ? "Nenhuma interação paga encontrada para esta empresa." 
+                : "Nenhuma interação paga registrada até o momento."}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              As interações marcadas como "Pago" no CRM aparecerão aqui.
+            </p>
+          </div>
         )}
       </div>
-    </DashboardLayout>
+
+      {interacoesFiltradas.length > 0 && (
+        <p className="text-xs text-muted-foreground text-right">
+          Mostrando {interacoesFiltradas.length} de {interacoesPagas?.length ?? 0} interações pagas
+        </p>
+      )}
+    </div>
   );
 }
 
 // ==========================================
-// 2. SUB-COMPONENTE: CARD DE REVISÃO (KPI)
+// COMPONENTES COMPARTILHADOS
 // ==========================================
 function KpiCard({ label, value, variant }: { label: string; value: number; variant: "success" | "warning" | "info" }) {
   return (
@@ -333,9 +575,6 @@ function KpiCard({ label, value, variant }: { label: string; value: number; vari
   );
 }
 
-// ==========================================
-// 3. SUB-COMPONENTE: DIALOG DA FATURA (COMPLETO)
-// ==========================================
 function FaturaDialog({ id_contrato, fatura, onClose }: { id_contrato: string; fatura?: any; onClose: () => void }) {
   const create = useCreateFatura();
   const update = useUpdateFatura();
@@ -392,22 +631,12 @@ function FaturaDialog({ id_contrato, fatura, onClose }: { id_contrato: string; f
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs">Valor Base (R$)</Label>
-              <Input
-                type="number"
-                step="0.01"
-                value={valor}
-                onChange={(e) => setValor(e.target.value)}
-                placeholder="0,00"
-                required
-              />
+              <Input type="number" step="0.01" value={valor} onChange={(e) => setValor(e.target.value)} placeholder="0,00" required />
             </div>
-
             <div className="space-y-1.5">
               <Label className="text-xs">Status da Cobrança</Label>
               <Select value={status} onValueChange={setStatus}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione" />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Pendente">Pendente</SelectItem>
                   <SelectItem value="Pago">Pago</SelectItem>
@@ -419,44 +648,24 @@ function FaturaDialog({ id_contrato, fatura, onClose }: { id_contrato: string; f
 
           <div className="space-y-1.5">
             <Label className="text-xs">Data de Vencimento</Label>
-            <Input
-              type="date"
-              value={dataVencimento}
-              onChange={(e) => setDataVencimento(e.target.value)}
-              required
-            />
+            <Input type="date" value={dataVencimento} onChange={(e) => setDataVencimento(e.target.value)} required />
           </div>
 
           {status === "Pago" && (
             <div className="grid grid-cols-2 gap-3 p-3 bg-muted/40 rounded-md border border-border">
               <div className="space-y-1.5">
                 <Label className="text-xs">Data do Pagamento</Label>
-                <Input
-                  type="date"
-                  value={dataPagamento}
-                  onChange={(e) => setDataPagamento(e.target.value)}
-                  required
-                />
+                <Input type="date" value={dataPagamento} onChange={(e) => setDataPagamento(e.target.value)} required />
               </div>
-
               <div className="space-y-1.5">
                 <Label className="text-xs">Valor Pago (R$)</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={valorPago}
-                  onChange={(e) => setValorPago(e.target.value)}
-                  placeholder="0,00"
-                />
+                <Input type="number" step="0.01" value={valorPago} onChange={(e) => setValorPago(e.target.value)} placeholder="0,00" />
               </div>
             </div>
           )}
 
-          {/* RODAPÉ DO FORMULÁRIO COM OS BOTÕES REORGANIZADOS */}
           <div className="flex justify-end gap-2 pt-4 border-t border-border">
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancelar
-            </Button>
+            <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
             <Button type="submit" disabled={isLoading}>
               {isLoading ? "Salvando..." : isEditing ? "Salvar" : "Adicionar Cobrança"}
             </Button>
