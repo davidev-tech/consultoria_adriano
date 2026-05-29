@@ -58,6 +58,7 @@ function InteracoesPage() {
   const [tipo, setTipo] = useState("Visita");
   const [dataHora, setDataHora] = useState(() => getLocalDatetimeString());
   const [feedback, setFeedback] = useState("");
+  const [editStatusPagamento, setEditStatusPagamento] = useState("Pendente"); // 👈 NOVO
   
   const { data: listaInteracoes, isLoading: loadingInteracoes } = useInteracoesPorCliente(idCliente || undefined);
 
@@ -75,6 +76,7 @@ function InteracoesPage() {
     setGrauUrgencia("Baixo");
     setStatusFinanceiro("Não Paga");
     setValorCobrado("");
+    setEditStatusPagamento("Pendente"); // 👈 reseta também
     setDataHora(getLocalDatetimeString());
   };
 
@@ -102,6 +104,7 @@ function InteracoesPage() {
       grau_urgencia: grauUrgencia,
       status_financeiro: statusFinanceiro,
       valor_cobrado: statusFinanceiro === "Paga" ? parseFloat(valorCobrado) : null,
+      status_pagamento: editStatusPagamento, // 👈 NOVO CAMPO
     };
 
     try {
@@ -116,6 +119,7 @@ function InteracoesPage() {
         setGrauUrgencia("Baixo");
         setStatusFinanceiro("Não Paga");
         setValorCobrado("");
+        setEditStatusPagamento("Pendente"); // 👈 reseta
       }
     } catch (err) {
       toast.error("Erro ao processar a requisição.");
@@ -129,6 +133,7 @@ function InteracoesPage() {
     setGrauUrgencia(item.grau_urgencia || "Baixo");
     setStatusFinanceiro(item.status_financeiro || "Não Paga");
     setValorCobrado(item.valor_cobrado ? item.valor_cobrado.toString() : "");
+    setEditStatusPagamento(item.status_pagamento || "Pendente"); // 👈 preenche
     if (item.data_hora) {
       setDataHora(getLocalDatetimeString(new Date(item.data_hora)));
     }
@@ -247,27 +252,42 @@ function InteracoesPage() {
 
               {/* ✅ CAMPO VALOR COBRADO - CONDICIONAL */}
               {statusFinanceiro === "Paga" && (
-                <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2 duration-200">
-                  <Label className="text-xs">Valor Cobrado (R$) *</Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                      R$
-                    </span>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0.01"
-                      value={valorCobrado}
-                      onChange={(e) => setValorCobrado(e.target.value)}
-                      placeholder="0,00"
-                      className="pl-10"
-                      required
-                    />
+                <>
+                  <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <Label className="text-xs">Valor Cobrado (R$) *</Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                        R$
+                      </span>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0.01"
+                        value={valorCobrado}
+                        onChange={(e) => setValorCobrado(e.target.value)}
+                        placeholder="0,00"
+                        className="pl-10"
+                        required
+                      />
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">
+                      Valor efetivamente cobrado nesta interação
+                    </p>
                   </div>
-                  <p className="text-[10px] text-muted-foreground">
-                    Valor efetivamente cobrado nesta interação
-                  </p>
-                </div>
+                  {/* 👇 NOVO: Status do Pagamento (só aparece se for Paga) */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Status do Pagamento</Label>
+                    <Select value={editStatusPagamento} onValueChange={setEditStatusPagamento}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Pendente">Pendente</SelectItem>
+                        <SelectItem value="Pago">Pago</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
               )}
 
               <div className="space-y-1.5">
@@ -347,12 +367,13 @@ function InteracoesPage() {
                             </span>
                           )}
 
-                          {/* ✅ TAG PAGA COM VALOR */}
+                          {/* ✅ TAG PAGA COM VALOR E STATUS PAGAMENTO */}
                           {item.status_financeiro === 'Paga' && (
                             <span className="rounded px-2 py-0.5 text-xs font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">
                               {item.valor_cobrado 
                                 ? `Paga - ${formatarMoeda(item.valor_cobrado)}` 
                                 : 'Paga'}
+                              {item.status_pagamento === 'Pago' ? ' ✓ Pago' : ' (Pendente)'}
                             </span>
                           )}
 

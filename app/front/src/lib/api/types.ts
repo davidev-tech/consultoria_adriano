@@ -122,6 +122,7 @@ export interface HistoricoInteracao {
   grau_urgencia?: string | null;
   status_financeiro?: StatusFinanceiro; // ✅ ADICIONADO
   valor_cobrado?: number | null
+  status_pagamento?: string | null;
 }
 
 // ✅ ATUALIZADO: HistoricoInteracaoCreate com status_financeiro
@@ -133,6 +134,7 @@ export interface HistoricoInteracaoCreate {
   grau_urgencia?: string | null;
   status_financeiro?: StatusFinanceiro; // ✅ ADICIONADO
   valor_cobrado?: number | null
+  status_pagamento?: string | null;
 }
 
 // ✅ NOVO: Payload específico para atualização parcial (PUT)

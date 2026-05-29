@@ -469,6 +469,8 @@ def atualizar_interacao(id_interacao: UUID, payload: dict, db: Session = Depends
         db_interacao.status_financeiro = payload["status_financeiro"]
     if "valor_cobrado" in payload:  # ✅ NOVO CAMPO
         db_interacao.valor_cobrado = payload["valor_cobrado"]
+    if "status_pagamento" in payload:
+        db_interacao.status_pagamento = payload["status_pagamento"]
 
     try:
         db.commit()
