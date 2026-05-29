@@ -24,9 +24,15 @@ import {
   useUpdateFatura,
   useInteracoesPagas,
   useTotalInteracoesPagas,
-} from "@/lib/api/hooks"; 
+} 
+from "@/lib/api/hooks"; 
 import { toast } from "sonner";
 import type { UUID } from "@/lib/api/types";
+import { useUpdateInteracao, useDeleteInteracao } from "@/lib/api/hooks";
+import { useQueryClient } from "@tanstack/react-query";
+import { Textarea } from "@/components/ui/textarea";
+// Dialog, DialogContent, etc. já estão importados
+import type { StatusFinanceiro } from "@/lib/api/types";
 
 export const Route = createFileRoute("/financeiro")({
   head: () => ({ meta: [{ title: "Financeiro — Gestão do Cuidado" }] }),
@@ -358,16 +364,26 @@ function FaturasTab() {
 // ==========================================
 function InteracoesPagasTab() {
   const empresas = useEmpresas();
-  const [idClienteSelecionado, setIdClienteSelecionado] = useState<string>("");
+  const [idClienteSelecionado, setIdClienteSelecionado] = useState<string>("todas");
   const [buscaLocal, setBuscaLocal] = useState("");
+  const queryClient = useQueryClient();
   
-  const { data: interacoesPagas, isLoading } = useInteracoesPagas(
-    idClienteSelecionado || undefined
-  );
-  
-  const { data: resumo } = useTotalInteracoesPagas(
-    idClienteSelecionado || undefined
-  );
+  // Hooks de mutação para edição/exclusão
+  const update = useUpdateInteracao();
+  const remove = useDeleteInteracao();
+
+  const clienteFiltro = idClienteSelecionado === "todas" ? undefined : idClienteSelecionado;
+  const { data: interacoesPagas, isLoading } = useInteracoesPagas(clienteFiltro);
+  const { data: resumo } = useTotalInteracoesPagas(clienteFiltro);
+
+  // Estados para o diálogo de edição
+  const [editingItem, setEditingItem] = useState<any>(null);
+  const [editTipo, setEditTipo] = useState("Visita");
+  const [editDataHora, setEditDataHora] = useState("");
+  const [editFeedback, setEditFeedback] = useState("");
+  const [editGrau, setEditGrau] = useState("Baixo");
+  const [editStatus, setEditStatus] = useState<StatusFinanceiro>("Não Paga");
+  const [editValor, setEditValor] = useState("");
 
   const interacoesFiltradas = interacoesPagas?.filter(item => {
     if (!buscaLocal) return true;
@@ -380,11 +396,59 @@ function InteracoesPagasTab() {
   }) ?? [];
 
   const limparFiltros = () => {
-    setIdClienteSelecionado("");
+    setIdClienteSelecionado("todas");
     setBuscaLocal("");
   };
 
   const empresaSelecionada = empresas.data?.find(e => e.id_cliente === idClienteSelecionado);
+
+  // Handlers de edição
+  const handleEditClick = (item: any) => {
+    setEditingItem(item);
+    setEditTipo(item.tipo_interacao || "Visita");
+    setEditDataHora(item.data_hora ? new Date(item.data_hora).toISOString().slice(0, 16) : "");
+    setEditFeedback(item.feedback_anotacoes || "");
+    setEditGrau(item.grau_urgencia || "Baixo");
+    setEditStatus(item.status_financeiro || "Não Paga");
+    setEditValor(item.valor_cobrado ? String(item.valor_cobrado) : "");
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingItem) return;
+    try {
+      await update.mutateAsync({
+        id: editingItem.id_interacao,
+        data: {
+          id_cliente: editingItem.id_cliente,
+          tipo_interacao: editTipo,
+          data_hora: editDataHora,
+          feedback_anotacoes: editFeedback,
+          grau_urgencia: editGrau,
+          status_financeiro: editStatus,
+          valor_cobrado: editStatus === "Paga" ? parseFloat(editValor) : null,
+        },
+      });
+      toast.success("Interação atualizada com sucesso!");
+      queryClient.invalidateQueries({ queryKey: ["interacoes-pagas"] });
+      queryClient.invalidateQueries({ queryKey: ["interacoes-pagas-total"] });
+      setEditingItem(null);
+    } catch (err) {
+      toast.error("Erro ao atualizar interação.");
+    }
+  };
+
+  const handleDeleteClick = async (id: string) => {
+    if (window.confirm("Deseja excluir permanentemente esta interação paga?")) {
+      try {
+        await remove.mutateAsync(id);
+        toast.success("Interação removida.");
+        queryClient.invalidateQueries({ queryKey: ["interacoes-pagas"] });
+        queryClient.invalidateQueries({ queryKey: ["interacoes-pagas-total"] });
+      } catch (err) {
+        toast.error("Erro ao excluir interação.");
+      }
+    }
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -439,7 +503,7 @@ function InteracoesPagasTab() {
         <div className="flex-1">
           <Select value={idClienteSelecionado} onValueChange={setIdClienteSelecionado}>
             <SelectTrigger>
-              <SelectValue placeholder="Filtrar por empresa (ou deixe vazio para todas)" />
+              <SelectValue placeholder="Filtrar por empresa..." />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="todas">Todas as empresas</SelectItem>
@@ -468,7 +532,7 @@ function InteracoesPagasTab() {
         </Button>
       </div>
 
-      {/* TABELA */}
+      {/* TABELA COM AÇÕES */}
       <div className="rounded-lg border border-border bg-card overflow-hidden">
         {isLoading ? (
           <div className="flex justify-center py-12">
@@ -485,6 +549,7 @@ function InteracoesPagasTab() {
                   <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Urgência</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Valor</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Feedback</th>
+                  <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[100px]">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -517,6 +582,28 @@ function InteracoesPagasTab() {
                       <td className="px-4 py-3 text-sm text-muted-foreground max-w-[250px] truncate">
                         {item.feedback_anotacoes || "—"}
                       </td>
+                      <td className="px-4 py-3 text-center">
+                        <div className="flex justify-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                            onClick={() => handleEditClick(item)}
+                            title="Editar interação"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => handleDeleteClick(item.id_interacao)}
+                            title="Excluir interação"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </td>
                     </tr>
                   );
                 })}
@@ -527,16 +614,97 @@ function InteracoesPagasTab() {
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <DollarSign className="h-12 w-12 text-muted-foreground/30 mb-3" />
             <p className="text-sm text-muted-foreground">
-              {idClienteSelecionado 
+              {idClienteSelecionado && idClienteSelecionado !== "todas"
                 ? "Nenhuma interação paga encontrada para esta empresa." 
                 : "Nenhuma interação paga registrada até o momento."}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              As interações marcadas como "Pago" no CRM aparecerão aqui.
             </p>
           </div>
         )}
       </div>
+
+      {/* DIÁLOGO DE EDIÇÃO */}
+      {editingItem && (
+        <Dialog open onOpenChange={(open) => { if (!open) setEditingItem(null); }}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Editar Interação Paga</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Tipo</Label>
+                  <Select value={editTipo} onValueChange={setEditTipo}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Visita">Visita</SelectItem>
+                      <SelectItem value="Reunião">Reunião</SelectItem>
+                      <SelectItem value="Mensagem">Mensagem</SelectItem>
+                      <SelectItem value="Ligação">Ligação</SelectItem>
+                      <SelectItem value="e-mail">E-mail</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Grau de Urgência</Label>
+                  <Select value={editGrau} onValueChange={setEditGrau}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Baixo">Baixo</SelectItem>
+                      <SelectItem value="Médio">Médio</SelectItem>
+                      <SelectItem value="Alto">Alto</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Status Financeiro</Label>
+                <Select value={editStatus} onValueChange={(value: StatusFinanceiro) => setEditStatus(value)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Não Paga">Não Paga</SelectItem>
+                    <SelectItem value="Paga">Paga</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {editStatus === "Paga" && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Valor Cobrado (R$)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    value={editValor}
+                    onChange={(e) => setEditValor(e.target.value)}
+                    placeholder="0,00"
+                  />
+                </div>
+              )}
+              <div className="space-y-1.5">
+                <Label className="text-xs">Data e Hora</Label>
+                <Input
+                  type="datetime-local"
+                  value={editDataHora}
+                  onChange={(e) => setEditDataHora(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Feedback / Anotações</Label>
+                <Textarea
+                  value={editFeedback}
+                  onChange={(e) => setEditFeedback(e.target.value)}
+                  rows={3}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditingItem(null)}>Cancelar</Button>
+              <Button onClick={handleSaveEdit} disabled={update.isPending}>
+                {update.isPending ? "Salvando..." : "Salvar"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {interacoesFiltradas.length > 0 && (
         <p className="text-xs text-muted-foreground text-right">
