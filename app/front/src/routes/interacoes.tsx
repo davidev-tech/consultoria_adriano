@@ -81,11 +81,11 @@ function InteracoesPage() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="registrar" className="mt-6">
+          <TabsContent value="registrar" className="mt-6 tab-content-enter">
             <RegistrarTab />
           </TabsContent>
 
-          <TabsContent value="historico" className="mt-6">
+          <TabsContent value="historico" className="mt-6 tab-content-enter">
             <HistoricoTab />
           </TabsContent>
         </Tabs>
@@ -161,132 +161,134 @@ function RegistrarTab() {
   };
 
   return (
-    <Card className="w-full border-border shadow-sm">
-      <CardHeader className="pb-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/15 text-primary ring-1 ring-primary/30">
-            <ClipboardList className="h-5 w-5" />
+    <div className="animate-fade-in-up">
+      <Card className="w-full border-border shadow-sm">
+        <CardHeader className="pb-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/15 text-primary ring-1 ring-primary/30">
+              <ClipboardList className="h-5 w-5" />
+            </div>
+            <div>
+              <CardTitle className="text-lg">Nova Interação</CardTitle>
+              <p className="text-sm text-muted-foreground">Preencha os dados do contato com o cliente</p>
+            </div>
           </div>
-          <div>
-            <CardTitle className="text-lg">Nova Interação</CardTitle>
-            <p className="text-sm text-muted-foreground">Preencha os dados do contato com o cliente</p>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit}>
-          <div className="grid gap-5">
-            {/* Grid de 3 colunas para os campos superiores */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div className="space-y-1.5">
-                <Label className="text-xs">Empresa cliente *</Label>
-                <Select value={idCliente} onValueChange={setIdCliente}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione a empresa..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {empresas.data?.map((e: any) => (
-                      <SelectItem key={e.id_cliente} value={e.id_cliente}>
-                        {e.nome_empresa}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit}>
+            <div className="grid gap-5">
+              {/* Grid de 3 colunas para os campos superiores */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Empresa cliente *</Label>
+                  <Select value={idCliente} onValueChange={setIdCliente}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a empresa..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {empresas.data?.map((e: any) => (
+                        <SelectItem key={e.id_cliente} value={e.id_cliente}>
+                          {e.nome_empresa}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Tipo de interação</Label>
+                  <Select value={tipo} onValueChange={setTipo}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Visita">Visita</SelectItem>
+                      <SelectItem value="Reunião">Reunião</SelectItem>
+                      <SelectItem value="Mensagem">Mensagem</SelectItem>
+                      <SelectItem value="Ligação">Ligação</SelectItem>
+                      <SelectItem value="e-mail">E-mail</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Grau de Urgência</Label>
+                  <Select value={grauUrgencia} onValueChange={setGrauUrgencia}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Baixo">Baixo</SelectItem>
+                      <SelectItem value="Médio">Médio</SelectItem>
+                      <SelectItem value="Alto">Alto</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Status Financeiro</Label>
+                  <Select
+                    value={statusFinanceiro}
+                    onValueChange={(value: StatusFinanceiro) => setStatusFinanceiro(value)}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Não Paga">Não Paga</SelectItem>
+                      <SelectItem value="Paga">Paga</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {statusFinanceiro === "Paga" && (
+                  <>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Valor Cobrado (R$) *</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0.01"
+                        value={valorCobrado}
+                        onChange={(e) => setValorCobrado(e.target.value)}
+                        placeholder="0,00"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Status do Pagamento</Label>
+                      <Select value={criacaoStatusPagamento} onValueChange={setCriacaoStatusPagamento}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Pendente">Pendente</SelectItem>
+                          <SelectItem value="Pago">Pago</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </>
+                )}
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Data e hora</Label>
+                  <Input
+                    type="datetime-local"
+                    value={dataHora}
+                    onChange={(e) => setDataHora(e.target.value)}
+                  />
+                </div>
               </div>
+
+              {/* Feedback ocupa largura total */}
               <div className="space-y-1.5">
-                <Label className="text-xs">Tipo de interação</Label>
-                <Select value={tipo} onValueChange={setTipo}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Visita">Visita</SelectItem>
-                    <SelectItem value="Reunião">Reunião</SelectItem>
-                    <SelectItem value="Mensagem">Mensagem</SelectItem>
-                    <SelectItem value="Ligação">Ligação</SelectItem>
-                    <SelectItem value="e-mail">E-mail</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Grau de Urgência</Label>
-                <Select value={grauUrgencia} onValueChange={setGrauUrgencia}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Baixo">Baixo</SelectItem>
-                    <SelectItem value="Médio">Médio</SelectItem>
-                    <SelectItem value="Alto">Alto</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Status Financeiro</Label>
-                <Select
-                  value={statusFinanceiro}
-                  onValueChange={(value: StatusFinanceiro) => setStatusFinanceiro(value)}
-                >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Não Paga">Não Paga</SelectItem>
-                    <SelectItem value="Paga">Paga</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              {statusFinanceiro === "Paga" && (
-                <>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Valor Cobrado (R$) *</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0.01"
-                      value={valorCobrado}
-                      onChange={(e) => setValorCobrado(e.target.value)}
-                      placeholder="0,00"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Status do Pagamento</Label>
-                    <Select value={criacaoStatusPagamento} onValueChange={setCriacaoStatusPagamento}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Pendente">Pendente</SelectItem>
-                        <SelectItem value="Pago">Pago</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </>
-              )}
-              <div className="space-y-1.5">
-                <Label className="text-xs">Data e hora</Label>
-                <Input
-                  type="datetime-local"
-                  value={dataHora}
-                  onChange={(e) => setDataHora(e.target.value)}
+                <Label className="text-xs">Feedback / Anotações</Label>
+                <Textarea
+                  value={feedback}
+                  onChange={(e) => setFeedback(e.target.value)}
+                  rows={4}
+                  placeholder="Notas da visita, próximos passos, perceções..."
                 />
               </div>
             </div>
 
-            {/* Feedback ocupa largura total */}
-            <div className="space-y-1.5">
-              <Label className="text-xs">Feedback / Anotações</Label>
-              <Textarea
-                value={feedback}
-                onChange={(e) => setFeedback(e.target.value)}
-                rows={4}
-                placeholder="Notas da visita, próximos passos, perceções..."
-              />
+            <div className="flex justify-end mt-6">
+              <Button type="submit" disabled={create.isPending} className="gap-2">
+                {create.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                Registrar
+              </Button>
             </div>
-          </div>
-
-          <div className="flex justify-end mt-6">
-            <Button type="submit" disabled={create.isPending} className="gap-2">
-              {create.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-              Registrar
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 
@@ -402,8 +404,10 @@ function HistoricoTab() {
 
       <div className="rounded-lg border border-border bg-card overflow-hidden">
         {isLoading ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <div className="p-4 space-y-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-16 rounded skeleton-shimmer" />
+            ))}
           </div>
         ) : interacoesFiltradas.length > 0 ? (
           <div className="divide-y divide-border max-h-[600px] overflow-y-auto">

@@ -95,11 +95,11 @@ function FinanceiroPage() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="faturas" className="mt-6">
+          <TabsContent value="faturas" className="mt-6 tab-content-enter">
             <FaturasTab />
           </TabsContent>
 
-          <TabsContent value="interacoes-pagas" className="mt-6">
+          <TabsContent value="interacoes-pagas" className="mt-6 tab-content-enter">
             <InteracoesPagasTab />
           </TabsContent>
         </Tabs>
@@ -276,9 +276,15 @@ function FaturasTab() {
       {idContrato && (
         <>
           <div className="grid gap-3 md:grid-cols-3">
-            <KpiCard label="Receita Total Contrato" value={totals.receitaAcordada} variant="info" />
-            <KpiCard label="Total Arrecadado" value={totals.pago} variant="success" />
-            <KpiCard label="Saldo Restante" value={totals.falta} variant="warning" />
+            <div className="animate-fade-in-up">
+              <KpiCard label="Receita Total Contrato" value={totals.receitaAcordada} variant="info" />
+            </div>
+            <div className="animate-fade-in-up">
+              <KpiCard label="Total Arrecadado" value={totals.pago} variant="success" />
+            </div>
+            <div className="animate-fade-in-up">
+              <KpiCard label="Saldo Restante" value={totals.falta} variant="warning" />
+            </div>
           </div>
 
           <div className="flex items-center gap-4 mt-2">
@@ -301,26 +307,30 @@ function FaturasTab() {
           </div>
 
           <div className="overflow-hidden rounded-lg border border-border bg-card shadow-card">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-muted/40 text-muted-foreground">
-                  <th className="text-left px-4 py-3 font-medium">Vencimento</th>
-                  <th className="text-left px-4 py-3 font-medium">Data Recibo</th>
-                  <th className="text-left px-4 py-3 font-medium">Status</th>
-                  <th className="text-right px-4 py-3 font-medium">Valor Base</th>
-                  <th className="text-right px-4 py-3 font-medium">Valor Atualizado</th>
-                  <th className="w-[100px]"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {faturasProcessadas.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="text-center p-8 text-muted-foreground">
-                      Nenhuma fatura encontrada para este período.
-                    </td>
+            {faturasQuery.isLoading ? (
+              <div className="p-8 space-y-3">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="h-6 rounded skeleton-shimmer" />
+                ))}
+              </div>
+            ) : faturasProcessadas.length === 0 ? (
+              <div className="text-center p-8 text-muted-foreground">
+                Nenhuma fatura encontrada para este período.
+              </div>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/40 text-muted-foreground">
+                    <th className="text-left px-4 py-3 font-medium">Vencimento</th>
+                    <th className="text-left px-4 py-3 font-medium">Data Recibo</th>
+                    <th className="text-left px-4 py-3 font-medium">Status</th>
+                    <th className="text-right px-4 py-3 font-medium">Valor Base</th>
+                    <th className="text-right px-4 py-3 font-medium">Valor Atualizado</th>
+                    <th className="w-[100px]"></th>
                   </tr>
-                ) : (
-                  faturasProcessadas.map((f) => (
+                </thead>
+                <tbody>
+                  {faturasProcessadas.map((f) => (
                     <tr key={f.id_fatura} className="border-b last:border-0 hover-row transition-colors">
                       <td className="px-4 py-3 font-mono font-medium">
                         {formatarDataCurta(f.data_vencimento)}
@@ -348,10 +358,10 @@ function FaturasTab() {
                         </div>
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </>
       )}
@@ -473,48 +483,52 @@ function InteracoesPagasTab() {
     <div className="flex flex-col gap-6">
       {/* CARDS DE RESUMO */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="bg-emerald-500/5 border-emerald-500/20">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Interações</CardTitle>
-            <Receipt className="h-4 w-4 text-emerald-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-emerald-500">
-              {resumo?.total_interacoes ?? 0}
-            </div>
-            <p className="text-xs text-muted-foreground">interações cobradas</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-emerald-500/5 border-emerald-500/20">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Valor Total Cobrado</CardTitle>
-            <DollarSign className="h-4 w-4 text-emerald-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-emerald-500">
-              {formatarMoeda(resumo?.total_valor)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {empresaSelecionada ? `Empresa: ${empresaSelecionada.nome_empresa}` : 'Todas as empresas'}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-emerald-500/5 border-emerald-500/20">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Ticket Médio</CardTitle>
-            <TrendingUp className="h-4 w-4 text-emerald-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-emerald-500">
-              {resumo && resumo.total_interacoes > 0
-                ? formatarMoeda(resumo.total_valor / resumo.total_interacoes)
-                : 'R$ 0,00'}
-            </div>
-            <p className="text-xs text-muted-foreground">por interação</p>
-          </CardContent>
-        </Card>
+        <div className="animate-fade-in-up">
+          <Card className="bg-emerald-500/5 border-emerald-500/20">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total de Interações</CardTitle>
+              <Receipt className="h-4 w-4 text-emerald-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-emerald-500">
+                {resumo?.total_interacoes ?? 0}
+              </div>
+              <p className="text-xs text-muted-foreground">interações cobradas</p>
+            </CardContent>
+          </Card>
+        </div>
+        <div className="animate-fade-in-up">
+          <Card className="bg-emerald-500/5 border-emerald-500/20">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Valor Total Cobrado</CardTitle>
+              <DollarSign className="h-4 w-4 text-emerald-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-emerald-500">
+                {formatarMoeda(resumo?.total_valor)}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {empresaSelecionada ? `Empresa: ${empresaSelecionada.nome_empresa}` : 'Todas as empresas'}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+        <div className="animate-fade-in-up">
+          <Card className="bg-emerald-500/5 border-emerald-500/20">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Ticket Médio</CardTitle>
+              <TrendingUp className="h-4 w-4 text-emerald-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-emerald-500">
+                {resumo && resumo.total_interacoes > 0
+                  ? formatarMoeda(resumo.total_valor / resumo.total_interacoes)
+                  : 'R$ 0,00'}
+              </div>
+              <p className="text-xs text-muted-foreground">por interação</p>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       {/* FILTROS */}
@@ -554,8 +568,10 @@ function InteracoesPagasTab() {
       {/* TABELA COM AÇÕES */}
       <div className="rounded-lg border border-border bg-card overflow-hidden">
         {isLoading ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <div className="p-8 space-y-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-6 rounded skeleton-shimmer" />
+            ))}
           </div>
         ) : interacoesFiltradas.length > 0 ? (
           <div className="overflow-x-auto">

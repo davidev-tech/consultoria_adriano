@@ -98,7 +98,7 @@ function EmpresasPage() {
               Array.from({ length: 6 }).map((_, i) => (
                 <div
                   key={i}
-                  className="h-[340px] animate-pulse rounded-xl border border-border bg-card/50"
+                  className="h-[340px] rounded-xl border border-border skeleton-shimmer"
                 />
               ))}
 
@@ -181,7 +181,7 @@ function EmpresasPage() {
               return (
                 <div
                   key={empresa.id_cliente}
-                  className="group relative flex flex-col justify-between rounded-xl border border-border bg-card p-5 shadow-sm transition-all hover:border-primary/50 hover:shadow-md card-hover"
+                  className="group relative flex flex-col justify-between rounded-xl border border-border bg-card p-5 shadow-sm transition-all hover:border-primary/50 hover:shadow-md card-hover animate-fade-in-up"
                 >
                   <div>
                     {/* CABEÇALHO DO CARD */}

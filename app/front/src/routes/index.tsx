@@ -70,7 +70,7 @@ function Index() {
         </div>
 
         <div className="grid gap-4 md:grid-cols-3">
-          <div className="card-hover">
+          <div className="card-hover animate-fade-in-up">
             <MetricCard
               label="Total de Empresas"
               isLoading={empresasLoading}
@@ -81,7 +81,7 @@ function Index() {
               icon={Building2}
             />
           </div>
-          <div className="card-hover">
+          <div className="card-hover animate-fade-in-up">
             <MetricCard
               label="Contratos Ativos"
               isLoading={contratosLoading}
@@ -92,7 +92,7 @@ function Index() {
               icon={FileText}
             />
           </div>
-          <div className="card-hover">
+          <div className="card-hover animate-fade-in-up">
             <MetricCard
               label="Receita Acordada"
               isLoading={contratosLoading}
@@ -106,7 +106,7 @@ function Index() {
         </div>
 
         {/* SEÇÃO DO METABASE */}
-        <section className="rounded-lg border border-border bg-card shadow-card overflow-hidden w-full mt-2">
+        <section className="rounded-lg border border-border bg-card shadow-card overflow-hidden w-full mt-2 animate-fade-in-up">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-border px-5 py-4 gap-4">
             <div>
               <h2 className="text-sm font-semibold tracking-tight">Dashboard Analítico</h2>

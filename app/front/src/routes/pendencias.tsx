@@ -80,7 +80,7 @@ function PendenciasPage() {
 
   return (
     <DashboardLayout>
-      <div className="mx-auto max-w-6xl flex flex-col gap-6 p-4">
+      <div className="mx-auto max-w-6xl flex flex-col gap-6 p-4 animate-fade-in-up">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Pendências</h1>
           <p className="text-sm text-muted-foreground">
@@ -90,8 +90,7 @@ function PendenciasPage() {
 
         {/* CARDS DE RESUMO */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Card Financeiro */}
-          <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
+          <div className="animate-fade-in-up rounded-lg border border-border bg-card p-5 shadow-sm">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-yellow-500/10 text-yellow-600 ring-1 ring-yellow-500/20">
                 <DollarSign className="h-5 w-5" />
@@ -104,8 +103,7 @@ function PendenciasPage() {
             </div>
           </div>
 
-          {/* Card Entregas */}
-          <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
+          <div className="animate-fade-in-up rounded-lg border border-border bg-card p-5 shadow-sm">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-500/10 text-red-600 ring-1 ring-red-500/20">
                 <ClipboardList className="h-5 w-5" />
@@ -118,8 +116,7 @@ function PendenciasPage() {
             </div>
           </div>
 
-          {/* Card Total */}
-          <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
+          <div className="animate-fade-in-up rounded-lg border border-border bg-card p-5 shadow-sm">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary ring-1 ring-primary/20">
                 <AlertTriangle className="h-5 w-5" />
@@ -133,7 +130,7 @@ function PendenciasPage() {
           </div>
         </div>
 
-        {/* FILTROS (inalterados) */}
+        {/* FILTROS */}
         <div className="flex flex-col sm:flex-row gap-3">
           <Select value={idEmpresa} onValueChange={(v) => { setIdEmpresa(v); }}>
             <SelectTrigger className="w-full sm:w-60">
@@ -175,7 +172,11 @@ function PendenciasPage() {
         {/* TABELA */}
         <div className="rounded-lg border border-border bg-card overflow-hidden">
           {isLoading ? (
-            <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div>
+            <div className="p-4 space-y-3">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="h-12 rounded skeleton-shimmer" />
+              ))}
+            </div>
           ) : pendenciasFiltradas.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">

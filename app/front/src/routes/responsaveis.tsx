@@ -125,7 +125,7 @@ function ResponsaveisPage() {
 
   return (
     <DashboardLayout>
-      <div className="mx-auto max-w-6xl flex flex-col gap-6 p-4">
+      <div className="mx-auto max-w-6xl flex flex-col gap-6 p-4 animate-fade-in-up">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">Responsáveis</h1>
@@ -169,7 +169,11 @@ function ResponsaveisPage() {
         {/* TABELA */}
         <div className="rounded-lg border border-border bg-card overflow-hidden">
           {isLoading ? (
-            <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div>
+            <div className="p-4 space-y-3">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="h-12 rounded skeleton-shimmer" />
+              ))}
+            </div>
           ) : responsaveis && responsaveis.length > 0 ? (
             <table className="w-full text-sm">
               <thead>
