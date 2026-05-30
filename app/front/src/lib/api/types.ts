@@ -64,6 +64,15 @@ export interface ResponsavelCreate {
   cargo?: string | null;
 }
 
+export interface ResponsavelList {
+  id_responsavel: UUID;
+  id_cliente: UUID;
+  nome: string;
+  cpf?: string | null;
+  cargo?: string | null;
+  empresa_nome: string;
+}
+
 export interface ModeloContrato {
   id_modelo: UUID;
   nome_modelo: string;
@@ -161,15 +170,6 @@ export interface InteracaoUpdatePayload {
   feedback_anotacoes?: string;
   grau_urgencia?: string;
   status_financeiro?: StatusFinanceiro;
-}
-
-export interface Entrega {
-  id_entrega: UUID;
-  id_contrato: UUID;
-  descricao_entrega: string;
-  data_prazo_limite: string; // YYYY-MM-DD
-  data_conclusao?: string | null;
-  status_entrega?: string | null;
 }
 
 export interface Pagamento {

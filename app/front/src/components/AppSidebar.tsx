@@ -10,6 +10,7 @@ import {
   Radar,
   CalendarDays,
   AlertTriangle,
+  Users,
 } from "lucide-react";
 import {
   Sidebar,
@@ -25,6 +26,7 @@ import {
 
 const items = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard, group: "Inteligência" },
+  { title: "Responsáveis", url: "/responsaveis", icon: Users, group: "Inteligência" },
   { title: "Empresas", url: "/empresas", icon: Building2, group: "Cadastros" },
   { title: "Contratos", url: "/contratos", icon: FileText, group: "Cadastros" },
   { title: "Interações", url: "/interacoes", icon: ClipboardList, group: "Operacional" },

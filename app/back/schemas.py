@@ -106,6 +106,16 @@ class ResponsavelResponse(ResponsavelBase):
     
     model_config = ConfigDict(from_attributes=True)
 
+class ResponsavelListResponse(BaseModel):
+    id_responsavel: UUID
+    id_cliente: UUID
+    nome: str
+    cpf: Optional[str] = None
+    cargo: Optional[str] = None
+    empresa_nome: str
+    
+    model_config = ConfigDict(from_attributes=True)
+
 # ==========================================
 # 3. MÓDULO: MODELO DE CONTRATO
 # ==========================================
