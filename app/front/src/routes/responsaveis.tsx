@@ -19,7 +19,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { Users, Loader2, Plus, Pencil, Trash2, Search, FilterX } from "lucide-react";
+import { Users, Plus, Pencil, Trash2, Search, FilterX } from "lucide-react";
 import {
   useEmpresas,
   useCreateResponsavel,
@@ -65,7 +65,6 @@ function ResponsaveisPage() {
   const update = useUpdateResponsavel();
   const remove = useDeleteResponsavel();
 
-  // Diálogo de confirmação de exclusão
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
 
@@ -133,7 +132,7 @@ function ResponsaveisPage() {
               Gerencie os contatos das empresas clientes.
             </p>
           </div>
-          <Button onClick={handleOpenNew} className="gap-2">
+          <Button onClick={handleOpenNew} className="gap-2 ripple">
             <Plus className="h-4 w-4" /> Novo Responsável
           </Button>
         </div>
@@ -194,11 +193,21 @@ function ResponsaveisPage() {
                     <td className="px-4 py-3">{r.empresa_nome}</td>
                     <td className="px-4 py-3">
                       <div className="flex gap-2 justify-end">
-                        <Button variant="ghost" size="icon" onClick={() => handleEdit(r)}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="action-icon h-8 w-8"
+                          onClick={() => handleEdit(r)}
+                        >
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDelete(r.id_responsavel)}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="action-icon h-8 w-8 text-destructive"
+                          onClick={() => handleDelete(r.id_responsavel)}
+                        >
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </td>
@@ -209,7 +218,7 @@ function ResponsaveisPage() {
           ) : (
             <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
               <Users className="h-12 w-12 mb-3 opacity-30" />
-              <p>Nenhum responsável encontrado.</p>
+              <p>Cadastre o primeiro contato da empresa.</p>
             </div>
           )}
         </div>
@@ -250,7 +259,7 @@ function ResponsaveisPage() {
               </div>
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-                <Button type="submit" disabled={create.isPending || update.isPending}>
+                <Button type="submit" disabled={create.isPending || update.isPending} className="ripple">
                   {create.isPending || update.isPending ? "Salvando..." : "Salvar"}
                 </Button>
               </DialogFooter>

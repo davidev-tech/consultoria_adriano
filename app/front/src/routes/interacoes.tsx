@@ -183,7 +183,7 @@ function RegistrarTab() {
                   <Label className="text-xs">Empresa cliente *</Label>
                   <Select value={idCliente} onValueChange={setIdCliente}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecione a empresa..." />
+                      <SelectValue placeholder="Para qual cliente estamos olhando hoje?" />
                     </SelectTrigger>
                     <SelectContent>
                       {empresas.data?.map((e: any) => (
@@ -394,7 +394,7 @@ function HistoricoTab() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar por feedback, tipo..."
+            placeholder="Buscar por palavra-chave..."
             value={buscaLocal}
             onChange={(e) => setBuscaLocal(e.target.value)}
             className="pl-9"
@@ -497,7 +497,7 @@ function HistoricoTab() {
           </div>
         ) : idCliente ? (
           <p className="text-sm text-muted-foreground italic p-4">
-            Nenhuma interação encontrada para este cliente.
+            Este cliente ainda não teve nenhum contato registrado.
           </p>
         ) : (
           <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">

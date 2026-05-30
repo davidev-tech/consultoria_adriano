@@ -18,6 +18,7 @@ import { Route as EmpresasRouteImport } from './routes/empresas'
 import { Route as ContratosRouteImport } from './routes/contratos'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as EmpresasIdRouteImport } from './routes/empresas.$id'
 
 const ResponsaveisRoute = ResponsaveisRouteImport.update({
   id: '/responsaveis',
@@ -64,40 +65,48 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EmpresasIdRoute = EmpresasIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => EmpresasRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/contratos': typeof ContratosRoute
-  '/empresas': typeof EmpresasRoute
+  '/empresas': typeof EmpresasRouteWithChildren
   '/entregas_prazos': typeof Entregas_prazosRoute
   '/financeiro': typeof FinanceiroRoute
   '/interacoes': typeof InteracoesRoute
   '/pendencias': typeof PendenciasRoute
   '/responsaveis': typeof ResponsaveisRoute
+  '/empresas/$id': typeof EmpresasIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/contratos': typeof ContratosRoute
-  '/empresas': typeof EmpresasRoute
+  '/empresas': typeof EmpresasRouteWithChildren
   '/entregas_prazos': typeof Entregas_prazosRoute
   '/financeiro': typeof FinanceiroRoute
   '/interacoes': typeof InteracoesRoute
   '/pendencias': typeof PendenciasRoute
   '/responsaveis': typeof ResponsaveisRoute
+  '/empresas/$id': typeof EmpresasIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/contratos': typeof ContratosRoute
-  '/empresas': typeof EmpresasRoute
+  '/empresas': typeof EmpresasRouteWithChildren
   '/entregas_prazos': typeof Entregas_prazosRoute
   '/financeiro': typeof FinanceiroRoute
   '/interacoes': typeof InteracoesRoute
   '/pendencias': typeof PendenciasRoute
   '/responsaveis': typeof ResponsaveisRoute
+  '/empresas/$id': typeof EmpresasIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -111,6 +120,7 @@ export interface FileRouteTypes {
     | '/interacoes'
     | '/pendencias'
     | '/responsaveis'
+    | '/empresas/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -122,6 +132,7 @@ export interface FileRouteTypes {
     | '/interacoes'
     | '/pendencias'
     | '/responsaveis'
+    | '/empresas/$id'
   id:
     | '__root__'
     | '/'
@@ -133,13 +144,14 @@ export interface FileRouteTypes {
     | '/interacoes'
     | '/pendencias'
     | '/responsaveis'
+    | '/empresas/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ConfiguracoesRoute: typeof ConfiguracoesRoute
   ContratosRoute: typeof ContratosRoute
-  EmpresasRoute: typeof EmpresasRoute
+  EmpresasRoute: typeof EmpresasRouteWithChildren
   Entregas_prazosRoute: typeof Entregas_prazosRoute
   FinanceiroRoute: typeof FinanceiroRoute
   InteracoesRoute: typeof InteracoesRoute
@@ -212,14 +224,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/empresas/$id': {
+      id: '/empresas/$id'
+      path: '/$id'
+      fullPath: '/empresas/$id'
+      preLoaderRoute: typeof EmpresasIdRouteImport
+      parentRoute: typeof EmpresasRoute
+    }
   }
 }
+
+interface EmpresasRouteChildren {
+  EmpresasIdRoute: typeof EmpresasIdRoute
+}
+
+const EmpresasRouteChildren: EmpresasRouteChildren = {
+  EmpresasIdRoute: EmpresasIdRoute,
+}
+
+const EmpresasRouteWithChildren = EmpresasRoute._addFileChildren(
+  EmpresasRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ConfiguracoesRoute: ConfiguracoesRoute,
   ContratosRoute: ContratosRoute,
-  EmpresasRoute: EmpresasRoute,
+  EmpresasRoute: EmpresasRouteWithChildren,
   Entregas_prazosRoute: Entregas_prazosRoute,
   FinanceiroRoute: FinanceiroRoute,
   InteracoesRoute: InteracoesRoute,

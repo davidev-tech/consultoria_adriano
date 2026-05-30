@@ -552,7 +552,7 @@ function InteracoesPagasTab() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar por feedback, tipo..."
+            placeholder="Buscar por palavra-chave..."
             value={buscaLocal}
             onChange={(e) => setBuscaLocal(e.target.value)}
             className="pl-9"

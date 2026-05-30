@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AlertTriangle, DollarSign, ClipboardList, FilterX, Search, Loader2 } from "lucide-react";
+import { AlertTriangle, DollarSign, ClipboardList, FilterX, Search } from "lucide-react";
 import { useEmpresas } from "@/lib/api/hooks";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
@@ -158,7 +158,7 @@ function PendenciasPage() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar por empresa ou descrição..."
+              placeholder="Filtrar pendências..."
               value={buscaLocal}
               onChange={(e) => setBuscaLocal(e.target.value)}
               className="pl-9"
@@ -193,13 +193,13 @@ function PendenciasPage() {
                 <tbody className="divide-y">
                   {pendenciasFiltradas.map((p) => {
                     const tipoColor = p.tipo === "financeira" 
-                      ? "bg-yellow-500/10 text-yellow-600" 
-                      : "bg-red-500/10 text-red-600";
+                      ? "badge-warning" 
+                      : "badge-danger";
                     const statusColor = p.status === "Atrasado" 
-                      ? "text-red-600 font-medium" 
+                      ? "text-red-400 font-medium" 
                       : p.status === "Pendente" 
-                        ? "text-yellow-600" 
-                        : "text-emerald-600";
+                        ? "text-yellow-400" 
+                        : "text-emerald-400";
                     return (
                       <tr key={p.id} className="hover-row">
                         <td className="px-4 py-3">{p.empresa_nome}</td>
@@ -221,7 +221,7 @@ function PendenciasPage() {
           ) : (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <AlertTriangle className="h-12 w-12 text-muted-foreground/30 mb-3" />
-              <p className="text-sm text-muted-foreground">Nenhuma pendência encontrada.</p>
+              <p className="text-sm text-muted-foreground">Tudo em dia! Nenhuma pendência no momento.</p>
             </div>
           )}
         </div>

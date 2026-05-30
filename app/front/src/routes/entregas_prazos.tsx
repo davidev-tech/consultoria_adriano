@@ -226,7 +226,7 @@ const { data: entregas, isLoading } = useEntregas({
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar por descrição..."
+              placeholder="Pesquisar entrega..."
               value={buscaLocal}
               onChange={(e) => setBuscaLocal(e.target.value)}
               className="pl-9"
@@ -314,7 +314,7 @@ const { data: entregas, isLoading } = useEntregas({
           ) : (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <CalendarDays className="h-12 w-12 text-muted-foreground/30 mb-3" />
-              <p className="text-sm text-muted-foreground">Nenhuma entrega encontrada.</p>
+              <p className="text-sm text-muted-foreground">Nenhuma entrega agendada. Que tal criar uma agora?</p>
             </div>
           )}
         </div>

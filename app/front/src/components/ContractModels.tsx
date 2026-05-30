@@ -24,7 +24,7 @@ export default function ContractModels() {
           <Search className="w-4 h-4 text-zinc-500 mr-2" />
           <input 
             type="text" 
-            placeholder="Buscar clientes, relatórios, atividades..." 
+            placeholder="O que você precisa encontrar?"
             className="bg-transparent border-none text-sm outline-none text-zinc-300 w-full placeholder:text-zinc-500"
           />
         </div>

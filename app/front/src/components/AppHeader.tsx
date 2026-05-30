@@ -1,3 +1,4 @@
+import { CommandPalette } from "@/components/CommandPalette";
 import { Search } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Input } from "@/components/ui/input";
@@ -14,14 +15,13 @@ export function AppHeader() {
       <div className="relative flex-1 max-w-md">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder="Buscar clientes, relatórios, atividades..."
+          placeholder="O que você precisa encontrar?"
           className="h-10 rounded-lg border-border bg-muted/40 pl-9 focus-visible:bg-card"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
       </div>
       <div className="ml-auto flex items-center gap-2">
-        {/* ✅ Substituído pelo componente funcional */}
         <NotificacoesDropdown />
         
         <div className="flex items-center gap-3 rounded-full border border-border bg-card px-2 py-1 pr-3 shadow-soft">
@@ -37,6 +37,8 @@ export function AppHeader() {
           </div>
         </div>
       </div>
+      {/* ✅ Busca global (Ctrl+K) */}
+      <CommandPalette />
     </header>
   );
 }
