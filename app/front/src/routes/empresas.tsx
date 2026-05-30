@@ -166,13 +166,21 @@ function EmpresasPage() {
               }, 0);
 
               // ✅ PENDÊNCIAS FINANCEIRAS (faturas Pendentes/Atrasadas)
-              const totalPendenciasFinanceiras = contratosAtivos.reduce((acc: number, c: any) => {
+                            // ✅ PENDÊNCIAS FINANCEIRAS (faturas Pendentes/Atrasadas)
+              const faturasPendentes = contratosAtivos.reduce((acc: number, c: any) => {
                 if (!Array.isArray(c.faturas)) return acc;
                 const pendentes = c.faturas.filter(
                   (f: any) => f.status === "Pendente" || f.status === "Atrasado"
                 );
                 return acc + pendentes.length;
               }, 0);
+
+              // ✅ PENDÊNCIAS FINANCEIRAS DE INTERAÇÕES (pagas com pagamento pendente)
+              const interacoesFinanceirasPendentes = interacoes.filter(
+                (i: any) => i.status_financeiro === "Paga" && i.status_pagamento === "Pendente"
+              ).length;
+
+              const totalPendenciasFinanceiras = faturasPendentes + interacoesFinanceirasPendentes;
 
               // ✅ ÚLTIMAS 3 INTERAÇÕES (qualquer tipo)
               const ultimasInteracoes = interacoesOrdenadas.slice(0, 3);
