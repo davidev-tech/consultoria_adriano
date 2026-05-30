@@ -10,7 +10,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
       <div className="flex min-h-screen w-full bg-background">
         <AppSidebar />
         <div className="flex flex-1 flex-col">
-          <AppHeader />
+          <AppHeader />   {/* Mantenha apenas o AppHeader original */}
           <main className="flex-1 p-4 md:p-6 lg:p-8">{children}</main>
         </div>
       </div>
@@ -18,4 +18,3 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
     </SidebarProvider>
   );
 }
-

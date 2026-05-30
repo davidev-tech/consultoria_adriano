@@ -18,6 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Users, Loader2, Plus, Pencil, Trash2, Search, FilterX } from "lucide-react";
 import {
   useEmpresas,
@@ -64,6 +65,10 @@ function ResponsaveisPage() {
   const update = useUpdateResponsavel();
   const remove = useDeleteResponsavel();
 
+  // Diálogo de confirmação de exclusão
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<string | null>(null);
+
   const resetForm = () => {
     setForm({ nome: "", cpf: "", cargo: "", id_cliente: "" });
   };
@@ -85,15 +90,9 @@ function ResponsaveisPage() {
     setDialogOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
-    if (window.confirm("Excluir este responsável?")) {
-      try {
-        await remove.mutateAsync(id);
-        toast.success("Responsável removido.");
-      } catch {
-        toast.error("Erro ao excluir.");
-      }
-    }
+  const handleDelete = (id: string) => {
+    setItemToDelete(id);
+    setDeleteOpen(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -184,7 +183,7 @@ function ResponsaveisPage() {
               </thead>
               <tbody className="divide-y">
                 {responsaveis.map((r: any) => (
-                  <tr key={r.id_responsavel} className="hover:bg-muted/20">
+                  <tr key={r.id_responsavel} className="hover-row">
                     <td className="px-4 py-3 font-medium">{r.nome}</td>
                     <td className="px-4 py-3 text-muted-foreground">{r.cpf || "—"}</td>
                     <td className="px-4 py-3">{r.cargo || "—"}</td>
@@ -255,6 +254,26 @@ function ResponsaveisPage() {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* DIÁLOGO DE CONFIRMAÇÃO DE EXCLUSÃO */}
+      <ConfirmDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title="Excluir responsável?"
+        description="Esta ação não pode ser desfeita. O responsável será removido permanentemente."
+        onConfirm={async () => {
+          if (itemToDelete) {
+            try {
+              await remove.mutateAsync(itemToDelete);
+              toast.success("Responsável removido.");
+            } catch {
+              toast.error("Erro ao excluir responsável.");
+            }
+          }
+          setDeleteOpen(false);
+        }}
+        loading={remove.isPending}
+      />
     </DashboardLayout>
   );
 }

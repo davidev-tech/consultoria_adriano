@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import {
   useEmpresas,
   useTodosContratos,
@@ -31,7 +32,6 @@ import type { UUID } from "@/lib/api/types";
 import { useUpdateInteracao, useDeleteInteracao } from "@/lib/api/hooks";
 import { useQueryClient } from "@tanstack/react-query";
 import { Textarea } from "@/components/ui/textarea";
-// Dialog, DialogContent, etc. já estão importados
 import type { StatusFinanceiro } from "@/lib/api/types";
 
 export const Route = createFileRoute("/financeiro")({
@@ -109,21 +109,28 @@ function FinanceiroPage() {
 }
 
 // ==========================================
-// ABA 1: FATURAS E PARCELAS (SEU CÓDIGO EXISTENTE)
+// ABA 1: FATURAS E PARCELAS
 // ==========================================
 function FaturasTab() {
   const [mesFiltro, setMesFiltro] = useState<string>('');
   const empresas = useEmpresas();
   const contratos = useTodosContratos();
+  
+  const [idContrato, setIdContrato] = useState("");
+  const faturasQuery = useFaturasPorContrato(idContrato || undefined);
+  const [open, setOpen] = useState(false);
+  const [editingFatura, setEditingFatura] = useState<any>(null);
+
+  // Diálogo de confirmação de exclusão
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<string | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
   const deleteFatura = async (id: string) => {
     const res = await fetch(`/api/faturas/${id}`, { method: "DELETE" });
     if (!res.ok) throw new Error("Failed to delete");
     return await res.json();
   };
-  const [idContrato, setIdContrato] = useState("");
-  const faturasQuery = useFaturasPorContrato(idContrato || undefined);
-  const [open, setOpen] = useState(false);
-  const [editingFatura, setEditingFatura] = useState<any>(null);
 
   const contratoSelecionado = useMemo(() => {
     return contratos.data?.find((c) => c.id_contrato === idContrato);
@@ -218,16 +225,9 @@ function FaturasTab() {
     setOpen(true);
   };
 
-  const handleDeleteClick = async (id: string | undefined) => {
-    if (!id) return;
-    if (window.confirm("Deseja excluir permanentemente esta fatura?")) {
-      try {
-        await deleteFatura(id);
-        toast.success("Fatura removida com sucesso.");
-      } catch (err) {
-        toast.error("Erro ao deletar a fatura.");
-      }
-    }
+  const handleDeleteClick = (id: string) => {
+    setItemToDelete(id);
+    setDeleteOpen(true);
   };
 
   return (
@@ -321,7 +321,7 @@ function FaturasTab() {
                   </tr>
                 ) : (
                   faturasProcessadas.map((f) => (
-                    <tr key={f.id_fatura} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
+                    <tr key={f.id_fatura} className="border-b last:border-0 hover-row transition-colors">
                       <td className="px-4 py-3 font-mono font-medium">
                         {formatarDataCurta(f.data_vencimento)}
                       </td>
@@ -355,12 +355,35 @@ function FaturasTab() {
           </div>
         </>
       )}
+
+      {/* DIÁLOGO DE CONFIRMAÇÃO DE EXCLUSÃO DE FATURA */}
+      <ConfirmDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title="Excluir fatura?"
+        description="Esta ação não pode ser desfeita. A fatura será removida permanentemente."
+        onConfirm={async () => {
+          if (itemToDelete) {
+            setDeleteLoading(true);
+            try {
+              await deleteFatura(itemToDelete);
+              toast.success("Fatura removida com sucesso.");
+            } catch {
+              toast.error("Erro ao deletar a fatura.");
+            } finally {
+              setDeleteLoading(false);
+            }
+          }
+          setDeleteOpen(false);
+        }}
+        loading={deleteLoading}
+      />
     </div>
   );
 }
 
 // ==========================================
-// ABA 2: INTERAÇÕES PAGAS (NOVO)
+// ABA 2: INTERAÇÕES PAGAS
 // ==========================================
 function InteracoesPagasTab() {
   const empresas = useEmpresas();
@@ -368,7 +391,6 @@ function InteracoesPagasTab() {
   const [buscaLocal, setBuscaLocal] = useState("");
   const queryClient = useQueryClient();
   
-  // Hooks de mutação para edição/exclusão
   const update = useUpdateInteracao();
   const remove = useDeleteInteracao();
 
@@ -376,7 +398,6 @@ function InteracoesPagasTab() {
   const { data: interacoesPagas, isLoading } = useInteracoesPagas(clienteFiltro);
   const { data: resumo } = useTotalInteracoesPagas(clienteFiltro);
 
-  // Estados para o diálogo de edição
   const [editingItem, setEditingItem] = useState<any>(null);
   const [editTipo, setEditTipo] = useState("Visita");
   const [editDataHora, setEditDataHora] = useState("");
@@ -384,7 +405,11 @@ function InteracoesPagasTab() {
   const [editGrau, setEditGrau] = useState("Baixo");
   const [editStatus, setEditStatus] = useState<StatusFinanceiro>("Não Paga");
   const [editValor, setEditValor] = useState("");
-  const [editStatusPagamento, setEditStatusPagamento] = useState("Pendente"); // 👈 novo estado
+  const [editStatusPagamento, setEditStatusPagamento] = useState("Pendente");
+
+  // Diálogo de confirmação de exclusão
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<string | null>(null);
 
   const interacoesFiltradas = interacoesPagas?.filter(item => {
     if (!buscaLocal) return true;
@@ -403,7 +428,6 @@ function InteracoesPagasTab() {
 
   const empresaSelecionada = empresas.data?.find(e => e.id_cliente === idClienteSelecionado);
 
-  // Handlers de edição
   const handleEditClick = (item: any) => {
     setEditingItem(item);
     setEditTipo(item.tipo_interacao || "Visita");
@@ -412,7 +436,7 @@ function InteracoesPagasTab() {
     setEditGrau(item.grau_urgencia || "Baixo");
     setEditStatus(item.status_financeiro || "Não Paga");
     setEditValor(item.valor_cobrado ? String(item.valor_cobrado) : "");
-    setEditStatusPagamento(item.status_pagamento || "Pendente"); // 👈 preenche novo campo
+    setEditStatusPagamento(item.status_pagamento || "Pendente");
   };
 
   const handleSaveEdit = async () => {
@@ -428,7 +452,7 @@ function InteracoesPagasTab() {
           grau_urgencia: editGrau,
           status_financeiro: editStatus,
           valor_cobrado: editStatus === "Paga" ? parseFloat(editValor) : null,
-          status_pagamento: editStatusPagamento, // 👈 envia novo campo
+          status_pagamento: editStatusPagamento,
         },
       });
       toast.success("Interação atualizada com sucesso!");
@@ -440,17 +464,9 @@ function InteracoesPagasTab() {
     }
   };
 
-  const handleDeleteClick = async (id: string) => {
-    if (window.confirm("Deseja excluir permanentemente esta interação paga?")) {
-      try {
-        await remove.mutateAsync(id);
-        toast.success("Interação removida.");
-        queryClient.invalidateQueries({ queryKey: ["interacoes-pagas"] });
-        queryClient.invalidateQueries({ queryKey: ["interacoes-pagas-total"] });
-      } catch (err) {
-        toast.error("Erro ao excluir interação.");
-      }
-    }
+  const handleDeleteClick = (id: string) => {
+    setItemToDelete(id);
+    setDeleteOpen(true);
   };
 
   return (
@@ -551,7 +567,7 @@ function InteracoesPagasTab() {
                   <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Data/Hora</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Urgência</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Valor</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status Pagamento</th> {/* 👈 nova coluna */}
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status Pagamento</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Feedback</th>
                   <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[100px]">Ações</th>
                 </tr>
@@ -561,7 +577,7 @@ function InteracoesPagasTab() {
                   const empresa = empresas.data?.find(e => e.id_cliente === item.id_cliente);
                   
                   return (
-                    <tr key={item.id_interacao} className="hover:bg-muted/30 transition-colors">
+                    <tr key={item.id_interacao} className="hover-row transition-colors">
                       <td className="px-4 py-3 text-sm">{empresa?.nome_empresa || "—"}</td>
                       <td className="px-4 py-3">
                         <span className="inline-flex rounded bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
@@ -583,7 +599,6 @@ function InteracoesPagasTab() {
                           {formatarMoeda(item.valor_cobrado)}
                         </span>
                       </td>
-                      {/* 👇 Nova célula de status de pagamento */}
                       <td className="px-4 py-3">
                         <span className={`inline-flex rounded px-2 py-0.5 text-xs font-semibold ${
                           item.status_pagamento === 'Pago' 
@@ -693,7 +708,6 @@ function InteracoesPagasTab() {
                       placeholder="0,00"
                     />
                   </div>
-                  {/* 👇 Novo campo Status do Pagamento */}
                   <div className="space-y-1.5">
                     <Label className="text-xs">Status do Pagamento</Label>
                     <Select value={editStatusPagamento} onValueChange={setEditStatusPagamento}>
@@ -732,6 +746,28 @@ function InteracoesPagasTab() {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* DIÁLOGO DE CONFIRMAÇÃO DE EXCLUSÃO */}
+      <ConfirmDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title="Excluir interação paga?"
+        description="Esta ação não pode ser desfeita. A interação será removida permanentemente."
+        onConfirm={async () => {
+          if (itemToDelete) {
+            try {
+              await remove.mutateAsync(itemToDelete);
+              toast.success("Interação removida.");
+              queryClient.invalidateQueries({ queryKey: ["interacoes-pagas"] });
+              queryClient.invalidateQueries({ queryKey: ["interacoes-pagas-total"] });
+            } catch {
+              toast.error("Erro ao excluir interação.");
+            }
+          }
+          setDeleteOpen(false);
+        }}
+        loading={remove.isPending}
+      />
 
       {interacoesFiltradas.length > 0 && (
         <p className="text-xs text-muted-foreground text-right">

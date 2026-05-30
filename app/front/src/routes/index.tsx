@@ -3,7 +3,7 @@ import { useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { MetricCard } from "@/components/MetricCard";
 import { ActivityTable } from "@/components/ActivityTable";
-import { useEmpresas, useTodosContratos } from "@/lib/api/hooks"; 
+import { useEmpresas, useTodosContratos } from "@/lib/api/hooks";
 import { Building2, FileText, Wallet, ExternalLink, BarChart3, PieChart, TrendingUp } from "lucide-react";
 
 const DASHBOARDS = [
@@ -40,47 +40,19 @@ function Index() {
   const empresas = (empresasData as any[]) || [];
   const totalEmpresas = empresas.length;
 
-  // ✅ CORRIGIDO: Filtra contratos ativos
   const contratosAtivos = todosContratos?.filter(
-    (c: any) => {
-      const status = (c.status_contrato || "").toString().trim().toLowerCase();
-      return status === "ativo";
-    }
+    (c: any) => (c.status_contrato || "").toString().trim().toLowerCase() === "ativo"
   ) || [];
 
   const totalContratosAtivos = contratosAtivos.length;
 
-  // ✅ CORRIGIDO: Calcula receita SOMENTE dos contratos ativos
   const receitaTotal = contratosAtivos.reduce((acc: number, contrato: any) => {
-    // Converte o valor para número (tratando formato brasileiro)
     let valor = contrato.valor_acordado;
-    
-    if (typeof valor === 'string') {
-      // Remove pontos de milhar e substitui vírgula por ponto
-      valor = valor.replace(/\./g, '').replace(',', '.');
-    }
-    
+    if (typeof valor === 'string') valor = valor.replace(/\./g, '').replace(',', '.');
     const valorNumerico = Number(valor);
-    
-    if (isNaN(valorNumerico)) {
-      console.warn('Valor inválido encontrado:', contrato.valor_acordado);
-      return acc;
-    }
-    
+    if (isNaN(valorNumerico)) return acc;
     return acc + valorNumerico;
   }, 0);
-
-  // Debug: Verificar os contratos no console
-  console.log('📊 DEBUG RECEITA:', {
-    totalContratos: todosContratos?.length || 0,
-    contratosAtivos: contratosAtivos.length,
-    receitaCalculada: receitaTotal,
-    amostra: contratosAtivos.slice(0, 2).map((c: any) => ({
-      id: c.id_contrato,
-      status: c.status_contrato,
-      valor: c.valor_acordado
-    }))
-  });
 
   return (
     <DashboardLayout>
@@ -98,50 +70,48 @@ function Index() {
         </div>
 
         <div className="grid gap-4 md:grid-cols-3">
-          <MetricCard
-            label="Total de Empresas"
-            isLoading={empresasLoading}
-            value={totalEmpresas.toString()}
-            delta={`+${totalEmpresas}`}
-            trend="up"
-            helper="clientes ativos na base"
-            icon={Building2}
-          />
-          <MetricCard
-            label="Contratos Ativos"
-            isLoading={contratosLoading}
-            value={totalContratosAtivos.toString()}
-            delta={`+${totalContratosAtivos}`}
-            trend="up"
-            helper="total no portfólio"
-            icon={FileText}
-          />
-          <MetricCard
-            label="Receita Acordada"
-            isLoading={contratosLoading}
-            value={receitaTotal.toLocaleString("pt-BR", {
-              style: "currency",
-              currency: "BRL",
-              minimumFractionDigits: 2,
-            })}
-            delta="+12.5%"
-            trend="up"
-            helper="soma dos contratos ativos"
-            icon={Wallet}
-          />
+          <div className="card-hover">
+            <MetricCard
+              label="Total de Empresas"
+              isLoading={empresasLoading}
+              value={totalEmpresas.toString()}
+              delta={`+${totalEmpresas}`}
+              trend="up"
+              helper="clientes ativos na base"
+              icon={Building2}
+            />
+          </div>
+          <div className="card-hover">
+            <MetricCard
+              label="Contratos Ativos"
+              isLoading={contratosLoading}
+              value={totalContratosAtivos.toString()}
+              delta={`+${totalContratosAtivos}`}
+              trend="up"
+              helper="total no portfólio"
+              icon={FileText}
+            />
+          </div>
+          <div className="card-hover">
+            <MetricCard
+              label="Receita Acordada"
+              isLoading={contratosLoading}
+              value={receitaTotal.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 })}
+              delta="+12.5%"
+              trend="up"
+              helper="soma dos contratos ativos"
+              icon={Wallet}
+            />
+          </div>
         </div>
-
 
         {/* SEÇÃO DO METABASE */}
         <section className="rounded-lg border border-border bg-card shadow-card overflow-hidden w-full mt-2">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-border px-5 py-4 gap-4">
             <div>
               <h2 className="text-sm font-semibold tracking-tight">Dashboard Analítico</h2>
-              <p className="text-xs text-muted-foreground">
-                Selecione a visão que deseja analisar
-              </p>
+              <p className="text-xs text-muted-foreground">Selecione a visão que deseja analisar</p>
             </div>
-            
             <a
               href="http://localhost:3000"
               target="_blank"
@@ -151,20 +121,16 @@ function Index() {
               <ExternalLink className="h-3 w-3" /> Abrir Metabase
             </a>
           </div>
-
           <div className="bg-muted/30 px-5 py-3 border-b border-border flex flex-wrap gap-2">
             {DASHBOARDS.map((dash) => {
               const Icone = dash.icon;
               const isAtivo = dashboardAtivo.id === dash.id;
-              
               return (
                 <button
                   key={dash.id}
                   onClick={() => setDashboardAtivo(dash)}
                   className={`inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                    isAtivo 
-                      ? "bg-primary text-primary-foreground shadow-sm" 
-                      : "bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground border border-transparent hover:border-border"
+                    isAtivo ? "bg-primary text-primary-foreground shadow-sm" : "bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground border border-transparent hover:border-border"
                   }`}
                 >
                   <Icone className="h-4 w-4" />
@@ -173,7 +139,6 @@ function Index() {
               );
             })}
           </div>
-
           <div className="w-full min-h-[500px] bg-white">
             <iframe
               key={dashboardAtivo.id}

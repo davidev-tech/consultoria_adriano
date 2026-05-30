@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import {
   useCreateInteracao,
   useInteracoesPorCliente,
@@ -314,6 +315,10 @@ function HistoricoTab() {
   const [editValorCobrado, setEditValorCobrado] = useState("");
   const [editStatusPagamento, setEditStatusPagamento] = useState("Pendente");
 
+  // Diálogo de confirmação de exclusão
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<string | null>(null);
+
   const interacoesFiltradas = listaInteracoes?.filter((item: any) => {
     if (!buscaLocal) return true;
     const termo = buscaLocal.toLowerCase();
@@ -361,15 +366,9 @@ function HistoricoTab() {
     }
   };
 
-  const handleDeleteClick = async (id: string) => {
-    if (window.confirm("Deseja excluir permanentemente esta interação?")) {
-      try {
-        await remove.mutateAsync(id);
-        toast.success("Interação removida.");
-      } catch {
-        toast.error("Erro ao deletar.");
-      }
-    }
+  const handleDeleteClick = (id: string) => {
+    setItemToDelete(id);
+    setDeleteOpen(true);
   };
 
   return (
@@ -413,7 +412,7 @@ function HistoricoTab() {
               if (!idInteracao) return null;
 
               return (
-                <div key={idInteracao} className="group p-4 hover:bg-muted/20 transition-colors">
+                <div key={idInteracao} className="group p-4 hover-row transition-colors">
                   <div className="flex items-start justify-between gap-4">
                     <div className="space-y-1 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
@@ -594,6 +593,26 @@ function HistoricoTab() {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* DIÁLOGO DE CONFIRMAÇÃO DE EXCLUSÃO */}
+      <ConfirmDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title="Excluir interação?"
+        description="Esta ação não pode ser desfeita. A interação será removida permanentemente."
+        onConfirm={async () => {
+          if (itemToDelete) {
+            try {
+              await remove.mutateAsync(itemToDelete);
+              toast.success("Interação removida.");
+            } catch {
+              toast.error("Erro ao excluir interação.");
+            }
+          }
+          setDeleteOpen(false);
+        }}
+        loading={remove.isPending}
+      />
     </div>
   );
 }

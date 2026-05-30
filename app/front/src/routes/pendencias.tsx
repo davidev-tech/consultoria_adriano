@@ -200,7 +200,7 @@ function PendenciasPage() {
                         ? "text-yellow-600" 
                         : "text-emerald-600";
                     return (
-                      <tr key={p.id} className="hover:bg-muted/20">
+                      <tr key={p.id} className="hover-row">
                         <td className="px-4 py-3">{p.empresa_nome}</td>
                         <td className="px-4 py-3">
                           <span className={`inline-flex rounded px-2 py-0.5 text-xs font-semibold ${tipoColor}`}>

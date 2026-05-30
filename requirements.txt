@@ -9,3 +9,4 @@ validate-docbr
 bleach
 watchfiles
 PyJWT
+recharts

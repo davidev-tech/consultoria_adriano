@@ -19,6 +19,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { CalendarDays, Loader2, Plus, Pencil, Trash2, Search, FilterX } from "lucide-react";
 import {
   useEmpresas,
@@ -119,15 +120,13 @@ const { data: entregas, isLoading } = useEntregas({
     setDialogOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
-    if (window.confirm("Excluir permanentemente esta entrega?")) {
-      try {
-        await remove.mutateAsync(id);
-        toast.success("Entrega removida.");
-      } catch {
-        toast.error("Erro ao excluir.");
-      }
-    }
+  // ✅ Substituir window.confirm pelo ConfirmDialog
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<string | null>(null);
+
+  const handleDelete = (id: string) => {
+    setItemToDelete(id);
+    setDeleteOpen(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -269,7 +268,7 @@ const { data: entregas, isLoading } = useEntregas({
                       : "bg-yellow-100 text-yellow-700";
 
                     return (
-                      <tr key={entrega.id_entrega} className="hover:bg-muted/20">
+                      <tr key={entrega.id_entrega} className="hover-row">
                         <td className="px-4 py-3">{empresa?.nome_empresa || "—"}</td>
                         <td className="px-4 py-3 text-xs text-muted-foreground">
                           {contrato && modelosMap[contrato.id_modelo] 
@@ -367,6 +366,26 @@ const { data: entregas, isLoading } = useEntregas({
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* DIÁLOGO DE CONFIRMAÇÃO DE EXCLUSÃO */}
+      <ConfirmDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title="Excluir entrega?"
+        description="Esta ação não pode ser desfeita. A entrega será removida permanentemente."
+        onConfirm={async () => {
+          if (itemToDelete) {
+            try {
+              await remove.mutateAsync(itemToDelete);
+              toast.success("Entrega removida.");
+            } catch {
+              toast.error("Erro ao excluir entrega.");
+            }
+          }
+          setDeleteOpen(false);
+        }}
+        loading={remove.isPending}
+      />
     </DashboardLayout>
   );
 }

@@ -71,7 +71,7 @@ export function ActivityTable() {
               </TableRow>
             )}
             {items.map((e) => (
-              <TableRow key={e.id_cliente} className="border-border">
+              <TableRow key={e.id_cliente} className="border-border hover-row">
                 <TableCell>
                   <Link
                     to="/empresas/$id"

@@ -9,7 +9,6 @@ import {
   Calendar,
   AlertTriangle,
   PackageCheck,
-  MessageSquare,
   DollarSign
 } from "lucide-react";
 import { DashboardLayout } from "@/components/DashboardLayout";
@@ -109,14 +108,12 @@ function EmpresasPage() {
               // ==========================================
               const interacoes = Array.isArray(empresa.interacoes) ? empresa.interacoes : [];
               
-              // Ordenar por data (mais recente primeiro)
               const interacoesOrdenadas = [...interacoes].sort((a: any, b: any) => {
                 const dateA = new Date(a.data_hora || 0).getTime();
                 const dateB = new Date(b.data_hora || 0).getTime();
                 return dateB - dateA;
               });
 
-              // ✅ ÚLTIMA VISITA (interação do tipo "Visita")
               const ultimaVisita = interacoesOrdenadas.find((i: any) => 
                 i.tipo_interacao?.toLowerCase().includes("visita")
               );
@@ -133,12 +130,10 @@ function EmpresasPage() {
               // ==========================================
               const contratos = Array.isArray(empresa.contratos) ? empresa.contratos : [];
               
-              // Contratos ativos
               const contratosAtivos = contratos.filter((c: any) => 
                 c.status_contrato?.toLowerCase() === "ativo"
               );
 
-              // ✅ PRÓXIMA ENTREGA (menor data_fim futura dos contratos ativos)
               const hoje = new Date();
               hoje.setHours(0, 0, 0, 0);
               
@@ -155,8 +150,7 @@ function EmpresasPage() {
                   })
                 : "—";
 
-              // ✅ PENDÊNCIAS FINANCEIRAS (faturas Pendente/Atrasado)
-                            // ✅ PENDÊNCIAS DE CONTRATO (entregas não concluídas)
+              // ✅ PENDÊNCIAS DE CONTRATO (entregas não concluídas)
               const totalPendenciasContrato = contratosAtivos.reduce((acc: number, c: any) => {
                 if (!Array.isArray(c.entregas)) return acc;
                 const pendentes = c.entregas.filter(
@@ -166,7 +160,6 @@ function EmpresasPage() {
               }, 0);
 
               // ✅ PENDÊNCIAS FINANCEIRAS (faturas Pendentes/Atrasadas)
-                            // ✅ PENDÊNCIAS FINANCEIRAS (faturas Pendentes/Atrasadas)
               const faturasPendentes = contratosAtivos.reduce((acc: number, c: any) => {
                 if (!Array.isArray(c.faturas)) return acc;
                 const pendentes = c.faturas.filter(
@@ -182,13 +175,13 @@ function EmpresasPage() {
 
               const totalPendenciasFinanceiras = faturasPendentes + interacoesFinanceirasPendentes;
 
-              // ✅ ÚLTIMAS 3 INTERAÇÕES (qualquer tipo)
+              // ✅ ÚLTIMAS 3 INTERAÇÕES
               const ultimasInteracoes = interacoesOrdenadas.slice(0, 3);
 
               return (
                 <div
                   key={empresa.id_cliente}
-                  className="group relative flex flex-col justify-between rounded-xl border border-border bg-card p-5 shadow-sm transition-all hover:border-primary/50 hover:shadow-md"
+                  className="group relative flex flex-col justify-between rounded-xl border border-border bg-card p-5 shadow-sm transition-all hover:border-primary/50 hover:shadow-md card-hover"
                 >
                   <div>
                     {/* CABEÇALHO DO CARD */}
@@ -210,7 +203,7 @@ function EmpresasPage() {
                       </div>
                     </div>
 
-                      {/* LOCALIZAÇÃO E CONTRATOS ATIVOS */}
+                    {/* LOCALIZAÇÃO E CONTRATOS ATIVOS */}
                     <div className="mt-3 border-t border-border/60 pt-2 grid grid-cols-2 gap-3">
                       <div>
                         <p className="text-[11px] text-muted-foreground">
@@ -226,29 +219,22 @@ function EmpresasPage() {
                       </div>
                     </div>
 
-                      {/* MÉTRICAS DO CARD */}
+                    {/* MÉTRICAS DO CARD */}
                     <div className="mt-4 grid grid-cols-2 gap-3 rounded-lg bg-muted/40 p-3 text-left border border-border/40">
-                      {/* Última Visita */}
                       <div className="space-y-0.5">
                         <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
                           <Calendar className="h-2.5 w-2.5 text-primary" /> Última Visita
                         </span>
-                        <p className="text-xs font-medium text-foreground">
-                          {ultimaVisitaTexto}
-                        </p>
+                        <p className="text-xs font-medium text-foreground">{ultimaVisitaTexto}</p>
                       </div>
 
-                      {/* Próxima Entrega */}
                       <div className="space-y-0.5">
                         <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
                           <PackageCheck className="h-2.5 w-2.5 text-primary" /> Próxima Entrega
                         </span>
-                        <p className="text-xs font-medium text-foreground">
-                          {proximaEntregaTexto}
-                        </p>
+                        <p className="text-xs font-medium text-foreground">{proximaEntregaTexto}</p>
                       </div>
 
-                      {/* Pendências de Contrato (Entregas) */}
                       <div className="space-y-0.5">
                         <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
                           <AlertTriangle className="h-2.5 w-2.5 text-orange-500" /> Pend. Contrato
@@ -258,7 +244,6 @@ function EmpresasPage() {
                         </p>
                       </div>
 
-                      {/* Pendências Financeiras (Faturas) */}
                       <div className="space-y-0.5">
                         <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
                           <DollarSign className="h-2.5 w-2.5 text-red-500" /> Pend. Financeiras
@@ -267,74 +252,67 @@ function EmpresasPage() {
                           {totalPendenciasFinanceiras}
                         </p>
                       </div>
-                    </div>   {/* ← ADICIONE ESTA LINHA: fecha a div do conteúdo principal */}
-                   </div>
-<div className="mt-4 pt-3 border-t border-dashed border-border/60 space-y-2">
-  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80 block">
-    Últimas Interações
-  </span>
-  <div className="space-y-2 max-h-36 overflow-y-auto pr-0.5">
-    {ultimasInteracoes.length > 0 ? (
-      ultimasInteracoes.map((interacao: any, idx: number) => {
-        // ✅ Determinar cor baseada no grau de urgência
-        const urgencia = (interacao.grau_urgencia || "").toLowerCase().trim();
-        
-        const urgenciaEstilo = 
-          urgencia === "alto" 
-            ? "bg-destructive/15 text-destructive border-destructive/30" 
-            : urgencia === "médio" || urgencia === "medio"
-              ? "bg-yellow-500/15 text-yellow-600 border-yellow-500/30"
-              : urgencia === "baixo"
-                ? "bg-emerald-500/15 text-emerald-600 border-emerald-500/30"
-                : "bg-muted/50 text-muted-foreground border-border";
-        
-        const urgenciaEmoji = 
-          urgencia === "alto" ? "🔴" 
-          : urgencia === "médio" || urgencia === "medio" ? "🟡"
-            : urgencia === "baixo" ? "🟢"
-              : "⚪";
+                    </div>
+                  </div>
 
-        return (
-          <div key={idx} className="rounded-md bg-muted/30 p-2 border border-border/20">
-            <div className="flex items-center justify-between gap-2 text-[9px] text-muted-foreground font-medium mb-1">
-              <div className="flex items-center gap-1.5">
-                {/* Tipo da interação */}
-                <span className="bg-primary/10 text-primary px-1.5 py-0.2 rounded font-mono text-[8px]">
-                  {interacao.tipo_interacao || "Interação"}
-                </span>
-                
-                {/* ✅ GRAU DE URGÊNCIA */}
-                {interacao.grau_urgencia && (
-                  <span className={`px-1.5 py-0.2 rounded font-medium text-[8px] border ${urgenciaEstilo}`}>
-                    {urgenciaEmoji} {interacao.grau_urgencia}
-                  </span>
-                )}
-              </div>
-              
-              {/* Data */}
-              <span>
-                {interacao.data_hora 
-                  ? new Date(interacao.data_hora).toLocaleDateString("pt-BR") 
-                  : "—"}
-              </span>
-            </div>
-            
-            {/* Feedback/Anotações */}
-            {interacao.feedback_anotacoes && (
-              <p className="text-[11px] text-foreground/90 line-clamp-2 italic">
-                "{interacao.feedback_anotacoes}"
-              </p>
-            )}
-          </div>
-        );
-      })
-    ) : (
-      <p className="text-[11px] text-muted-foreground italic text-center py-1 bg-muted/10 rounded-md border border-dashed border-border/40">
-        Nenhuma interação registrada
-      </p>
-    )}
-  </div>
-</div>
+                  {/* ÚLTIMAS INTERAÇÕES */}
+                  <div className="mt-4 pt-3 border-t border-dashed border-border/60 space-y-2">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80 block">
+                      Últimas Interações
+                    </span>
+                    <div className="space-y-2 max-h-36 overflow-y-auto pr-0.5">
+                      {ultimasInteracoes.length > 0 ? (
+                        ultimasInteracoes.map((interacao: any, idx: number) => {
+                          const urgencia = (interacao.grau_urgencia || "").toLowerCase().trim();
+                          const urgenciaEstilo = 
+                            urgencia === "alto" 
+                              ? "bg-destructive/15 text-destructive border-destructive/30" 
+                              : urgencia === "médio" || urgencia === "medio"
+                                ? "bg-yellow-500/15 text-yellow-600 border-yellow-500/30"
+                                : urgencia === "baixo"
+                                  ? "bg-emerald-500/15 text-emerald-600 border-emerald-500/30"
+                                  : "bg-muted/50 text-muted-foreground border-border";
+                          const urgenciaEmoji = 
+                            urgencia === "alto" ? "🔴" 
+                            : urgencia === "médio" || urgencia === "medio" ? "🟡"
+                              : urgencia === "baixo" ? "🟢"
+                                : "⚪";
+
+                          return (
+                            <div key={idx} className="rounded-md bg-muted/30 p-2 border border-border/20">
+                              <div className="flex items-center justify-between gap-2 text-[9px] text-muted-foreground font-medium mb-1">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="bg-primary/10 text-primary px-1.5 py-0.2 rounded font-mono text-[8px]">
+                                    {interacao.tipo_interacao || "Interação"}
+                                  </span>
+                                  {interacao.grau_urgencia && (
+                                    <span className={`px-1.5 py-0.2 rounded font-medium text-[8px] border ${urgenciaEstilo}`}>
+                                      {urgenciaEmoji} {interacao.grau_urgencia}
+                                    </span>
+                                  )}
+                                </div>
+                                <span>
+                                  {interacao.data_hora 
+                                    ? new Date(interacao.data_hora).toLocaleDateString("pt-BR") 
+                                    : "—"}
+                                </span>
+                              </div>
+                              {interacao.feedback_anotacoes && (
+                                <p className="text-[11px] text-foreground/90 line-clamp-2 italic">
+                                  "{interacao.feedback_anotacoes}"
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <p className="text-[11px] text-muted-foreground italic text-center py-1 bg-muted/10 rounded-md border border-dashed border-border/40">
+                          Nenhuma interação registrada
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
                   {/* BOTÕES DE AÇÃO */}
                   <div className="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <Button 

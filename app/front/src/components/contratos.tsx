@@ -1,265 +1,563 @@
-import React, { useState } from 'react';
-import { Search, Bell, Plus, FileText, ChevronDown, Link as LinkIcon, X } from 'lucide-react';
-// IMPORTANTE: Lembre-se de importar o seu useContratos aqui em cima!
-// import { useContratos } from '../hooks'; 
+import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
+import { Archive, FileText, Loader2, Plus, Link, ArchiveRestore, ChevronDown } from "lucide-react";
+import { DashboardLayout } from "@/components/DashboardLayout";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { 
+  useCreateModelo, 
+  useModelos, 
+  useTodosContratos, 
+  useEmpresas, 
+  useArquivarModelo, 
+  useDesarquivarModelo,
+  useDesarquivarContrato,
+  useArquivarContrato,
+  useCreateContrato 
+} from "@/lib/api/hooks"; 
 
-export default function ContractModels() {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedCompany, setSelectedCompany] = useState('Todas as empresas');
+export const Route = createFileRoute("/contratos")({
+  head: () => ({ meta: [{ title: "Contratos — Gestão do Cuidado" }] }),
+  component: ContratosPage,
+});
+
+function ContratosPage() {
+  const modelos = useModelos();
+  const contratos = useTodosContratos();
+  const empresas = useEmpresas();
+  const arquivarModelo = useArquivarModelo();
+  const arquivarContrato = useArquivarContrato();
+  const desarquivarModelo = useDesarquivarModelo();
+  const desarquivarContrato = useDesarquivarContrato();
   
-  // 1. Chamada dos dados reais
-  const { data: contratos = [], isLoading } = useContratos();
+  const [openModelo, setOpenModelo] = useState(false);
+  const [openContrato, setOpenContrato] = useState(false);
+  const [exibirArquivados, setExibirArquivados] = useState(false);
+  const [empresaFiltro, setEmpresaFiltro] = useState("Todas as empresas");
 
-  // 2. Lógica de Filtragem ÚNICA (Resolve o erro do select e da variável duplicada)
-  const filteredContracts = contratos.filter((c: any) => {
-    if (selectedCompany === 'Todas as empresas') return true;
-    return c.empresa?.nome_empresa === selectedCompany;
+  // Diálogos de confirmação
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<() => void>(() => {});
+
+  const empresaNome = (id: string) =>
+    empresas.data?.find((e) => e.id_cliente === id)?.nome_empresa ?? id.slice(0, 8);
+    
+  const modeloNome = (id: string) =>
+    modelos.data?.find((m) => m.id_modelo === id)?.nome_modelo ?? "—";
+
+  const contratosFiltrados = contratos.data?.filter((c) => {
+    const status = c.status_contrato?.toString().trim().toLowerCase();
+    const isArquivado = status === "arquivado" || c.arquivado === true || c.ativo === false;
+    
+    // Filtro por empresa
+    if (empresaFiltro !== "Todas as empresas") {
+      const nome = empresaNome(c.id_cliente);
+      if (nome !== empresaFiltro) return false;
+    }
+    
+    return exibirArquivados ? isArquivado : !isArquivado;
   });
 
-  // 3. Contagem de ativos
-  const totalAtivos = contratos.filter((c: any) => c.status_contrato === "Ativo").length;
+  const modelosFiltrados = modelos.data?.filter((m) => {
+    const isArquivado = m.ativo === false || m.ativo === "false" || m.ativo === 0;
+    return exibirArquivados ? isArquivado : !isArquivado;
+  });
+
+  const totalAtivos = contratos.data?.filter((c) => {
+    const status = (c.status_contrato || "").toString().trim().toLowerCase();
+    return status === "ativo";
+  }).length || 0;
+
+  // Função para abrir o diálogo de confirmação antes de executar uma ação
+  const confirmActionWrapper = (action: () => void) => {
+    setConfirmAction(() => action);
+    setConfirmOpen(true);
+  };
 
   return (
-    <div className="min-h-screen bg-[#09090b] text-zinc-100 font-sans">
-      
-      {/* Top Navigation Bar */}
-      <header className="flex items-center justify-between px-6 py-4 border-b border-zinc-800 bg-[#09090b]">
-        <div className="flex items-center bg-zinc-900 border border-zinc-800 rounded-md px-3 py-2 w-96">
-          <Search className="w-4 h-4 text-zinc-500 mr-2" />
-          <input 
-            type="text" 
-            placeholder="Buscar clientes, relatórios, atividades..." 
-            className="bg-transparent border-none text-sm outline-none text-zinc-300 w-full placeholder:text-zinc-500"
-          />
-        </div>
-        <div className="flex items-center gap-4">
-          <button className="text-zinc-400 hover:text-zinc-100">
-            <Bell className="w-5 h-5" />
-          </button>
-          <div className="w-8 h-8 rounded-full bg-emerald-900 text-emerald-400 flex items-center justify-center text-sm font-medium border border-emerald-800">
-            MC
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="p-8 max-w-7xl mx-auto">
-        
-        {/* Page Header */}
-        <div className="flex justify-between items-start mb-8">
-          <div>
-            <span className="text-xs font-semibold tracking-wider text-zinc-500 uppercase mb-1 block">// Catálogo</span>
-            <h1 className="text-3xl font-semibold text-zinc-100 mb-1">Modelos de Contrato</h1>
-            <p className="text-zinc-400 text-sm">Templates reutilizáveis para vínculo com empresas.</p>
-          </div>
-          <button className="flex items-center gap-2 bg-zinc-900 border border-zinc-700 hover:bg-zinc-800 text-zinc-100 px-4 py-2 rounded-md text-sm font-medium transition-colors">
-            <Plus className="w-4 h-4" />
-            Novo modelo
-          </button>
+    <DashboardLayout>
+      <div className="mx-auto flex max-w-7xl flex-col gap-8">
+        {/* Botão de exibir arquivados */}
+        <div className="flex justify-end">
+          <Button
+            variant={exibirArquivados ? "default" : "outline"}
+            size="sm"
+            className="gap-2"
+            onClick={() => setExibirArquivados(!exibirArquivados)}
+          >
+            {exibirArquivados ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+            {exibirArquivados ? "Ver Itens Ativos" : "Ver Itens Arquivados"}
+          </Button>
         </div>
 
-        {/* Cards Section */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-12">
-          {/* Card 1 */}
-          <div className="bg-[#121214] border border-zinc-800 rounded-lg p-5 hover:border-zinc-700 transition-colors cursor-pointer flex gap-4">
-            <div className="bg-emerald-500/10 p-2 rounded-md h-fit">
-              <FileText className="w-5 h-5 text-emerald-500" />
-            </div>
+        {/* SEÇÃO 1: MODELOS DE CONTRATO */}
+        <section>
+          <div className="mb-4 flex items-end justify-between">
             <div>
-              <h3 className="text-lg font-medium text-zinc-100 mb-1">Gestão de Dispensação</h3>
-              <p className="text-xs text-zinc-500 mb-2">Mensal</p>
-              <p className="text-sm text-zinc-400">Controle SNGPC e Farmácia Popular</p>
+              <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-primary">
+                // catálogo {exibirArquivados && "(arquivados)"}
+              </span>
+              <h1 className="text-2xl font-semibold tracking-tight">Modelos de Contrato</h1>
+              <p className="text-sm text-muted-foreground">
+                Templates reutilizáveis para vínculo com empresas.
+              </p>
             </div>
+            
+            <Dialog open={openModelo} onOpenChange={setOpenModelo}>
+              <DialogTrigger asChild>
+                <Button className="gap-2">
+                  <Plus className="h-4 w-4" /> Novo modelo
+                </Button>
+              </DialogTrigger>
+              <NovoModeloDialog onClose={() => setOpenModelo(false)} />
+            </Dialog>
           </div>
+          
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+            {modelosFiltrados?.map((m) => {
+              const isModeloArquivado = m.ativo === false || m.ativo === "false" || m.ativo === 0;
 
-          {/* Card 2 */}
-          <div className="bg-[#121214] border border-zinc-800 rounded-lg p-5 hover:border-zinc-700 transition-colors cursor-pointer flex gap-4">
-            <div className="bg-emerald-500/10 p-2 rounded-md h-fit">
-              <FileText className="w-5 h-5 text-emerald-500" />
-            </div>
-            <div>
-              <h3 className="text-lg font-medium text-zinc-100 mb-1">Na labia</h3>
-              <p className="text-xs text-zinc-500 mb-2">visita</p>
-              <p className="text-sm text-zinc-400">pagamentos e acordos feitos presencialmente</p>
-            </div>
+              return (
+                <div
+                  key={m.id_modelo}
+                  className="rounded-lg border border-border bg-card p-5 hover:border-primary/50 transition-colors flex gap-4 group"
+                >
+                  <div className="bg-primary/10 p-2 rounded-md h-fit">
+                    <FileText className="w-5 h-5 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold truncate">{m.nome_modelo}</h3>
+                    <p className="text-xs text-muted-foreground">
+                      {m.periodicidade_cobranca ?? "sem periodicidade"}
+                    </p>
+                    {m.descricao_padrao && (
+                      <p className="mt-2 text-xs text-muted-foreground line-clamp-2">
+                        {m.descricao_padrao}
+                      </p>
+                    )}
+                  </div>
+                  <div className="shrink-0 ml-2">
+                    {isModeloArquivado ? (
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 text-primary hover:bg-primary/10"
+                        title="Desarquivar modelo"
+                        disabled={desarquivarModelo.isPending}
+                        onClick={() => confirmActionWrapper(() => desarquivarModelo.mutate(m.id_modelo))}
+                      >
+                        <ArchiveRestore className="h-4 w-4" />
+                      </Button>
+                    ) : (
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        title="Arquivar modelo"
+                        disabled={arquivarModelo.isPending}
+                        onClick={() => confirmActionWrapper(() => arquivarModelo.mutate(m.id_modelo))}
+                      >
+                        <Archive className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+            {modelos.isLoading && (
+              <div className="col-span-full text-xs text-muted-foreground">Carregando…</div>
+            )}
+            {!modelos.isLoading && (modelosFiltrados?.length ?? 0) === 0 && (
+              <div className="col-span-full text-xs text-muted-foreground py-2 italic">
+                Nenhum modelo encontrado nesta visualização {exibirArquivados && "(arquivados)"}.
+              </div>
+            )}
           </div>
-        </div>
+        </section>
 
-        {/* Table Section */}
-        <div>
-          <div className="flex justify-between items-end mb-4">
+        {/* SEÇÃO 2: CONTRATOS VINCULADOS */}
+        <section>
+          <div className="mb-4 flex items-end justify-between">
             <div>
-              <h2 className="text-xl font-semibold text-zinc-100 mb-1">Contratos Vinculados</h2>
-              <p className="text-zinc-400 text-sm">Vínculos ativos entre empresas clientes e modelos contratuais ({totalAtivos} ativos).</p>
+              <h2 className="text-lg font-semibold">Contratos Vinculados {exibirArquivados && "(Arquivados)"}</h2>
+              <p className="text-xs text-muted-foreground">
+                Vínculos ativos entre empresas clientes e modelos contratuais ({totalAtivos} ativos).
+              </p>
             </div>
             
             <div className="flex gap-3">
-              <div className="relative">
-                <select 
-                  className="appearance-none bg-[#121214] border border-zinc-800 text-zinc-300 text-sm rounded-md pl-4 pr-10 py-2 outline-none focus:border-zinc-600 min-w-[200px]"
-                  value={selectedCompany}
-                  onChange={(e) => setSelectedCompany(e.target.value)}
-                >
-                  <option value="Todas as empresas">Todas as empresas</option>
-                  <option value="Clínica REABILITA">Clínica REABILITA</option>
-                  <option value="Lar São Francisco">Lar São Francisco</option>
-                  <option value="FarmaVida">FarmaVida</option>
-                </select>
-                <ChevronDown className="w-4 h-4 text-zinc-500 absolute right-3 top-2.5 pointer-events-none" />
-              </div>
-              
-              <button 
-                onClick={() => setIsModalOpen(true)}
-                className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
+              <select 
+                className="appearance-none bg-card border border-border text-foreground text-sm rounded-md pl-4 pr-10 py-2 outline-none focus:border-primary min-w-[200px]"
+                value={empresaFiltro}
+                onChange={(e) => setEmpresaFiltro(e.target.value)}
               >
-                <LinkIcon className="w-4 h-4" />
-                Vincular
-              </button>
+                <option value="Todas as empresas">Todas as empresas</option>
+                {empresas.data?.map((e) => (
+                  <option key={e.id_cliente} value={e.nome_empresa}>{e.nome_empresa}</option>
+                ))}
+              </select>
+              
+              <Dialog open={openContrato} onOpenChange={setOpenContrato}>
+                <DialogTrigger asChild>
+                  <Button className="gap-2" variant="default">
+                    <Link className="h-4 w-4" /> Vincular Contrato
+                  </Button>
+                </DialogTrigger>
+                <VincularContratoDialog onClose={() => setOpenContrato(false)} />
+              </Dialog>
             </div>
           </div>
 
-          <div className="bg-[#121214] border border-zinc-800 rounded-lg overflow-hidden">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-zinc-900/50 text-zinc-400 border-b border-zinc-800 uppercase text-xs">
-                <tr>
-                  <th className="px-6 py-4 font-medium">Empresa</th>
-                  <th className="px-6 py-4 font-medium">Modelo</th>
-                  <th className="px-6 py-4 font-medium">Início</th>
-                  <th className="px-6 py-4 font-medium">Fim</th>
-                  <th className="px-6 py-4 font-medium">Status</th>
-                  <th className="px-6 py-4 font-medium text-right">Valor</th>
+          <div className="overflow-hidden rounded-lg border border-border bg-card">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/30 text-left text-xs uppercase tracking-wide text-muted-foreground">
+                  <th className="px-6 py-4">Empresa</th>
+                  <th className="px-6 py-4">Modelo</th>
+                  <th className="px-6 py-4">Início</th>
+                  <th className="px-6 py-4">Fim</th>
+                  <th className="px-6 py-4">Status</th>
+                  <th className="px-6 py-4 text-right">Valor</th>
+                  <th className="px-6 py-4 text-right">Ações</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-800/50 text-zinc-300">
-                {isLoading ? (
+              <tbody className="divide-y divide-border">
+                {contratosFiltrados?.map((c) => {
+                  const isContratoArquivado = 
+                    c.status_contrato?.toString().trim().toLowerCase() === "arquivado" || 
+                    c.arquivado === true || 
+                    c.ativo === false;
+                  const status = c.status_contrato ?? "Ativo";
+                  
+                  return (
+                    <tr key={c.id_contrato} className="hover-row">
+                      <td className="px-6 py-4 font-medium">{empresaNome(c.id_cliente)}</td>
+                      <td className="px-6 py-4 text-muted-foreground">{modeloNome(c.id_modelo)}</td>
+                      <td className="px-6 py-4 font-mono text-xs text-muted-foreground">
+                        {c.data_inicio}
+                      </td>
+                      <td className="px-6 py-4 font-mono text-xs text-muted-foreground">
+                        {c.data_fim ?? "—"}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`font-medium ${status === 'Ativo' ? 'text-emerald-500' : 'text-muted-foreground'}`}>
+                          {status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right font-semibold">
+                        {Number(c.valor_acordado).toLocaleString("pt-BR", {
+                          style: "currency",
+                          currency: "BRL",
+                        })}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        {isContratoArquivado ? (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-primary hover:bg-primary/10"
+                            title="Desarquivar contrato"
+                            disabled={desarquivarContrato.isPending}
+                            onClick={() => confirmActionWrapper(() => desarquivarContrato.mutate(c.id_contrato))}
+                          >
+                            <ArchiveRestore className="h-4 w-4" />
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                            title="Arquivar contrato"
+                            disabled={arquivarContrato.isPending}
+                            onClick={() => confirmActionWrapper(() => arquivarContrato.mutate(c.id_contrato))}
+                          >
+                            <Archive className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+                
+                {contratos.isLoading && (
                   <tr>
-                    <td colSpan={6} className="px-6 py-8 text-center text-zinc-500">
+                    <td colSpan={7} className="p-6 text-center text-xs text-muted-foreground">
                       Carregando contratos...
                     </td>
                   </tr>
-                ) : filteredContracts.length > 0 ? (
-                  filteredContracts.map((contract) => {
-                    const nomeEmpresa = contract.empresa?.nome_empresa || "Empresa não identificada";
-                    const nomeModelo = contract.modelo?.nome_modelo || "Modelo não identificado";
-                    const status = contract.status_contrato || "Indisponível";
+                )}
 
-                    const valorFormatado = contract.valor_acordado 
-                      ? `R$ ${contract.valor_acordado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` 
-                      : "—";
-
-                    const dataInicioFormatada = contract.data_inicio 
-                      ? new Date(contract.data_inicio).toLocaleDateString("pt-BR") 
-                      : "—";
-
-                    const dataFimFormatada = contract.data_fim 
-                      ? new Date(contract.data_fim).toLocaleDateString("pt-BR") 
-                      : "—";
-
-                    return (
-                      <tr key={contract.id_contrato || Math.random()} className="hover:bg-zinc-800/20 transition-colors">
-                        <td className="px-6 py-4 text-sm font-medium text-zinc-100">{nomeEmpresa}</td>
-                        <td className="px-6 py-4 text-sm text-zinc-400">{nomeModelo}</td>
-                        <td className="px-6 py-4 text-sm text-zinc-400">{dataInicioFormatada}</td>
-                        <td className="px-6 py-4 text-sm text-zinc-400">{dataFimFormatada}</td>
-                        <td className="px-6 py-4 text-sm">
-                          <span className={`font-medium ${status === 'Ativo' ? 'text-emerald-500' : 'text-zinc-500'}`}>
-                            {status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-sm text-right font-medium text-zinc-100">{valorFormatado}</td>
-                      </tr>
-                    );
-                  })
-                ) : (
+                {!contratos.isLoading && (contratosFiltrados?.length ?? 0) === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-6 py-8 text-center text-zinc-500">
-                      Nenhum contrato encontrado.
+                    <td colSpan={7} className="p-6 text-center text-xs text-muted-foreground py-8 italic">
+                      Nenhum contrato encontrado nesta visualização {exibirArquivados && "(arquivados)"}.
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
           </div>
+        </section>
+      </div>
+
+      {/* Diálogo de confirmação (substitui window.confirm) */}
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="Confirmar ação"
+        description="Tem certeza que deseja prosseguir com esta ação?"
+        onConfirm={() => {
+          confirmAction();
+          setConfirmOpen(false);
+        }}
+      />
+    </DashboardLayout>
+  );
+}
+
+// ============================================================================
+// COMPONENTES DE DIALOG (POP-UPS)
+// ============================================================================
+
+function NovoModeloDialog({ onClose }: { onClose: () => void }) {
+  const create = useCreateModelo();
+  const [nome, setNome] = useState("");
+  const [periodicidade, setPeriodicidade] = useState("Mensal");
+  const [descricao, setDescricao] = useState("");
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!nome.trim()) return;
+    await create.mutateAsync({
+      nome_modelo: nome.trim(),
+      periodicidade_cobranca: periodicidade || null,
+      descricao_padrao: descricao || null,
+    });
+    onClose();
+  };
+
+  return (
+    <DialogContent>
+      <DialogHeader>
+        <DialogTitle>Novo modelo de contrato</DialogTitle>
+      </DialogHeader>
+      <form onSubmit={submit} className="space-y-4">
+        <div className="space-y-1.5">
+          <Label className="text-xs">Nome do modelo *</Label>
+          <Input value={nome} onChange={(e) => setNome(e.target.value)} required />
         </div>
-      </main> {/* <-- TAG MAIN FECHADA AQUI */}
+        <div className="space-y-1.5">
+          <Label className="text-xs">Periodicidade de cobrança</Label>
+          <select 
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            value={periodicidade} 
+            onChange={(e) => setPeriodicidade(e.target.value)}
+          >
+            <option value="Semanal">Semanal</option>
+            <option value="Quinzenal">Quinzenal</option>
+            <option value="Mensal">Mensal</option>
+            <option value="Bimestral">Bimestral</option>
+            <option value="Trimestral">Trimestral</option>
+            <option value="Semestral">Semestral</option>
+            <option value="Anual">Anual</option>
+            <option value="Por Visita">Por Visita</option>
+          </select>
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">Descrição padrão</Label>
+          <Textarea
+            value={descricao}
+            onChange={(e) => setDescricao(e.target.value)}
+            rows={3}
+          />
+        </div>
+        {create.error && (
+          <p className="text-xs text-destructive">{(create.error as Error).message}</p>
+        )}
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button type="submit" disabled={create.isPending} className="gap-2">
+            {create.isPending && <Loader2 className="h-4 w-4 animate-spin" />}Criar
+          </Button>
+        </DialogFooter>
+      </form>
+    </DialogContent>
+  );
+}
 
-      {/* Modal Vincular Contrato */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-[#121214] border border-zinc-800 rounded-xl w-full max-w-md shadow-2xl">
-            <div className="flex justify-between items-center p-5 border-b border-zinc-800/50">
-              <h3 className="text-lg font-medium text-zinc-100">Vincular contrato a uma empresa</h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-zinc-500 hover:text-zinc-300">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            
-            <div className="p-5 space-y-4">
-              <div>
-                <label className="block text-xs text-zinc-400 mb-1">Empresa cliente *</label>
-                <div className="relative">
-                  <select className="w-full appearance-none bg-[#09090b] border border-zinc-800 text-zinc-300 text-sm rounded-md px-3 py-2.5 outline-none focus:border-emerald-600 transition-colors">
-                    <option value="">Selecione a empresa...</option>
-                    <option value="reabilita">Clínica REABILITA</option>
-                  </select>
-                  <ChevronDown className="w-4 h-4 text-zinc-500 absolute right-3 top-3 pointer-events-none" />
-                </div>
-              </div>
+function VincularContratoDialog({ onClose }: { onClose: () => void }) {
+  const create = useCreateContrato();
+  const empresas = useEmpresas();
+  const modelos = useModelos();
+  
+  const [idCliente, setIdCliente] = useState("");
+  const [idModelo, setIdModelo] = useState("");
+  const [dataInicio, setDataInicio] = useState("");
+  const [dataFim, setDataFim] = useState("");
+  const [valorAcordado, setValorAcordado] = useState("");
+  const [status, setStatus] = useState("Ativo");
+  const [diaVencimento, setDiaVencimento] = useState<string>("5");
+  const [cobraJuros, setCobraJuros] = useState<boolean>(false);
+  const [taxaJuros, setTaxaJuros] = useState<string>("0");
 
-              <div>
-                <label className="block text-xs text-zinc-400 mb-1">Modelo de contrato *</label>
-                <div className="relative">
-                  <select className="w-full appearance-none bg-[#09090b] border border-zinc-800 text-zinc-300 text-sm rounded-md px-3 py-2.5 outline-none focus:border-emerald-600 transition-colors">
-                    <option value="">Selecione o modelo...</option>
-                    <option value="dispensacao">Gestão de Dispensação</option>
-                  </select>
-                  <ChevronDown className="w-4 h-4 text-zinc-500 absolute right-3 top-3 pointer-events-none" />
-                </div>
-              </div>
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!idCliente || !idModelo || !dataInicio) return;
+    
+    const valorConvertido = valorAcordado ? parseFloat(valorAcordado.replace(",", ".")) : 0;
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs text-zinc-400 mb-1">Valor acordado (BRL) *</label>
-                  <input type="text" className="w-full bg-[#09090b] border border-zinc-800 text-zinc-300 text-sm rounded-md px-3 py-2.5 outline-none focus:border-emerald-600 transition-colors" />
-                </div>
-                <div>
-                  <label className="block text-xs text-zinc-400 mb-1">Status</label>
-                  <div className="relative">
-                    <select className="w-full appearance-none bg-[#09090b] border border-zinc-800 text-zinc-300 text-sm rounded-md px-3 py-2.5 outline-none focus:border-emerald-600 transition-colors">
-                      <option value="Ativo">Ativo</option>
-                      <option value="inativo">Inativo</option>
-                    </select>
-                    <ChevronDown className="w-4 h-4 text-zinc-500 absolute right-3 top-3 pointer-events-none" />
-                  </div>
-                </div>
-              </div>
+    await create.mutateAsync({
+      id_cliente: idCliente,
+      id_modelo: idModelo,
+      data_inicio: dataInicio,
+      data_fim: dataFim || undefined,
+      status_contrato: status,
+      valor_acordado: valorConvertido,
+    } as any);
+    
+    onClose();
+  };
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs text-zinc-400 mb-1">Início *</label>
-                  <input type="date" defaultValue="2026-05-17" className="w-full bg-[#09090b] border border-zinc-800 text-zinc-300 text-sm rounded-md px-3 py-2.5 outline-none focus:border-emerald-600 transition-colors [color-scheme:dark]" />
-                </div>
-                <div>
-                  <label className="block text-xs text-zinc-400 mb-1">Fim (opcional)</label>
-                  <input type="date" className="w-full bg-[#09090b] border border-zinc-800 text-zinc-300 text-sm rounded-md px-3 py-2.5 outline-none focus:border-emerald-600 transition-colors [color-scheme:dark]" />
-                </div>
-              </div>
-            </div>
+  return (
+    <DialogContent>
+      <DialogHeader>
+        <DialogTitle>Vincular Contrato</DialogTitle>
+      </DialogHeader>
 
-            <div className="flex justify-end gap-3 p-5 border-t border-zinc-800/50 bg-[#09090b]/50 rounded-b-xl">
-              <button 
-                onClick={() => setIsModalOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-zinc-300 hover:text-white transition-colors"
-              >
-                Cancelar
-              </button>
-              <button className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-sm font-medium transition-colors">
-                Vincular
-              </button>
-            </div>
+      <form onSubmit={submit} className="space-y-4">
+        <div className="space-y-1.5">
+          <Label className="text-xs">Empresa *</Label>
+          <select 
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            value={idCliente} 
+            onChange={(e) => setIdCliente(e.target.value)} 
+            required
+          >
+            <option value="">Selecione uma empresa...</option>
+            {empresas.data?.map(emp => (
+              <option key={emp.id_cliente} value={emp.id_cliente}>{emp.nome_empresa}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-xs">Modelo de Contrato *</Label>
+          <select 
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            value={idModelo} 
+            onChange={(e) => setIdModelo(e.target.value)} 
+            required
+          >
+            <option value="">Selecione um modelo...</option>
+            {modelos.data?.filter(mod => mod.ativo !== false && mod.ativo !== "false" && mod.ativo !== 0).map(mod => (
+              <option key={mod.id_modelo} value={mod.id_modelo}>{mod.nome_modelo}</option>
+            ))}
+          </select>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label className="text-xs">Data de Início *</Label>
+            <Input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} required />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Data de Fim</Label>
+            <Input type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} />
           </div>
         </div>
-      )}
-    </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label className="text-xs">Valor Acordado (R$)</Label>
+            <Input 
+              type="number" 
+              step="0.01" 
+              placeholder="0.00" 
+              value={valorAcordado} 
+              onChange={(e) => setValorAcordado(e.target.value)} 
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Status</Label>
+            <select 
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              value={status} 
+              onChange={(e) => setStatus(e.target.value)}
+            >
+              <option value="Ativo">Ativo</option>
+              <option value="Encerrado">Encerrado</option>
+              <option value="Pendente">Pendente</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="pt-2 border-t border-border mt-2 space-y-4">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Configurações de Pagamento</p>
+          
+          <div className="space-y-1.5">
+            <Label className="text-xs">Dia de Vencimento Padrão *</Label>
+            <Input 
+              type="number" 
+              min="1" max="31"
+              value={diaVencimento}
+              onChange={(e) => setDiaVencimento(e.target.value)}
+              placeholder="Ex: 5"
+              required
+            />
+          </div>
+
+          <div className="flex items-center space-x-2 pt-1">
+            <Checkbox 
+              id="cobra-juros" 
+              checked={cobraJuros}
+              onCheckedChange={(checked) => setCobraJuros(checked === true)}
+            />
+            <Label htmlFor="cobra-juros" className="text-xs cursor-pointer">Cobrar juros por atraso?</Label>
+          </div>
+
+          {cobraJuros && (
+            <div className="space-y-1.5 pl-6 border-l-2 border-primary/20">
+              <Label className="text-xs">Taxa de Juros (%) *</Label>
+              <Input 
+                type="number" 
+                step="0.01" 
+                min="0"
+                value={taxaJuros}
+                onChange={(e) => setTaxaJuros(e.target.value)}
+                placeholder="Ex: 2.00"
+                required={cobraJuros}
+              />
+            </div>
+          )}
+        </div>
+
+        {create.error && (
+          <p className="text-xs text-destructive">{(create.error as Error).message}</p>
+        )}
+
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button type="submit" disabled={create.isPending} className="gap-2">
+            {create.isPending && <Loader2 className="h-4 w-4 animate-spin" />} Vincular
+          </Button>
+        </DialogFooter>
+      </form>
+    </DialogContent>
   );
 }
