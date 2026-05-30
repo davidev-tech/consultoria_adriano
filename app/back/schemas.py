@@ -69,15 +69,6 @@ class EmpresaCreate(EmpresaBase):
         if v: return validate_string_content(v, min_length=2, max_length=2)
         return v
 
-class EmpresaResponse(EmpresaBase):
-    id_cliente: UUID
-    servicos_contratados: List[ServicoDetalhe] = []
-    localizacao: Optional[str] = None
-    servico_prestado: Optional[str] = None
-    
-    
-    model_config = ConfigDict(from_attributes=True)
-
 # ==========================================
 # 2. MÓDULO: RESPONSÁVEL (Contatos)
 # ==========================================
@@ -234,13 +225,24 @@ class InteracaoCreate(InteracaoBase):
             raise ValueError("Valor cobrado é obrigatório quando status for 'Paga'")
         
         return v
-
+    
 class InteracaoResponse(InteracaoBase):
     id_interacao: UUID
     id_cliente: UUID
     
     model_config = ConfigDict(from_attributes=True)
+    
     # ✅ Apenas UMA definição
+class EmpresaResponse(EmpresaBase):
+    id_cliente: UUID
+    servicos_contratados: List[ServicoDetalhe] = []
+    localizacao: Optional[str] = None
+    servico_prestado: Optional[str] = None
+    interacoes: List[InteracaoResponse] = []
+    contratos: List[ContratoResponse] = []
+    
+    model_config = ConfigDict(from_attributes=True)
+    
 # ==========================================
 # 6. MÓDULO: ENTREGAS E PRAZOS
 # ==========================================
