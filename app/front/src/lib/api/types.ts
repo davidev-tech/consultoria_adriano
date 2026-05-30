@@ -85,6 +85,8 @@ export interface Contrato {
   status_contrato?: string | null;
   data_inicio: string; // YYYY-MM-DD
   data_fim?: string | null;
+  faturas?: any[];
+  entregas?: any[];
 }
 
 export interface ContratoCreate {

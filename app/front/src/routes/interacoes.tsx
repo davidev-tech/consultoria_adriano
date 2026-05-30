@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
-import { ClipboardList, Loader2, Pencil, Trash2, X } from "lucide-react";
+import { ClipboardList, Loader2, Pencil, Trash2, Search, FilterX } from "lucide-react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,44 +19,87 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"; // 👈 Modal de edição
-import { 
-  useCreateInteracao, 
-  useInteracoesPorCliente, 
-  useUpdateInteracao, 
-  useEmpresas, 
-  useDeleteInteracao 
+} from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  useCreateInteracao,
+  useInteracoesPorCliente,
+  useUpdateInteracao,
+  useEmpresas,
+  useDeleteInteracao,
 } from "@/lib/api/hooks";
 import type { StatusFinanceiro } from "@/lib/api/types";
 import { toast } from "sonner";
 
-// Utilitários mantidos
+// Utilitários
 const getLocalDatetimeString = (date = new Date()) => {
-  const tzOffset = date.getTimezoneOffset() * 60000; 
+  const tzOffset = date.getTimezoneOffset() * 60000;
   const localISOTime = new Date(date.getTime() - tzOffset).toISOString().slice(0, 16);
   return localISOTime;
 };
 
 const formatarMoeda = (valor: number | null | undefined) => {
-  if (!valor) return '';
-  return new Intl.NumberFormat('pt-BR', { 
-    style: 'currency', 
-    currency: 'BRL' 
+  if (!valor) return "";
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
   }).format(valor);
 };
 
 export const Route = createFileRoute("/interacoes")({
-  head: () => ({ meta: [{ title: "Registrar Interação — Gestão do Cuidado" }] }),
+  head: () => ({ meta: [{ title: "Interações — Gestão do Cuidado" }] }),
   component: InteracoesPage,
 });
 
 function InteracoesPage() {
+  const [abaAtiva, setAbaAtiva] = useState("registrar");
+
+  return (
+    <DashboardLayout>
+      <div className="mx-auto flex max-w-6xl flex-col gap-6">
+        <div>
+          <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-primary">
+            // crm
+          </span>
+          <h1 className="text-2xl font-semibold tracking-tight">Interações</h1>
+          <p className="text-sm text-muted-foreground">
+            Registre e acompanhe o histórico de contatos com clientes.
+          </p>
+        </div>
+
+        <Tabs value={abaAtiva} onValueChange={setAbaAtiva} className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="registrar" className="gap-2">
+              <ClipboardList className="h-4 w-4" />
+              Registrar Interação
+            </TabsTrigger>
+            <TabsTrigger value="historico" className="gap-2">
+              <Search className="h-4 w-4" />
+              Linha do Tempo
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="registrar" className="mt-6">
+            <RegistrarTab />
+          </TabsContent>
+
+          <TabsContent value="historico" className="mt-6">
+            <HistoricoTab />
+          </TabsContent>
+        </Tabs>
+      </div>
+    </DashboardLayout>
+  );
+}
+
+// ==========================================
+// ABA 1: REGISTRAR INTERAÇÃO
+// ==========================================
+function RegistrarTab() {
   const empresas = useEmpresas();
   const create = useCreateInteracao();
-  const update = useUpdateInteracao();
-  const remove = useDeleteInteracao();
-  
-  // Estados do formulário de CRIAÇÃO (coluna esquerda)
+
   const [idCliente, setIdCliente] = useState<string>("");
   const [tipo, setTipo] = useState("Visita");
   const [dataHora, setDataHora] = useState(() => getLocalDatetimeString());
@@ -66,27 +109,13 @@ function InteracoesPage() {
   const [valorCobrado, setValorCobrado] = useState<string>("");
   const [criacaoStatusPagamento, setCriacaoStatusPagamento] = useState("Pendente");
 
-  const { data: listaInteracoes, isLoading: loadingInteracoes } = useInteracoesPorCliente(idCliente || undefined);
-
-  // Estado do diálogo de edição
-  const [editingItem, setEditingItem] = useState<any>(null);
-  // Estados internos do diálogo (cópias editáveis)
-  const [editTipo, setEditTipo] = useState("Visita");
-  const [editDataHora, setEditDataHora] = useState("");
-  const [editFeedback, setEditFeedback] = useState("");
-  const [editGrau, setEditGrau] = useState("Baixo");
-  const [editStatusFinanceiro, setEditStatusFinanceiro] = useState<StatusFinanceiro>("Não Paga");
-  const [editValorCobrado, setEditValorCobrado] = useState("");
-  const [editStatusPagamento, setEditStatusPagamento] = useState("Pendente");
-
-  // Limpa o valor cobrado quando status muda para "Não Paga" (formulário de criação)
   useEffect(() => {
     if (statusFinanceiro === "Não Paga") {
       setValorCobrado("");
     }
   }, [statusFinanceiro]);
 
-  const resetCriacaoForm = () => {
+  const resetForm = () => {
     setTipo("Visita");
     setFeedback("");
     setGrauUrgencia("Baixo");
@@ -96,7 +125,7 @@ function InteracoesPage() {
     setDataHora(getLocalDatetimeString());
   };
 
-  const submitCriacao = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!idCliente) {
       toast.error("Selecione uma empresa");
@@ -124,84 +153,30 @@ function InteracoesPage() {
     try {
       await create.mutateAsync(payload);
       toast.success("Interação registrada com sucesso!");
-      resetCriacaoForm();
-    } catch (err) {
-      toast.error("Erro ao processar a requisição.");
-    }
-  };
-
-  // Abre o diálogo de edição com os dados do item
-  const handleEditClick = (item: any) => {
-    setEditingItem(item);
-    setEditTipo(item.tipo_interacao || "Visita");
-    setEditDataHora(item.data_hora ? getLocalDatetimeString(new Date(item.data_hora)) : getLocalDatetimeString());
-    setEditFeedback(item.feedback_anotacoes || "");
-    setEditGrau(item.grau_urgencia || "Baixo");
-    setEditStatusFinanceiro(item.status_financeiro || "Não Paga");
-    setEditValorCobrado(item.valor_cobrado ? item.valor_cobrado.toString() : "");
-    setEditStatusPagamento(item.status_pagamento || "Pendente");
-  };
-
-  const handleSaveEdit = async () => {
-    if (!editingItem) return;
-
-    const payload = {
-      id_cliente: editingItem.id_cliente,
-      tipo_interacao: editTipo,
-      data_hora: editDataHora,
-      feedback_anotacoes: editFeedback,
-      grau_urgencia: editGrau,
-      status_financeiro: editStatusFinanceiro,
-      valor_cobrado: editStatusFinanceiro === "Paga" ? parseFloat(editValorCobrado || "0") : null,
-      status_pagamento: editStatusPagamento,
-    };
-
-    try {
-      await update.mutateAsync({ id: editingItem.id_interacao, data: payload });
-      toast.success("Interação atualizada com sucesso!");
-      setEditingItem(null);
-    } catch (err) {
-      toast.error("Erro ao atualizar interação.");
-    }
-  };
-
-  const handleDeleteClick = async (id: string) => {
-    if (window.confirm("Deseja excluir permanentemente esta interação?")) {
-      try {
-        await remove.mutateAsync(id);
-        toast.success("Interação removida.");
-      } catch (err) {
-        toast.error("Erro ao deletar.");
-      }
+      resetForm();
+    } catch {
+      toast.error("Erro ao registrar interação.");
     }
   };
 
   return (
-    <DashboardLayout>
-      <div className="mx-auto flex max-w-6xl flex-col gap-8 lg:grid lg:grid-cols-12 lg:items-start">
-        
-        {/* COLUNA DO FORMULÁRIO (APENAS CRIAÇÃO) */}
-        <div className="flex flex-col gap-6 lg:col-span-5">
-          <div>
-            <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-primary">
-              // consultor em campo
-            </span>
-            <h1 className="text-2xl font-semibold tracking-tight">Registrar Interação</h1>
-            <p className="text-sm text-muted-foreground">Registre visitas, reuniões e feedbacks com cliente.</p>
+    <Card className="w-full border-border shadow-sm">
+      <CardHeader className="pb-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/15 text-primary ring-1 ring-primary/30">
+            <ClipboardList className="h-5 w-5" />
           </div>
-
-          <form onSubmit={submitCriacao} className="flex flex-col gap-5 rounded-lg border border-border bg-card p-6 shadow-card">
-            <div className="flex items-center gap-3 border-b border-border pb-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/15 text-primary ring-1 ring-primary/30">
-                <ClipboardList className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold">Nova interação</p>
-                <p className="text-xs text-muted-foreground">POST /interacoes</p>
-              </div>
-            </div>
-
-            <div className="grid gap-4">
+          <div>
+            <CardTitle className="text-lg">Nova Interação</CardTitle>
+            <p className="text-sm text-muted-foreground">Preencha os dados do contato com o cliente</p>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit}>
+          <div className="grid gap-5">
+            {/* Grid de 3 colunas para os campos superiores */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-xs">Empresa cliente *</Label>
                 <Select value={idCliente} onValueChange={setIdCliente}>
@@ -217,13 +192,10 @@ function InteracoesPage() {
                   </SelectContent>
                 </Select>
               </div>
-
               <div className="space-y-1.5">
-                <Label className="text-xs">Tipo</Label>
+                <Label className="text-xs">Tipo de interação</Label>
                 <Select value={tipo} onValueChange={setTipo}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Visita">Visita</SelectItem>
                     <SelectItem value="Reunião">Reunião</SelectItem>
@@ -233,13 +205,10 @@ function InteracoesPage() {
                   </SelectContent>
                 </Select>
               </div>
-
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-muted-foreground">Grau de Urgência</label>
+                <Label className="text-xs">Grau de Urgência</Label>
                 <Select value={grauUrgencia} onValueChange={setGrauUrgencia}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o grau" />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Baixo">Baixo</SelectItem>
                     <SelectItem value="Médio">Médio</SelectItem>
@@ -247,49 +216,37 @@ function InteracoesPage() {
                   </SelectContent>
                 </Select>
               </div>
-
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-muted-foreground">Status Financeiro</label>
-                <Select value={statusFinanceiro} onValueChange={(value: StatusFinanceiro) => setStatusFinanceiro(value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o status" />
-                  </SelectTrigger>
+                <Label className="text-xs">Status Financeiro</Label>
+                <Select
+                  value={statusFinanceiro}
+                  onValueChange={(value: StatusFinanceiro) => setStatusFinanceiro(value)}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Não Paga">Não Paga</SelectItem>
                     <SelectItem value="Paga">Paga</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-
               {statusFinanceiro === "Paga" && (
                 <>
-                  <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="space-y-1.5">
                     <Label className="text-xs">Valor Cobrado (R$) *</Label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                        R$
-                      </span>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        min="0.01"
-                        value={valorCobrado}
-                        onChange={(e) => setValorCobrado(e.target.value)}
-                        placeholder="0,00"
-                        className="pl-10"
-                        required
-                      />
-                    </div>
-                    <p className="text-[10px] text-muted-foreground">
-                      Valor efetivamente cobrado nesta interação
-                    </p>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0.01"
+                      value={valorCobrado}
+                      onChange={(e) => setValorCobrado(e.target.value)}
+                      placeholder="0,00"
+                      required
+                    />
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs">Status do Pagamento</Label>
                     <Select value={criacaoStatusPagamento} onValueChange={setCriacaoStatusPagamento}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="Pendente">Pendente</SelectItem>
                         <SelectItem value="Pago">Pago</SelectItem>
@@ -298,7 +255,6 @@ function InteracoesPage() {
                   </div>
                 </>
               )}
-
               <div className="space-y-1.5">
                 <Label className="text-xs">Data e hora</Label>
                 <Input
@@ -307,132 +263,244 @@ function InteracoesPage() {
                   onChange={(e) => setDataHora(e.target.value)}
                 />
               </div>
-              
-              <div className="space-y-1.5">
-                <Label className="text-xs">Feedback / Anotações</Label>
-                <Textarea
-                  value={feedback}
-                  onChange={(e) => setFeedback(e.target.value)}
-                  rows={4}
-                  placeholder="Notas da visita, próximos passos, perceções..."
-                />
-              </div>
             </div>
 
-            <div className="flex justify-end gap-2">
-              <Button type="submit" disabled={create.isPending} className="gap-2">
-                {create.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-                Registrar
-              </Button>
+            {/* Feedback ocupa largura total */}
+            <div className="space-y-1.5">
+              <Label className="text-xs">Feedback / Anotações</Label>
+              <Textarea
+                value={feedback}
+                onChange={(e) => setFeedback(e.target.value)}
+                rows={4}
+                placeholder="Notas da visita, próximos passos, perceções..."
+              />
             </div>
-          </form>
-        </div>
-
-        {/* COLUNA DO HISTÓRICO */}
-        <div className="flex flex-col gap-4 lg:col-span-7">
-          <div>
-            <h2 className="text-xl font-semibold tracking-tight">Linha do Tempo de Atendimento</h2>
-            <p className="text-sm text-muted-foreground">
-              {idCliente ? "Registros de interações encontrados para este cliente." : "Selecione uma empresa para carregar os registos."}
-            </p>
           </div>
 
-          <div className="flex flex-col gap-3 max-h-[600px] overflow-y-auto pr-1">
-            {loadingInteracoes ? (
-              <div className="flex justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              </div>
-            ) : listaInteracoes && listaInteracoes.length > 0 ? (
-              listaInteracoes.map((item: any) => {
-                const idInteracao = item.id_interacao;
-                if (!idInteracao) return null;
+          <div className="flex justify-end mt-6">
+            <Button type="submit" disabled={create.isPending} className="gap-2">
+              {create.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+              Registrar
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
 
-                return (
-                  <div 
-                    key={idInteracao} 
-                    className="group rounded-lg border border-border bg-card p-4 shadow-sm transition-all"
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="space-y-1 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="rounded bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
-                            {item.tipo_interacao}
+// ==========================================
+// ABA 2: LINHA DO TEMPO (HISTÓRICO)
+// ==========================================
+function HistoricoTab() {
+  const empresas = useEmpresas();
+  const update = useUpdateInteracao();
+  const remove = useDeleteInteracao();
+
+  const [idCliente, setIdCliente] = useState<string>("");
+  const [buscaLocal, setBuscaLocal] = useState("");
+
+  const { data: listaInteracoes, isLoading } = useInteracoesPorCliente(
+    idCliente || undefined
+  );
+
+  // Diálogo de edição
+  const [editingItem, setEditingItem] = useState<any>(null);
+  const [editTipo, setEditTipo] = useState("Visita");
+  const [editDataHora, setEditDataHora] = useState("");
+  const [editFeedback, setEditFeedback] = useState("");
+  const [editGrau, setEditGrau] = useState("Baixo");
+  const [editStatusFinanceiro, setEditStatusFinanceiro] = useState<StatusFinanceiro>("Não Paga");
+  const [editValorCobrado, setEditValorCobrado] = useState("");
+  const [editStatusPagamento, setEditStatusPagamento] = useState("Pendente");
+
+  const interacoesFiltradas = listaInteracoes?.filter((item: any) => {
+    if (!buscaLocal) return true;
+    const termo = buscaLocal.toLowerCase();
+    return (
+      item.feedback_anotacoes?.toLowerCase().includes(termo) ||
+      item.tipo_interacao?.toLowerCase().includes(termo) ||
+      item.grau_urgencia?.toLowerCase().includes(termo)
+    );
+  }) ?? [];
+
+  const handleEditClick = (item: any) => {
+    setEditingItem(item);
+    setEditTipo(item.tipo_interacao || "Visita");
+    setEditDataHora(
+      item.data_hora
+        ? getLocalDatetimeString(new Date(item.data_hora))
+        : getLocalDatetimeString()
+    );
+    setEditFeedback(item.feedback_anotacoes || "");
+    setEditGrau(item.grau_urgencia || "Baixo");
+    setEditStatusFinanceiro(item.status_financeiro || "Não Paga");
+    setEditValorCobrado(item.valor_cobrado ? String(item.valor_cobrado) : "");
+    setEditStatusPagamento(item.status_pagamento || "Pendente");
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingItem) return;
+    const payload = {
+      id_cliente: editingItem.id_cliente,
+      tipo_interacao: editTipo,
+      data_hora: editDataHora,
+      feedback_anotacoes: editFeedback,
+      grau_urgencia: editGrau,
+      status_financeiro: editStatusFinanceiro,
+      valor_cobrado:
+        editStatusFinanceiro === "Paga" ? parseFloat(editValorCobrado || "0") : null,
+      status_pagamento: editStatusPagamento,
+    };
+    try {
+      await update.mutateAsync({ id: editingItem.id_interacao, data: payload });
+      toast.success("Interação atualizada com sucesso!");
+      setEditingItem(null);
+    } catch {
+      toast.error("Erro ao atualizar interação.");
+    }
+  };
+
+  const handleDeleteClick = async (id: string) => {
+    if (window.confirm("Deseja excluir permanentemente esta interação?")) {
+      try {
+        await remove.mutateAsync(id);
+        toast.success("Interação removida.");
+      } catch {
+        toast.error("Erro ao deletar.");
+      }
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex-1">
+          <Select value={idCliente} onValueChange={setIdCliente}>
+            <SelectTrigger>
+              <SelectValue placeholder="Filtrar por empresa..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todas">Todas as empresas</SelectItem>
+              {empresas.data?.map((e: any) => (
+                <SelectItem key={e.id_cliente} value={e.id_cliente}>
+                  {e.nome_empresa}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por feedback, tipo..."
+            value={buscaLocal}
+            onChange={(e) => setBuscaLocal(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+      </div>
+
+      <div className="rounded-lg border border-border bg-card overflow-hidden">
+        {isLoading ? (
+          <div className="flex justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : interacoesFiltradas.length > 0 ? (
+          <div className="divide-y divide-border max-h-[600px] overflow-y-auto">
+            {interacoesFiltradas.map((item: any) => {
+              const idInteracao = item.id_interacao;
+              if (!idInteracao) return null;
+
+              return (
+                <div key={idInteracao} className="group p-4 hover:bg-muted/20 transition-colors">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="space-y-1 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="rounded bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                          {item.tipo_interacao}
+                        </span>
+                        {item.grau_urgencia && (
+                          <span
+                            className={`rounded px-2 py-0.5 text-xs font-semibold ${
+                              item.grau_urgencia === "Alto"
+                                ? "bg-red-100 text-red-700"
+                                : item.grau_urgencia === "Médio"
+                                ? "bg-yellow-100 text-yellow-700"
+                                : "bg-green-100 text-green-700"
+                            }`}
+                          >
+                            Urgência: {item.grau_urgencia}
                           </span>
-                          
-                          {item.grau_urgencia && (
-                            <span className={`rounded px-2 py-0.5 text-xs font-semibold ${
-                              item.grau_urgencia === 'Alto' ? 'bg-red-100 text-red-700' : 
-                              item.grau_urgencia === 'Médio' ? 'bg-yellow-100 text-yellow-700' : 
-                              'bg-green-100 text-green-700'
-                            }`}>
-                              Urgência: {item.grau_urgencia}
-                            </span>
-                          )}
-
-                          {item.status_financeiro === 'Paga' && (
-                            <span className={`rounded px-2 py-0.5 text-xs font-semibold border ${
-                              item.status_pagamento === 'Pago' 
-                                ? 'bg-emerald-100 text-emerald-700 border-emerald-200' 
-                                : 'bg-yellow-100 text-yellow-700 border-yellow-200'
-                             }`}>
-                              {item.valor_cobrado 
-                                ? `Paga - ${formatarMoeda(item.valor_cobrado)}` 
-                                : 'Paga'}
-                              {item.status_pagamento === 'Pago' ? ' ✓ Pago' : ' (Pendente)'}
-                            </span>
-                          )}
-                                
-                          <span className="text-xs text-muted-foreground">
-                            {item.data_hora
-                              ? new Date(item.data_hora).toLocaleString("pt-BR", {
-                                    day: '2-digit',
-                                    month: '2-digit',
-                                    year: 'numeric',
-                                    hour: '2-digit',
-                                    minute: '2-digit'
-                                  })
-                              : "Data não informada"}
+                        )}
+                        {item.status_financeiro === "Paga" && (
+                          <span
+                            className={`rounded px-2 py-0.5 text-xs font-semibold border ${
+                              item.status_pagamento === "Pago"
+                                ? "bg-emerald-100 text-emerald-700 border-emerald-200"
+                                : "bg-yellow-100 text-yellow-700 border-yellow-200"
+                            }`}
+                          >
+                            {item.valor_cobrado
+                              ? `Paga - ${formatarMoeda(item.valor_cobrado)}`
+                              : "Paga"}
+                            {item.status_pagamento === "Pago"
+                              ? " ✓ Pago"
+                              : " (Pendente)"}
                           </span>
-                        </div>
-                        
-                        <p className="text-sm whitespace-pre-wrap pt-1 font-medium text-foreground">
-                          {item.feedback_anotacoes || <span className="text-muted-foreground italic text-xs">Sem anotações registadas.</span>}
-                        </p>
+                        )}
+                        <span className="text-xs text-muted-foreground">
+                          {item.data_hora
+                            ? new Date(item.data_hora).toLocaleString("pt-BR", {
+                                day: "2-digit",
+                                month: "2-digit",
+                                year: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })
+                            : "Data não informada"}
+                        </span>
                       </div>
-
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                          onClick={() => handleEditClick(item)}
-                          title="Editar interação"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                          onClick={() => handleDeleteClick(idInteracao)}
-                          title="Deletar permanentemente"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
+                      <p className="text-sm whitespace-pre-wrap pt-1 font-medium text-foreground">
+                        {item.feedback_anotacoes || (
+                          <span className="text-muted-foreground italic text-xs">
+                            Sem anotações registadas.
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                        onClick={() => handleEditClick(item)}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        onClick={() => handleDeleteClick(idInteracao)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
                     </div>
                   </div>
-                );
-              })
-            ) : idCliente ? (
-              <p className="text-sm text-muted-foreground italic py-4">Nenhuma interação encontrada para este cliente.</p>
-            ) : (
-              <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-                Aguardando a seleção do cliente no painel esquerdo...
-              </div>
-            )}
+                </div>
+              );
+            })}
           </div>
-        </div>
+        ) : idCliente ? (
+          <p className="text-sm text-muted-foreground italic p-4">
+            Nenhuma interação encontrada para este cliente.
+          </p>
+        ) : (
+          <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+            Selecione uma empresa para visualizar o histórico.
+          </div>
+        )}
       </div>
 
       {/* DIÁLOGO DE EDIÇÃO */}
@@ -469,7 +537,7 @@ function InteracoesPage() {
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Status Financeiro</Label>
-                <Select value={editStatusFinanceiro} onValueChange={(value: StatusFinanceiro) => setEditStatusFinanceiro(value)}>
+                <Select value={editStatusFinanceiro} onValueChange={(v: StatusFinanceiro) => setEditStatusFinanceiro(v)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Não Paga">Não Paga</SelectItem>
@@ -526,6 +594,6 @@ function InteracoesPage() {
           </DialogContent>
         </Dialog>
       )}
-    </DashboardLayout>
+    </div>
   );
 }

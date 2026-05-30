@@ -182,6 +182,8 @@ class ContratoResponse(ContratoBase):
     id_contrato: UUID
     id_cliente: UUID
     id_modelo: UUID
+    entregas: List["EntregaResponse"] = []   # 👈 use string
+    faturas: List["FaturaResponse"] = []     # 👈 use string
     
     model_config = ConfigDict(from_attributes=True)
 
@@ -235,14 +237,14 @@ class InteracaoResponse(InteracaoBase):
     # ✅ Apenas UMA definição
 class EmpresaResponse(EmpresaBase):
     id_cliente: UUID
-    servicos_contratados: List[ServicoDetalhe] = [] # Movido para cá para evitar referência circular
+    servicos_contratados: List[ServicoDetalhe] = []
     localizacao: Optional[str] = None
     servico_prestado: Optional[str] = None
     interacoes: List[InteracaoResponse] = []
     contratos: List[ContratoResponse] = []
     
-    
     model_config = ConfigDict(from_attributes=True)
+
 # ==========================================
 # 6. MÓDULO: ENTREGAS E PRAZOS
 # ==========================================

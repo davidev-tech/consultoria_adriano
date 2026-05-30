@@ -27,6 +27,7 @@ import {
   useCreateEntrega,
   useUpdateEntrega,
   useDeleteEntrega,
+  useModelos,
 } from "@/lib/api/hooks";
 import { toast } from "sonner";
 import type { UUID } from "@/lib/api/types";
@@ -69,7 +70,16 @@ function EntregasPrazosPage() {
 
   const empresas = useEmpresas();
   const { data: contratos } = useTodosContratos();   // retorna TODOS os contratos (já com joins)
-  
+  const { data: modelos } = useModelos();
+
+  const modelosMap = useMemo(() => {
+  if (!modelos) return {};
+  const map: Record<string, string> = {};
+  modelos.forEach((m: any) => {
+    map[m.id_modelo] = m.nome_modelo;
+  });
+  return map;
+}, [modelos]);
 const { data: entregas, isLoading } = useEntregas({
   id_contrato: idContrato !== "todos" ? idContrato : undefined,
   status_entrega: statusFiltro !== "todas" ? statusFiltro : undefined,
@@ -239,7 +249,7 @@ const { data: entregas, isLoading } = useEntregas({
                   <tr className="border-b bg-muted/50">
                     <th className="text-left px-4 py-3 font-medium">Empresa</th>
                     <th className="text-left px-4 py-3 font-medium">Contrato</th>
-                    <th className="text-left px-4 py-3 font-medium">Descrição</th>
+                    <th className="text-left px-4 py-3 font-medium">Descrição Entrega</th>
                     <th className="text-left px-4 py-3 font-medium">Prazo Limite</th>
                     <th className="text-left px-4 py-3 font-medium">Status</th>
                     <th className="text-left px-4 py-3 font-medium">Dias</th>
@@ -262,7 +272,9 @@ const { data: entregas, isLoading } = useEntregas({
                       <tr key={entrega.id_entrega} className="hover:bg-muted/20">
                         <td className="px-4 py-3">{empresa?.nome_empresa || "—"}</td>
                         <td className="px-4 py-3 text-xs text-muted-foreground">
-                          {contrato ? `Contrato #${contrato.id_contrato.slice(0,8)}` : "—"}
+                          {contrato && modelosMap[contrato.id_modelo] 
+                            ? modelosMap[contrato.id_modelo] 
+                            : "—"}
                         </td>
                         <td className="px-4 py-3 font-medium">{entrega.descricao_entrega}</td>
                         <td className="px-4 py-3 font-mono">{formatarData(entrega.data_prazo_limite)}</td>
