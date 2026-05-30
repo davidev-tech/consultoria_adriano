@@ -182,6 +182,8 @@ class ContratoResponse(ContratoBase):
     id_contrato: UUID
     id_cliente: UUID
     id_modelo: UUID
+    entregas: List["EntregaResponse"] = []   # 👈 use string
+    faturas: List["FaturaResponse"] = []     # 👈 use string
     
     model_config = ConfigDict(from_attributes=True)
 
@@ -242,7 +244,7 @@ class EmpresaResponse(EmpresaBase):
     contratos: List[ContratoResponse] = []
     
     model_config = ConfigDict(from_attributes=True)
-    
+
 # ==========================================
 # 6. MÓDULO: ENTREGAS E PRAZOS
 # ==========================================

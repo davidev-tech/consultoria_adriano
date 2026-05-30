@@ -155,17 +155,21 @@ function EmpresasPage() {
                   })
                 : "—";
 
-              // ✅ PENDÊNCIAS FINANCEIRAS (faturas com status "Pendente" ou "Atrasado")
+              // ✅ PENDÊNCIAS FINANCEIRAS (faturas Pendente/Atrasado)
               const faturasPendentes = contratosAtivos.flatMap((c: any) => 
                 Array.isArray(c.faturas) 
-                  ? c.faturas.filter((f: any) => 
-                      f.status === "Pendente" || f.status === "Atrasado"
-                    )
+                  ? c.faturas.filter((f: any) => f.status === "Pendente" || f.status === "Atrasado")
                   : []
               );
-              
-              const totalPendencias = faturasPendentes.length;
 
+              // ✅ PENDÊNCIAS DE ENTREGA (status diferente de Concluído)
+            const entregasPendentes = contratosAtivos.flatMap((c: any) => 
+              Array.isArray(c.entregas) 
+                ? c.entregas.filter((e: any) => e.status_entrega !== "Concluído")
+                : []
+              );
+
+const totalPendencias = faturasPendentes.length + entregasPendentes.length;
               // ✅ ÚLTIMAS 3 INTERAÇÕES (qualquer tipo)
               const ultimasInteracoes = interacoesOrdenadas.slice(0, 3);
 
