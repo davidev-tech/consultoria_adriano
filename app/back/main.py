@@ -354,6 +354,124 @@ def desarquivar_contrato(contrato_id: str, db: Session = Depends(get_db)):
     db.refresh(contrato)
     return {"mensagem": "Contrato desarquivado com sucesso!", "id_contrato": contrato_id}
 
+# --- MÓDULO: ENTREGAS E PRAZOS ---
+
+@app.post("/entregas", response_model=schemas.EntregaResponse, tags=["Entregas"])
+def criar_entrega(obj_in: schemas.EntregaCreate, db: Session = Depends(get_db)):
+    if not db.query(models.Contrato).filter(models.Contrato.id_contrato == obj_in.id_contrato).first():
+        raise HTTPException(status_code=404, detail="Contrato não encontrado.")
+    nova = models.Entrega(**obj_in.model_dump())
+    db.add(nova)
+    db.commit()
+    db.refresh(nova)
+    return nova
+
+@app.get("/entregas", response_model=List[schemas.EntregaResponse], tags=["Entregas"])
+def listar_entregas(
+    id_contrato: Optional[UUID] = Query(None),
+    status_entrega: Optional[str] = Query(None),
+    data_inicio: Optional[date] = Query(None),
+    data_fim: Optional[date] = Query(None),
+    db: Session = Depends(get_db)
+):
+    query = db.query(models.Entrega)
+    if id_contrato:
+        query = query.filter(models.Entrega.id_contrato == id_contrato)
+    if status_entrega:
+        query = query.filter(models.Entrega.status_entrega == status_entrega)
+    if data_inicio:
+        query = query.filter(models.Entrega.data_prazo_limite >= data_inicio)
+    if data_fim:
+        query = query.filter(models.Entrega.data_prazo_limite <= data_fim)
+    return query.order_by(models.Entrega.data_prazo_limite.asc()).all()
+
+@app.put("/entregas/{id_entrega}", response_model=schemas.EntregaResponse, tags=["Entregas"])
+def atualizar_entrega(id_entrega: UUID, payload: dict, db: Session = Depends(get_db)):
+    entrega = db.query(models.Entrega).filter(models.Entrega.id_entrega == id_entrega).first()
+    if not entrega:
+        raise HTTPException(status_code=404, detail="Entrega não encontrada")
+    if "descricao_entrega" in payload:
+        entrega.descricao_entrega = payload["descricao_entrega"]
+    if "data_prazo_limite" in payload:
+        entrega.data_prazo_limite = payload["data_prazo_limite"]
+    if "status_entrega" in payload:
+        entrega.status_entrega = payload["status_entrega"]
+    if "data_conclusao" in payload:
+        entrega.data_conclusao = payload["data_conclusao"]
+    try:
+        db.commit()
+        db.refresh(entrega)
+        return entrega
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/entregas/{id_entrega}", tags=["Entregas"])
+def deletar_entrega(id_entrega: UUID, db: Session = Depends(get_db)):
+    entrega = db.query(models.Entrega).filter(models.Entrega.id_entrega == id_entrega).first()
+    if not entrega:
+        raise HTTPException(status_code=404, detail="Entrega não encontrada")
+    db.delete(entrega)
+    db.commit()
+    return {"mensagem": "Entrega removida com sucesso"}
+
+# --- MÓDULO: PENDÊNCIAS ---
+@app.get("/pendencias", response_model=List[schemas.PendenciaResponse], tags=["Pendências"])
+def listar_pendencias(
+    id_cliente: Optional[UUID] = Query(None, description="Filtrar por empresa"),
+    tipo: Optional[str] = Query(None, description="Filtrar por tipo: financeira ou entrega"),
+    db: Session = Depends(get_db)
+):
+    resultados = []
+
+    # --- Pendências Financeiras (faturas com status 'Pendente' ou 'Atrasado') ---
+    if not tipo or tipo == "financeira":
+        faturas_query = db.query(models.Fatura).join(models.Contrato).filter(
+            models.Fatura.status.in_(["Pendente", "Atrasado"])
+        )
+        if id_cliente:
+            faturas_query = faturas_query.filter(models.Contrato.id_cliente == id_cliente)
+        faturas = faturas_query.all()
+        for fatura in faturas:
+            contrato = db.query(models.Contrato).filter(models.Contrato.id_contrato == fatura.id_contrato).first()
+            empresa = db.query(models.EmpresaCliente).filter(models.EmpresaCliente.id_cliente == contrato.id_cliente).first() if contrato else None
+            resultados.append({
+                "id": str(fatura.id_fatura),
+                "tipo": "financeira",
+                "empresa_nome": empresa.nome_empresa if empresa else "—",
+                "descricao": f"Fatura #{str(fatura.id_fatura)[:8]} – Vencimento: {fatura.data_vencimento.strftime('%d/%m/%Y')}",
+                "status": fatura.status,
+                "data_limite": fatura.data_vencimento,
+                "valor": float(fatura.valor_original) if fatura.valor_original else 0.0,
+                "id_referencia": str(fatura.id_contrato)
+            })
+
+    # --- Pendências de Entrega (status != 'Concluído' e prazo vencido ou futuro) ---
+    if not tipo or tipo == "entrega":
+        entregas_query = db.query(models.Entrega).join(models.Contrato).filter(
+            models.Entrega.status_entrega != "Concluído"
+        )
+        if id_cliente:
+            entregas_query = entregas_query.filter(models.Contrato.id_cliente == id_cliente)
+        entregas = entregas_query.all()
+        for entrega in entregas:
+            contrato = db.query(models.Contrato).filter(models.Contrato.id_contrato == entrega.id_contrato).first()
+            empresa = db.query(models.EmpresaCliente).filter(models.EmpresaCliente.id_cliente == contrato.id_cliente).first() if contrato else None
+            resultados.append({
+                "id": str(entrega.id_entrega),
+                "tipo": "entrega",
+                "empresa_nome": empresa.nome_empresa if empresa else "—",
+                "descricao": f"Entrega: {entrega.descricao_entrega}",
+                "status": entrega.status_entrega,
+                "data_limite": entrega.data_prazo_limite,
+                "valor": None,
+                "id_referencia": str(entrega.id_contrato)
+            })
+
+    # Ordena por data_limite mais próxima
+    resultados.sort(key=lambda x: x["data_limite"] if x["data_limite"] else date.today())
+    return resultados
+
 # --- MÓDULO 6: HISTÓRICO DE INTERAÇÕES (CRM) ---
 @app.post("/interacoes", response_model=schemas.InteracaoResponse, tags=["Interações"])
 def criar_interacao(obj_in: schemas.InteracaoCreate, db: Session = Depends(get_db)):
@@ -481,6 +599,8 @@ def atualizar_interacao(id_interacao: UUID, payload: dict, db: Session = Depends
         db_interacao.status_financeiro = payload["status_financeiro"]
     if "valor_cobrado" in payload:  # ✅ NOVO CAMPO
         db_interacao.valor_cobrado = payload["valor_cobrado"]
+    if "status_pagamento" in payload:
+        db_interacao.status_pagamento = payload["status_pagamento"]
 
     try:
         db.commit()

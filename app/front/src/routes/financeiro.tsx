@@ -384,6 +384,7 @@ function InteracoesPagasTab() {
   const [editGrau, setEditGrau] = useState("Baixo");
   const [editStatus, setEditStatus] = useState<StatusFinanceiro>("Não Paga");
   const [editValor, setEditValor] = useState("");
+  const [editStatusPagamento, setEditStatusPagamento] = useState("Pendente"); // 👈 novo estado
 
   const interacoesFiltradas = interacoesPagas?.filter(item => {
     if (!buscaLocal) return true;
@@ -411,6 +412,7 @@ function InteracoesPagasTab() {
     setEditGrau(item.grau_urgencia || "Baixo");
     setEditStatus(item.status_financeiro || "Não Paga");
     setEditValor(item.valor_cobrado ? String(item.valor_cobrado) : "");
+    setEditStatusPagamento(item.status_pagamento || "Pendente"); // 👈 preenche novo campo
   };
 
   const handleSaveEdit = async () => {
@@ -426,6 +428,7 @@ function InteracoesPagasTab() {
           grau_urgencia: editGrau,
           status_financeiro: editStatus,
           valor_cobrado: editStatus === "Paga" ? parseFloat(editValor) : null,
+          status_pagamento: editStatusPagamento, // 👈 envia novo campo
         },
       });
       toast.success("Interação atualizada com sucesso!");
@@ -548,6 +551,7 @@ function InteracoesPagasTab() {
                   <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Data/Hora</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Urgência</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Valor</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status Pagamento</th> {/* 👈 nova coluna */}
                   <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Feedback</th>
                   <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[100px]">Ações</th>
                 </tr>
@@ -577,6 +581,16 @@ function InteracoesPagasTab() {
                       <td className="px-4 py-3">
                         <span className="text-sm font-semibold text-emerald-600">
                           {formatarMoeda(item.valor_cobrado)}
+                        </span>
+                      </td>
+                      {/* 👇 Nova célula de status de pagamento */}
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex rounded px-2 py-0.5 text-xs font-semibold ${
+                          item.status_pagamento === 'Pago' 
+                            ? 'bg-emerald-100 text-emerald-700' 
+                            : 'bg-yellow-100 text-yellow-700'
+                        }`}>
+                          {item.status_pagamento || 'Pendente'}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-sm text-muted-foreground max-w-[250px] truncate">
@@ -667,17 +681,30 @@ function InteracoesPagasTab() {
                 </Select>
               </div>
               {editStatus === "Paga" && (
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Valor Cobrado (R$)</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min="0.01"
-                    value={editValor}
-                    onChange={(e) => setEditValor(e.target.value)}
-                    placeholder="0,00"
-                  />
-                </div>
+                <>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Valor Cobrado (R$)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0.01"
+                      value={editValor}
+                      onChange={(e) => setEditValor(e.target.value)}
+                      placeholder="0,00"
+                    />
+                  </div>
+                  {/* 👇 Novo campo Status do Pagamento */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Status do Pagamento</Label>
+                    <Select value={editStatusPagamento} onValueChange={setEditStatusPagamento}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Pendente">Pendente</SelectItem>
+                        <SelectItem value="Pago">Pago</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
               )}
               <div className="space-y-1.5">
                 <Label className="text-xs">Data e Hora</Label>

@@ -197,8 +197,10 @@ class InteracaoBase(BaseModel):
     data_hora: Optional[datetime] = None
     feedback_anotacoes: Optional[str] = None
     grau_urgencia: Optional[str] = "Baixo"
-    status_financeiro: Optional[str] = "Não Paga"  # ✅ Padronizado
+    status_financeiro: Optional[str] = "Não Paga"
     valor_cobrado: Optional[float] = None
+    status_pagamento: Optional[str] = "Pendente"   # 👈 NOVO
+    
 
 class InteracaoCreate(InteracaoBase):
     id_cliente: UUID
@@ -267,11 +269,22 @@ class EntregaCreate(EntregaBase):
 class EntregaResponse(EntregaBase):
     id_entrega: UUID
     id_contrato: UUID
-    
+    data_conclusao: Optional[date] = None
     model_config = ConfigDict(from_attributes=True)
 
 
+# schemas.py – adicione no final
+class PendenciaResponse(BaseModel):
+    id: str
+    tipo: str  # "financeira" ou "entrega"
+    empresa_nome: str
+    descricao: str
+    status: str
+    data_limite: Optional[date] = None
+    valor: Optional[float] = None
+    id_referencia: str
 
+    model_config = ConfigDict(from_attributes=True)
 
 # ==========================================
 # 7. MÓDULO: PAGAMENTOS

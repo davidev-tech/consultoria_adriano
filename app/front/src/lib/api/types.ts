@@ -96,6 +96,21 @@ export interface ContratoCreate {
   data_fim?: string | null;
 }
 
+export interface Entrega {
+  id_entrega: UUID;
+  id_contrato: UUID;
+  descricao_entrega: string;
+  data_prazo_limite: string; // YYYY-MM-DD
+  data_conclusao?: string | null;
+  status_entrega?: string | null;
+}
+
+export interface EntregaCreate {
+  id_contrato: UUID;
+  descricao_entrega: string;
+  data_prazo_limite: string;
+  status_entrega?: string;
+}
 export interface Paciente {
   id_paciente: UUID;
   id_cliente: UUID;
@@ -122,6 +137,7 @@ export interface HistoricoInteracao {
   grau_urgencia?: string | null;
   status_financeiro?: StatusFinanceiro; // ✅ ADICIONADO
   valor_cobrado?: number | null
+  status_pagamento?: string | null;
 }
 
 // ✅ ATUALIZADO: HistoricoInteracaoCreate com status_financeiro
@@ -133,6 +149,7 @@ export interface HistoricoInteracaoCreate {
   grau_urgencia?: string | null;
   status_financeiro?: StatusFinanceiro; // ✅ ADICIONADO
   valor_cobrado?: number | null
+  status_pagamento?: string | null;
 }
 
 // ✅ NOVO: Payload específico para atualização parcial (PUT)

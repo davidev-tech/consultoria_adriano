@@ -9,14 +9,21 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as PendenciasRouteImport } from './routes/pendencias'
 import { Route as InteracoesRouteImport } from './routes/interacoes'
 import { Route as FinanceiroRouteImport } from './routes/financeiro'
+import { Route as Entregas_prazosRouteImport } from './routes/entregas_prazos'
 import { Route as EmpresasRouteImport } from './routes/empresas'
 import { Route as ContratosRouteImport } from './routes/contratos'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as EmpresasIdRouteImport } from './routes/empresas.$id'
 
+const PendenciasRoute = PendenciasRouteImport.update({
+  id: '/pendencias',
+  path: '/pendencias',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const InteracoesRoute = InteracoesRouteImport.update({
   id: '/interacoes',
   path: '/interacoes',
@@ -25,6 +32,11 @@ const InteracoesRoute = InteracoesRouteImport.update({
 const FinanceiroRoute = FinanceiroRouteImport.update({
   id: '/financeiro',
   path: '/financeiro',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const Entregas_prazosRoute = Entregas_prazosRouteImport.update({
+  id: '/entregas_prazos',
+  path: '/entregas_prazos',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EmpresasRoute = EmpresasRouteImport.update({
@@ -58,8 +70,10 @@ export interface FileRoutesByFullPath {
   '/configuracoes': typeof ConfiguracoesRoute
   '/contratos': typeof ContratosRoute
   '/empresas': typeof EmpresasRouteWithChildren
+  '/entregas_prazos': typeof Entregas_prazosRoute
   '/financeiro': typeof FinanceiroRoute
   '/interacoes': typeof InteracoesRoute
+  '/pendencias': typeof PendenciasRoute
   '/empresas/$id': typeof EmpresasIdRoute
 }
 export interface FileRoutesByTo {
@@ -67,8 +81,10 @@ export interface FileRoutesByTo {
   '/configuracoes': typeof ConfiguracoesRoute
   '/contratos': typeof ContratosRoute
   '/empresas': typeof EmpresasRouteWithChildren
+  '/entregas_prazos': typeof Entregas_prazosRoute
   '/financeiro': typeof FinanceiroRoute
   '/interacoes': typeof InteracoesRoute
+  '/pendencias': typeof PendenciasRoute
   '/empresas/$id': typeof EmpresasIdRoute
 }
 export interface FileRoutesById {
@@ -77,8 +93,10 @@ export interface FileRoutesById {
   '/configuracoes': typeof ConfiguracoesRoute
   '/contratos': typeof ContratosRoute
   '/empresas': typeof EmpresasRouteWithChildren
+  '/entregas_prazos': typeof Entregas_prazosRoute
   '/financeiro': typeof FinanceiroRoute
   '/interacoes': typeof InteracoesRoute
+  '/pendencias': typeof PendenciasRoute
   '/empresas/$id': typeof EmpresasIdRoute
 }
 export interface FileRouteTypes {
@@ -88,8 +106,10 @@ export interface FileRouteTypes {
     | '/configuracoes'
     | '/contratos'
     | '/empresas'
+    | '/entregas_prazos'
     | '/financeiro'
     | '/interacoes'
+    | '/pendencias'
     | '/empresas/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -97,8 +117,10 @@ export interface FileRouteTypes {
     | '/configuracoes'
     | '/contratos'
     | '/empresas'
+    | '/entregas_prazos'
     | '/financeiro'
     | '/interacoes'
+    | '/pendencias'
     | '/empresas/$id'
   id:
     | '__root__'
@@ -106,8 +128,10 @@ export interface FileRouteTypes {
     | '/configuracoes'
     | '/contratos'
     | '/empresas'
+    | '/entregas_prazos'
     | '/financeiro'
     | '/interacoes'
+    | '/pendencias'
     | '/empresas/$id'
   fileRoutesById: FileRoutesById
 }
@@ -116,12 +140,21 @@ export interface RootRouteChildren {
   ConfiguracoesRoute: typeof ConfiguracoesRoute
   ContratosRoute: typeof ContratosRoute
   EmpresasRoute: typeof EmpresasRouteWithChildren
+  Entregas_prazosRoute: typeof Entregas_prazosRoute
   FinanceiroRoute: typeof FinanceiroRoute
   InteracoesRoute: typeof InteracoesRoute
+  PendenciasRoute: typeof PendenciasRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/pendencias': {
+      id: '/pendencias'
+      path: '/pendencias'
+      fullPath: '/pendencias'
+      preLoaderRoute: typeof PendenciasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/interacoes': {
       id: '/interacoes'
       path: '/interacoes'
@@ -134,6 +167,13 @@ declare module '@tanstack/react-router' {
       path: '/financeiro'
       fullPath: '/financeiro'
       preLoaderRoute: typeof FinanceiroRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/entregas_prazos': {
+      id: '/entregas_prazos'
+      path: '/entregas_prazos'
+      fullPath: '/entregas_prazos'
+      preLoaderRoute: typeof Entregas_prazosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/empresas': {
@@ -191,8 +231,10 @@ const rootRouteChildren: RootRouteChildren = {
   ConfiguracoesRoute: ConfiguracoesRoute,
   ContratosRoute: ContratosRoute,
   EmpresasRoute: EmpresasRouteWithChildren,
+  Entregas_prazosRoute: Entregas_prazosRoute,
   FinanceiroRoute: FinanceiroRoute,
   InteracoesRoute: InteracoesRoute,
+  PendenciasRoute: PendenciasRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

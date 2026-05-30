@@ -13,6 +13,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"; // 👈 Modal de edição
 import { 
   useCreateInteracao, 
   useInteracoesPorCliente, 
@@ -23,14 +30,13 @@ import {
 import type { StatusFinanceiro } from "@/lib/api/types";
 import { toast } from "sonner";
 
-// Utilitário para ajustar o fuso horário (UTC-3) no input datetime-local
+// Utilitários mantidos
 const getLocalDatetimeString = (date = new Date()) => {
   const tzOffset = date.getTimezoneOffset() * 60000; 
   const localISOTime = new Date(date.getTime() - tzOffset).toISOString().slice(0, 16);
   return localISOTime;
 };
 
-// Formata valor para exibição
 const formatarMoeda = (valor: number | null | undefined) => {
   if (!valor) return '';
   return new Intl.NumberFormat('pt-BR', { 
@@ -50,42 +56,52 @@ function InteracoesPage() {
   const update = useUpdateInteracao();
   const remove = useDeleteInteracao();
   
-  const [grauUrgencia, setGrauUrgencia] = useState("Baixo");
-  const [statusFinanceiro, setStatusFinanceiro] = useState<StatusFinanceiro>("Não Paga");
-  const [valorCobrado, setValorCobrado] = useState<string>("");
+  // Estados do formulário de CRIAÇÃO (coluna esquerda)
   const [idCliente, setIdCliente] = useState<string>("");
-  const [editingId, setEditingId] = useState<string | null>(null);
   const [tipo, setTipo] = useState("Visita");
   const [dataHora, setDataHora] = useState(() => getLocalDatetimeString());
   const [feedback, setFeedback] = useState("");
-  
+  const [grauUrgencia, setGrauUrgencia] = useState("Baixo");
+  const [statusFinanceiro, setStatusFinanceiro] = useState<StatusFinanceiro>("Não Paga");
+  const [valorCobrado, setValorCobrado] = useState<string>("");
+  const [criacaoStatusPagamento, setCriacaoStatusPagamento] = useState("Pendente");
+
   const { data: listaInteracoes, isLoading: loadingInteracoes } = useInteracoesPorCliente(idCliente || undefined);
 
-  // Limpa o valor cobrado quando status muda para "Não Paga"
+  // Estado do diálogo de edição
+  const [editingItem, setEditingItem] = useState<any>(null);
+  // Estados internos do diálogo (cópias editáveis)
+  const [editTipo, setEditTipo] = useState("Visita");
+  const [editDataHora, setEditDataHora] = useState("");
+  const [editFeedback, setEditFeedback] = useState("");
+  const [editGrau, setEditGrau] = useState("Baixo");
+  const [editStatusFinanceiro, setEditStatusFinanceiro] = useState<StatusFinanceiro>("Não Paga");
+  const [editValorCobrado, setEditValorCobrado] = useState("");
+  const [editStatusPagamento, setEditStatusPagamento] = useState("Pendente");
+
+  // Limpa o valor cobrado quando status muda para "Não Paga" (formulário de criação)
   useEffect(() => {
     if (statusFinanceiro === "Não Paga") {
       setValorCobrado("");
     }
   }, [statusFinanceiro]);
 
-  const cancelarEdicao = () => {
-    setEditingId(null);
+  const resetCriacaoForm = () => {
     setTipo("Visita");
     setFeedback("");
     setGrauUrgencia("Baixo");
     setStatusFinanceiro("Não Paga");
     setValorCobrado("");
+    setCriacaoStatusPagamento("Pendente");
     setDataHora(getLocalDatetimeString());
   };
 
-  const submit = async (e: React.FormEvent) => {
+  const submitCriacao = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!idCliente) {
       toast.error("Selecione uma empresa");
       return;
     }
-
-    // Validação: se Paga, valor é obrigatório
     if (statusFinanceiro === "Paga") {
       const valor = parseFloat(valorCobrado);
       if (!valorCobrado || isNaN(valor) || valor <= 0) {
@@ -102,40 +118,55 @@ function InteracoesPage() {
       grau_urgencia: grauUrgencia,
       status_financeiro: statusFinanceiro,
       valor_cobrado: statusFinanceiro === "Paga" ? parseFloat(valorCobrado) : null,
+      status_pagamento: criacaoStatusPagamento,
     };
 
     try {
-      if (editingId) {
-        await update.mutateAsync({ id: editingId, data: payload });
-        toast.success("Interação atualizada com sucesso!");
-        cancelarEdicao();
-      } else {
-        await create.mutateAsync(payload);
-        toast.success("Interação registrada com sucesso!");
-        setFeedback("");
-        setGrauUrgencia("Baixo");
-        setStatusFinanceiro("Não Paga");
-        setValorCobrado("");
-      }
+      await create.mutateAsync(payload);
+      toast.success("Interação registrada com sucesso!");
+      resetCriacaoForm();
     } catch (err) {
       toast.error("Erro ao processar a requisição.");
     }
   };
 
+  // Abre o diálogo de edição com os dados do item
   const handleEditClick = (item: any) => {
-    setEditingId(item.id_interacao);
-    setTipo(item.tipo_interacao || "Visita");
-    setFeedback(item.feedback_anotacoes || "");
-    setGrauUrgencia(item.grau_urgencia || "Baixo");
-    setStatusFinanceiro(item.status_financeiro || "Não Paga");
-    setValorCobrado(item.valor_cobrado ? item.valor_cobrado.toString() : "");
-    if (item.data_hora) {
-      setDataHora(getLocalDatetimeString(new Date(item.data_hora)));
+    setEditingItem(item);
+    setEditTipo(item.tipo_interacao || "Visita");
+    setEditDataHora(item.data_hora ? getLocalDatetimeString(new Date(item.data_hora)) : getLocalDatetimeString());
+    setEditFeedback(item.feedback_anotacoes || "");
+    setEditGrau(item.grau_urgencia || "Baixo");
+    setEditStatusFinanceiro(item.status_financeiro || "Não Paga");
+    setEditValorCobrado(item.valor_cobrado ? item.valor_cobrado.toString() : "");
+    setEditStatusPagamento(item.status_pagamento || "Pendente");
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingItem) return;
+
+    const payload = {
+      id_cliente: editingItem.id_cliente,
+      tipo_interacao: editTipo,
+      data_hora: editDataHora,
+      feedback_anotacoes: editFeedback,
+      grau_urgencia: editGrau,
+      status_financeiro: editStatusFinanceiro,
+      valor_cobrado: editStatusFinanceiro === "Paga" ? parseFloat(editValorCobrado || "0") : null,
+      status_pagamento: editStatusPagamento,
+    };
+
+    try {
+      await update.mutateAsync({ id: editingItem.id_interacao, data: payload });
+      toast.success("Interação atualizada com sucesso!");
+      setEditingItem(null);
+    } catch (err) {
+      toast.error("Erro ao atualizar interação.");
     }
   };
 
   const handleDeleteClick = async (id: string) => {
-    if (window.confirm("Deseja excluir permanentemente esta interação do histórico de auditoria?")) {
+    if (window.confirm("Deseja excluir permanentemente esta interação?")) {
       try {
         await remove.mutateAsync(id);
         toast.success("Interação removida.");
@@ -149,45 +180,31 @@ function InteracoesPage() {
     <DashboardLayout>
       <div className="mx-auto flex max-w-6xl flex-col gap-8 lg:grid lg:grid-cols-12 lg:items-start">
         
-        {/* COLUNA DO FORMULÁRIO */}
+        {/* COLUNA DO FORMULÁRIO (APENAS CRIAÇÃO) */}
         <div className="flex flex-col gap-6 lg:col-span-5">
           <div>
             <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-primary">
-              // {editingId ? "modo edição / auditoria" : "consultor em campo"}
+              // consultor em campo
             </span>
-            <h1 className="text-2xl font-semibold tracking-tight">
-              {editingId ? "Editar Interação" : "Registrar Interação"}
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              {editingId ? "Altere os dados salvos do histórico do cliente." : "Registre visitas, reuniões e feedbacks com cliente."}
-            </p>
+            <h1 className="text-2xl font-semibold tracking-tight">Registrar Interação</h1>
+            <p className="text-sm text-muted-foreground">Registre visitas, reuniões e feedbacks com cliente.</p>
           </div>
 
-          <form
-            onSubmit={submit}
-            className="flex flex-col gap-5 rounded-lg border border-border bg-card p-6 shadow-card"
-          >
-            <div className="flex items-center justify-between border-b border-border pb-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/15 text-primary ring-1 ring-primary/30">
-                  <ClipboardList className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold">{editingId ? "Modificar registro" : "Nova interação"}</p>
-                  <p className="text-xs text-muted-foreground">{editingId ? "PUT /interacoes" : "POST /interacoes"}</p>
-                </div>
+          <form onSubmit={submitCriacao} className="flex flex-col gap-5 rounded-lg border border-border bg-card p-6 shadow-card">
+            <div className="flex items-center gap-3 border-b border-border pb-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/15 text-primary ring-1 ring-primary/30">
+                <ClipboardList className="h-5 w-5" />
               </div>
-              {editingId && (
-                <Button type="button" variant="ghost" size="icon" onClick={cancelarEdicao}>
-                  <X className="h-4 w-4" />
-                </Button>
-              )}
+              <div>
+                <p className="text-sm font-semibold">Nova interação</p>
+                <p className="text-xs text-muted-foreground">POST /interacoes</p>
+              </div>
             </div>
 
             <div className="grid gap-4">
               <div className="space-y-1.5">
                 <Label className="text-xs">Empresa cliente *</Label>
-                <Select value={idCliente} onValueChange={setIdCliente} disabled={!!editingId}>
+                <Select value={idCliente} onValueChange={setIdCliente}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione a empresa..." />
                   </SelectTrigger>
@@ -231,7 +248,6 @@ function InteracoesPage() {
                 </Select>
               </div>
 
-              {/* STATUS FINANCEIRO */}
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-muted-foreground">Status Financeiro</label>
                 <Select value={statusFinanceiro} onValueChange={(value: StatusFinanceiro) => setStatusFinanceiro(value)}>
@@ -245,29 +261,42 @@ function InteracoesPage() {
                 </Select>
               </div>
 
-              {/* ✅ CAMPO VALOR COBRADO - CONDICIONAL */}
               {statusFinanceiro === "Paga" && (
-                <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2 duration-200">
-                  <Label className="text-xs">Valor Cobrado (R$) *</Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                      R$
-                    </span>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0.01"
-                      value={valorCobrado}
-                      onChange={(e) => setValorCobrado(e.target.value)}
-                      placeholder="0,00"
-                      className="pl-10"
-                      required
-                    />
+                <>
+                  <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <Label className="text-xs">Valor Cobrado (R$) *</Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                        R$
+                      </span>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0.01"
+                        value={valorCobrado}
+                        onChange={(e) => setValorCobrado(e.target.value)}
+                        placeholder="0,00"
+                        className="pl-10"
+                        required
+                      />
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">
+                      Valor efetivamente cobrado nesta interação
+                    </p>
                   </div>
-                  <p className="text-[10px] text-muted-foreground">
-                    Valor efetivamente cobrado nesta interação
-                  </p>
-                </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Status do Pagamento</Label>
+                    <Select value={criacaoStatusPagamento} onValueChange={setCriacaoStatusPagamento}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Pendente">Pendente</SelectItem>
+                        <SelectItem value="Pago">Pago</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
               )}
 
               <div className="space-y-1.5">
@@ -291,14 +320,9 @@ function InteracoesPage() {
             </div>
 
             <div className="flex justify-end gap-2">
-              {editingId && (
-                <Button type="button" variant="outline" onClick={cancelarEdicao}>
-                  Cancelar
-                </Button>
-              )}
-              <Button type="submit" disabled={create.isPending || update.isPending} className="gap-2">
-                {(create.isPending || update.isPending) && <Loader2 className="h-4 w-4 animate-spin" />}
-                {editingId ? "Salvar Alterações" : "Registrar"}
+              <Button type="submit" disabled={create.isPending} className="gap-2">
+                {create.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                Registrar
               </Button>
             </div>
           </form>
@@ -326,9 +350,7 @@ function InteracoesPage() {
                 return (
                   <div 
                     key={idInteracao} 
-                    className={`group rounded-lg border p-4 shadow-sm transition-all bg-card ${
-                      editingId === idInteracao ? 'border-primary ring-1 ring-primary' : 'border-border'
-                    }`}
+                    className="group rounded-lg border border-border bg-card p-4 shadow-sm transition-all"
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="space-y-1 flex-1">
@@ -347,15 +369,19 @@ function InteracoesPage() {
                             </span>
                           )}
 
-                          {/* ✅ TAG PAGA COM VALOR */}
                           {item.status_financeiro === 'Paga' && (
-                            <span className="rounded px-2 py-0.5 text-xs font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">
+                            <span className={`rounded px-2 py-0.5 text-xs font-semibold border ${
+                              item.status_pagamento === 'Pago' 
+                                ? 'bg-emerald-100 text-emerald-700 border-emerald-200' 
+                                : 'bg-yellow-100 text-yellow-700 border-yellow-200'
+                             }`}>
                               {item.valor_cobrado 
                                 ? `Paga - ${formatarMoeda(item.valor_cobrado)}` 
                                 : 'Paga'}
+                              {item.status_pagamento === 'Pago' ? ' ✓ Pago' : ' (Pendente)'}
                             </span>
                           )}
-
+                                
                           <span className="text-xs text-muted-foreground">
                             {item.data_hora
                               ? new Date(item.data_hora).toLocaleString("pt-BR", {
@@ -407,8 +433,99 @@ function InteracoesPage() {
             )}
           </div>
         </div>
-
       </div>
+
+      {/* DIÁLOGO DE EDIÇÃO */}
+      {editingItem && (
+        <Dialog open onOpenChange={(open) => { if (!open) setEditingItem(null); }}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Editar Interação</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Tipo</Label>
+                <Select value={editTipo} onValueChange={setEditTipo}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Visita">Visita</SelectItem>
+                    <SelectItem value="Reunião">Reunião</SelectItem>
+                    <SelectItem value="Mensagem">Mensagem</SelectItem>
+                    <SelectItem value="Ligação">Ligação</SelectItem>
+                    <SelectItem value="e-mail">E-mail</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Grau de Urgência</Label>
+                <Select value={editGrau} onValueChange={setEditGrau}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Baixo">Baixo</SelectItem>
+                    <SelectItem value="Médio">Médio</SelectItem>
+                    <SelectItem value="Alto">Alto</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Status Financeiro</Label>
+                <Select value={editStatusFinanceiro} onValueChange={(value: StatusFinanceiro) => setEditStatusFinanceiro(value)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Não Paga">Não Paga</SelectItem>
+                    <SelectItem value="Paga">Paga</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {editStatusFinanceiro === "Paga" && (
+                <>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Valor Cobrado (R$)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={editValorCobrado}
+                      onChange={(e) => setEditValorCobrado(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Status do Pagamento</Label>
+                    <Select value={editStatusPagamento} onValueChange={setEditStatusPagamento}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Pendente">Pendente</SelectItem>
+                        <SelectItem value="Pago">Pago</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
+              )}
+              <div className="space-y-1.5">
+                <Label className="text-xs">Data e Hora</Label>
+                <Input
+                  type="datetime-local"
+                  value={editDataHora}
+                  onChange={(e) => setEditDataHora(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Feedback / Anotações</Label>
+                <Textarea
+                  value={editFeedback}
+                  onChange={(e) => setEditFeedback(e.target.value)}
+                  rows={4}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditingItem(null)}>Cancelar</Button>
+              <Button onClick={handleSaveEdit} disabled={update.isPending}>
+                {update.isPending ? "Salvando..." : "Salvar"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </DashboardLayout>
   );
 }
