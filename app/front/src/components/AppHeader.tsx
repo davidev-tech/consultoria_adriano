@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useSearch } from "@/hooks/useSearch";
 import { NotificacoesDropdown } from "@/components/NotificacoesDropdown";
+import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 
 export function AppHeader() {
   const { searchTerm, setSearchTerm } = useSearch();
@@ -22,6 +23,7 @@ export function AppHeader() {
         />
       </div>
       <div className="ml-auto flex items-center gap-2">
+        <ThemeSwitcher />
         <NotificacoesDropdown />
         
         <div className="flex items-center gap-3 rounded-full border border-border bg-card px-2 py-1 pr-3 shadow-soft">

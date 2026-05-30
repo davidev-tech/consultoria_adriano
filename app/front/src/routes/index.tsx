@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { MetricCard } from "@/components/MetricCard";
+import { AcoesSugeridas } from "@/components/AcoesSugeridas";
 import { ActivityTable } from "@/components/ActivityTable";
 import { useEmpresas, useTodosContratos } from "@/lib/api/hooks";
 import { Building2, FileText, Wallet, ExternalLink, BarChart3, PieChart, TrendingUp } from "lucide-react";
@@ -104,6 +105,9 @@ function Index() {
             />
           </div>
         </div>
+
+        {/* 🎯 NOVA SEÇÃO: AÇÕES SUGERIDAS */}
+        <AcoesSugeridas />
 
         {/* SEÇÃO DO METABASE */}
         <section className="rounded-lg border border-border bg-card shadow-card overflow-hidden w-full mt-2 animate-fade-in-up">
