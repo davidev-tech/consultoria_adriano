@@ -1,8 +1,9 @@
 import { CommandPalette } from "@/components/CommandPalette";
-import { Search } from "lucide-react";
+import { Search, PanelLeft } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import { useSearch } from "@/hooks/useSearch";
 import { NotificacoesDropdown } from "@/components/NotificacoesDropdown";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
@@ -12,7 +13,9 @@ export function AppHeader() {
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-background/80 px-4 backdrop-blur-md md:px-6">
+      {/* 👇 SidebarTrigger nativo – já alterna sidebar com ícone de menu */}
       <SidebarTrigger />
+
       <div className="relative flex-1 max-w-md">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
@@ -39,7 +42,6 @@ export function AppHeader() {
           </div>
         </div>
       </div>
-      {/* ✅ Busca global (Ctrl+K) */}
       <CommandPalette />
     </header>
   );
