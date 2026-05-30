@@ -156,20 +156,24 @@ function EmpresasPage() {
                 : "—";
 
               // ✅ PENDÊNCIAS FINANCEIRAS (faturas Pendente/Atrasado)
-              const faturasPendentes = contratosAtivos.flatMap((c: any) => 
-                Array.isArray(c.faturas) 
-                  ? c.faturas.filter((f: any) => f.status === "Pendente" || f.status === "Atrasado")
-                  : []
-              );
+                            // ✅ PENDÊNCIAS DE CONTRATO (entregas não concluídas)
+              const totalPendenciasContrato = contratosAtivos.reduce((acc: number, c: any) => {
+                if (!Array.isArray(c.entregas)) return acc;
+                const pendentes = c.entregas.filter(
+                  (e: any) => e.status_entrega && e.status_entrega.toLowerCase() !== "concluído"
+                );
+                return acc + pendentes.length;
+              }, 0);
 
-              // ✅ PENDÊNCIAS DE ENTREGA (status diferente de Concluído)
-            const entregasPendentes = contratosAtivos.flatMap((c: any) => 
-              Array.isArray(c.entregas) 
-                ? c.entregas.filter((e: any) => e.status_entrega !== "Concluído")
-                : []
-              );
+              // ✅ PENDÊNCIAS FINANCEIRAS (faturas Pendentes/Atrasadas)
+              const totalPendenciasFinanceiras = contratosAtivos.reduce((acc: number, c: any) => {
+                if (!Array.isArray(c.faturas)) return acc;
+                const pendentes = c.faturas.filter(
+                  (f: any) => f.status === "Pendente" || f.status === "Atrasado"
+                );
+                return acc + pendentes.length;
+              }, 0);
 
-const totalPendencias = faturasPendentes.length + entregasPendentes.length;
               // ✅ ÚLTIMAS 3 INTERAÇÕES (qualquer tipo)
               const ultimasInteracoes = interacoesOrdenadas.slice(0, 3);
 
@@ -198,27 +202,23 @@ const totalPendencias = faturasPendentes.length + entregasPendentes.length;
                       </div>
                     </div>
 
-                    {/* LOCALIZAÇÃO */}
-                    <div className="mt-3 border-t border-border/60 pt-2">
-                      <p className="text-[11px] text-muted-foreground">
-                        📍 {empresa.localizacao_cidade && empresa.localizacao_estado
-                          ? `${empresa.localizacao_cidade}/${empresa.localizacao_estado}`
-                          : empresa.localizacao_cidade || empresa.localizacao_bairro || "Localização não informada"}
-                      </p>
-                      
-                      {/* SERVIÇOS CONTRATADOS */}
-                      <p className="text-[11px] text-muted-foreground mt-1">
-                        <span className="font-medium text-foreground">Serviços: </span>
-                        {empresa.servicos_contratados?.length > 0
-                          ? empresa.servicos_contratados
-                              .slice(0, 3)
-                              .map((s: any) => s.tipo_servico)
-                              .join(", ")
-                          : "Nenhum serviço"}
-                      </p>
+                      {/* LOCALIZAÇÃO E CONTRATOS ATIVOS */}
+                    <div className="mt-3 border-t border-border/60 pt-2 grid grid-cols-2 gap-3">
+                      <div>
+                        <p className="text-[11px] text-muted-foreground">
+                          📍 {empresa.localizacao_cidade && empresa.localizacao_estado
+                            ? `${empresa.localizacao_cidade}/${empresa.localizacao_estado}`
+                            : empresa.localizacao_cidade || empresa.localizacao_bairro || "Não informada"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[11px] text-muted-foreground">
+                          💲 <span className="font-medium text-foreground">{contratosAtivos.length}</span> contrato(s) ativo(s)
+                        </p>
+                      </div>
                     </div>
 
-                    {/* MÉTRICAS DO CARD */}
+                      {/* MÉTRICAS DO CARD */}
                     <div className="mt-4 grid grid-cols-2 gap-3 rounded-lg bg-muted/40 p-3 text-left border border-border/40">
                       {/* Última Visita */}
                       <div className="space-y-0.5">
@@ -240,29 +240,27 @@ const totalPendencias = faturasPendentes.length + entregasPendentes.length;
                         </p>
                       </div>
 
-                      {/* Pendências */}
+                      {/* Pendências de Contrato (Entregas) */}
                       <div className="space-y-0.5">
                         <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-                          <AlertTriangle className="h-2.5 w-2.5 text-primary" /> Pendências
+                          <AlertTriangle className="h-2.5 w-2.5 text-orange-500" /> Pend. Contrato
                         </span>
-                        <p className={`text-xs font-bold ${totalPendencias > 0 ? "text-destructive" : "text-foreground"}`}>
-                          {totalPendencias}
+                        <p className={`text-xs font-bold ${totalPendenciasContrato > 0 ? "text-orange-600" : "text-foreground"}`}>
+                          {totalPendenciasContrato}
                         </p>
                       </div>
 
-                      {/* Contratos Ativos */}
+                      {/* Pendências Financeiras (Faturas) */}
                       <div className="space-y-0.5">
                         <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-                          <DollarSign className="h-2.5 w-2.5 text-primary" /> Contratos
+                          <DollarSign className="h-2.5 w-2.5 text-red-500" /> Pend. Financeiras
                         </span>
-                        <p className="text-xs font-medium text-foreground">
-                          {contratosAtivos.length} ativo{contratosAtivos.length !== 1 ? 's' : ''}
+                        <p className={`text-xs font-bold ${totalPendenciasFinanceiras > 0 ? "text-red-600" : "text-foreground"}`}>
+                          {totalPendenciasFinanceiras}
                         </p>
                       </div>
-                    </div>
-                  </div>
-
-                  {/* ÚLTIMAS INTERAÇÕES */}
+                    </div>   {/* ← ADICIONE ESTA LINHA: fecha a div do conteúdo principal */}
+                   </div>
 <div className="mt-4 pt-3 border-t border-dashed border-border/60 space-y-2">
   <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80 block">
     Últimas Interações
