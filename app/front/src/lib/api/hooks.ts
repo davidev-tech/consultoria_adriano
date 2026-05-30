@@ -16,6 +16,7 @@ import type {
   PagamentoCreate,
   Responsavel,
   ResponsavelCreate,
+  ResponsavelList,
   UUID,
 } from "./types";
 
@@ -75,6 +76,35 @@ export const useCreateResponsavel = () => {
       api<Responsavel>("/responsaveis", { method: "POST", json: data }),
     onSuccess: (_d, vars) =>
       qc.invalidateQueries({ queryKey: ["responsaveis", vars.id_cliente] }),
+  });
+};
+export const useUpdateResponsavel = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (args: { id: string; data: any }) =>
+      api<Responsavel>(`/responsaveis/${args.id}`, { method: "PUT", json: args.data }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["responsaveis-lista"] }),
+  });
+};
+
+export const useDeleteResponsavel = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      api(`/responsaveis/${id}`, { method: "DELETE" }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["responsaveis-lista"] }),
+  });
+};
+
+export const useResponsaveisList = (filtros?: { id_cliente?: string; busca?: string }) => {
+  return useQuery({
+    queryKey: ["responsaveis-lista", filtros],
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (filtros?.id_cliente && filtros.id_cliente !== "todas") params.append("id_cliente", filtros.id_cliente);
+      if (filtros?.busca) params.append("busca", filtros.busca);
+      return api<ResponsavelList[]>(`/responsaveis/lista?${params.toString()}`);
+    },
   });
 };
 

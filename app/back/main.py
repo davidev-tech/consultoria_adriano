@@ -214,19 +214,36 @@ def criar_responsavel(obj_in: schemas.ResponsavelCreate, db: Session = Depends(g
     db.refresh(novo_obj)
     return novo_obj
 
-@app.get("/responsaveis", response_model=List[schemas.ResponsavelResponse], tags=["Responsáveis"])
-def listar_responsaveis(
-    id_cliente: UUID,
-    busca: Optional[str] = Query(None, description="Busca por nome ou CPF"),
+# --- MÓDULO: RESPONSÁVEIS (VISÃO GERAL) ---
+@app.get("/responsaveis/lista", response_model=List[schemas.ResponsavelListResponse], tags=["Responsáveis"])
+def listar_todos_responsaveis(
+    id_cliente: Optional[UUID] = Query(None, description="Filtrar por empresa"),
+    busca: Optional[str] = Query(None, description="Buscar por nome ou CPF"),
     db: Session = Depends(get_db)
 ):
-    query = db.query(models.Responsavel).filter(models.Responsavel.id_cliente == id_cliente)
+    query = db.query(models.Responsavel).join(models.EmpresaCliente)
+    
+    if id_cliente:
+        query = query.filter(models.Responsavel.id_cliente == id_cliente)
     if busca:
         query = query.filter(
             models.Responsavel.nome.ilike(f"%{busca}%") |
             models.Responsavel.cpf.ilike(f"%{busca}%")
         )
-    return query.all()
+
+    
+    resultados = query.all()
+    return [
+        {
+            "id_responsavel": r.id_responsavel,
+            "id_cliente": r.id_cliente,
+            "nome": r.nome,
+            "cpf": r.cpf,
+            "cargo": r.cargo,
+            "empresa_nome": r.empresa.nome_empresa
+        }
+        for r in resultados
+    ]
 
 # --- MÓDULO 4: MODELOS DE CONTRATO ---
 @app.post("/modelos-contrato", response_model=schemas.ModeloContratoResponse, tags=["Modelos de Contrato"])
