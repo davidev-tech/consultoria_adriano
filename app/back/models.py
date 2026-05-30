@@ -82,11 +82,7 @@ class HistoricoInteracoes(Base):
     status_financeiro = Column(String(50), default="Não Paga")
     valor_cobrado = Column(Numeric(15, 2), nullable=True)
     feedback_anotacoes = Column(Text)
-<<<<<<< HEAD
     status_pagamento = Column(String(50), default="Pendente")
-=======
-    status_pagamento = Column(String, nullable=True, default="Pendente")
->>>>>>> 1e892b1a907fb0f41cc056588d87975f6e9a5701
     empresa = relationship("EmpresaCliente", back_populates="interacoes")
     # ✅ Apenas UMA definição de cada campo
 
