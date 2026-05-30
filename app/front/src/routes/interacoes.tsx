@@ -32,6 +32,7 @@ import {
 } from "@/lib/api/hooks";
 import type { StatusFinanceiro } from "@/lib/api/types";
 import { toast } from "sonner";
+import { useNavigate } from "@tanstack/react-router"; // 👈 Importado para navegação
 
 // Utilitários
 const getLocalDatetimeString = (date = new Date()) => {
@@ -100,6 +101,7 @@ function InteracoesPage() {
 function RegistrarTab() {
   const empresas = useEmpresas();
   const create = useCreateInteracao();
+  const navigate = useNavigate(); // 👈 Hook de navegação
 
   const [idCliente, setIdCliente] = useState<string>("");
   const [tipo, setTipo] = useState("Visita");
@@ -153,7 +155,13 @@ function RegistrarTab() {
 
     try {
       await create.mutateAsync(payload);
-      toast.success("Interação registrada com sucesso!");
+      // 👇 Toast com ação "Ver"
+      toast.success("Interação registrada com sucesso!", {
+        action: {
+          label: "Ver",
+          onClick: () => navigate({ to: "/empresas/$id", params: { id: idCliente } }),
+        },
+      });
       resetForm();
     } catch {
       toast.error("Erro ao registrar interação.");
@@ -177,7 +185,6 @@ function RegistrarTab() {
         <CardContent>
           <form onSubmit={handleSubmit}>
             <div className="grid gap-5">
-              {/* Grid de 3 colunas para os campos superiores */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="space-y-1.5">
                   <Label className="text-xs">Empresa cliente *</Label>
@@ -267,7 +274,6 @@ function RegistrarTab() {
                 </div>
               </div>
 
-              {/* Feedback ocupa largura total */}
               <div className="space-y-1.5">
                 <Label className="text-xs">Feedback / Anotações</Label>
                 <Textarea
@@ -299,6 +305,7 @@ function HistoricoTab() {
   const empresas = useEmpresas();
   const update = useUpdateInteracao();
   const remove = useDeleteInteracao();
+  const navigate = useNavigate(); // 👈 Hook de navegação
 
   const [idCliente, setIdCliente] = useState<string>("");
   const [buscaLocal, setBuscaLocal] = useState("");
@@ -361,7 +368,13 @@ function HistoricoTab() {
     };
     try {
       await update.mutateAsync({ id: editingItem.id_interacao, data: payload });
-      toast.success("Interação atualizada com sucesso!");
+      // 👇 Toast com ação "Ver"
+      toast.success("Interação atualizada com sucesso!", {
+        action: {
+          label: "Ver",
+          onClick: () => navigate({ to: "/empresas/$id", params: { id: editingItem.id_cliente } }),
+        },
+      });
       setEditingItem(null);
     } catch {
       toast.error("Erro ao atualizar interação.");

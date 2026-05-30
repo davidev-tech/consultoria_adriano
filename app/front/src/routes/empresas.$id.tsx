@@ -1,3 +1,4 @@
+import { Breadcrumb } from "@/components/Breadcrumb";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useMemo } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
@@ -84,7 +85,16 @@ function EmpresaDetalhesPage() {
   return (
     <DashboardLayout>
       <div className="mx-auto max-w-7xl flex flex-col gap-6 p-4 animate-fade-in-up">
-        {/* Link para voltar */}
+        {/* Breadcrumb */}
+        <Breadcrumb
+          items={[
+            { label: "Dashboard", to: "/" },
+            { label: "Empresas", to: "/empresas" },
+            { label: empresa.nome_empresa },
+          ]}
+        />
+
+        {/* Link para voltar (opcional, pode remover se preferir apenas o breadcrumb) */}
         <Link to="/empresas" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors w-fit">
           <ArrowLeft className="h-4 w-4" />
           Voltar para diretório
