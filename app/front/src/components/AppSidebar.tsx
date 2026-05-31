@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/sidebar";
 
 const items = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard, group: "Inteligência" },
+  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, group: "Inteligência" },
   { title: "Responsáveis", url: "/responsaveis", icon: Users, group: "Inteligência" },
   { title: "Empresas", url: "/empresas", icon: Building2, group: "Cadastros" },
   { title: "Contratos", url: "/contratos", icon: FileText, group: "Cadastros" },

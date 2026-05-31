@@ -15,6 +15,7 @@ import { Route as InteracoesRouteImport } from './routes/interacoes'
 import { Route as FinanceiroRouteImport } from './routes/financeiro'
 import { Route as Entregas_prazosRouteImport } from './routes/entregas_prazos'
 import { Route as EmpresasRouteImport } from './routes/empresas'
+import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ContratosRouteImport } from './routes/contratos'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as IndexRouteImport } from './routes/index'
@@ -50,6 +51,11 @@ const EmpresasRoute = EmpresasRouteImport.update({
   path: '/empresas',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ContratosRoute = ContratosRouteImport.update({
   id: '/contratos',
   path: '/contratos',
@@ -75,6 +81,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/contratos': typeof ContratosRoute
+  '/dashboard': typeof DashboardRoute
   '/empresas': typeof EmpresasRouteWithChildren
   '/entregas_prazos': typeof Entregas_prazosRoute
   '/financeiro': typeof FinanceiroRoute
@@ -87,6 +94,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/contratos': typeof ContratosRoute
+  '/dashboard': typeof DashboardRoute
   '/empresas': typeof EmpresasRouteWithChildren
   '/entregas_prazos': typeof Entregas_prazosRoute
   '/financeiro': typeof FinanceiroRoute
@@ -100,6 +108,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/contratos': typeof ContratosRoute
+  '/dashboard': typeof DashboardRoute
   '/empresas': typeof EmpresasRouteWithChildren
   '/entregas_prazos': typeof Entregas_prazosRoute
   '/financeiro': typeof FinanceiroRoute
@@ -114,6 +123,7 @@ export interface FileRouteTypes {
     | '/'
     | '/configuracoes'
     | '/contratos'
+    | '/dashboard'
     | '/empresas'
     | '/entregas_prazos'
     | '/financeiro'
@@ -126,6 +136,7 @@ export interface FileRouteTypes {
     | '/'
     | '/configuracoes'
     | '/contratos'
+    | '/dashboard'
     | '/empresas'
     | '/entregas_prazos'
     | '/financeiro'
@@ -138,6 +149,7 @@ export interface FileRouteTypes {
     | '/'
     | '/configuracoes'
     | '/contratos'
+    | '/dashboard'
     | '/empresas'
     | '/entregas_prazos'
     | '/financeiro'
@@ -151,6 +163,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ConfiguracoesRoute: typeof ConfiguracoesRoute
   ContratosRoute: typeof ContratosRoute
+  DashboardRoute: typeof DashboardRoute
   EmpresasRoute: typeof EmpresasRouteWithChildren
   Entregas_prazosRoute: typeof Entregas_prazosRoute
   FinanceiroRoute: typeof FinanceiroRoute
@@ -203,6 +216,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EmpresasRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/contratos': {
       id: '/contratos'
       path: '/contratos'
@@ -250,6 +270,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ConfiguracoesRoute: ConfiguracoesRoute,
   ContratosRoute: ContratosRoute,
+  DashboardRoute: DashboardRoute,
   EmpresasRoute: EmpresasRouteWithChildren,
   Entregas_prazosRoute: Entregas_prazosRoute,
   FinanceiroRoute: FinanceiroRoute,

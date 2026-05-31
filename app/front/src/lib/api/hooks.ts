@@ -1,6 +1,6 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./client";
-import { useSearch } from "@/hooks/useSearch"; // A ponte de busca global
+import { useSearch } from "@/hooks/useSearch";
 import type {
   Contrato,
   ContratoCreate,
@@ -150,7 +150,6 @@ export const useCreateContrato = () => {
 };
 
 // --- ENTREGAS E PRAZOS ---
-
 export const useCreateEntrega = () => {
   const qc = useQueryClient();
   return useMutation({
@@ -216,7 +215,6 @@ export const useInteracoesPorCliente = (idCliente?: UUID) => {
   });
 };
 
-// ✅ CÓDIGO CORRIGIDO
 export const useUpdateInteracao = () => {
   const qc = useQueryClient();
   return useMutation({
@@ -237,10 +235,8 @@ export const useDeleteInteracao = () => {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["interacoes"] }),
   });
 };
-// hooks.ts - Adicionar após os hooks de interação
 
 export const useInteracoesPagas = (idCliente?: string) => {
-  // Se for "todas" ou undefined, não filtra por empresa
   const clienteFiltro = idCliente && idCliente !== "todas" ? idCliente : undefined;
 
   return useQuery({
@@ -265,6 +261,22 @@ export const useTotalInteracoesPagas = (idCliente?: string) => {
     },
   });
 };
+
+// --- HOOK NOVO: TODAS AS INTERAÇÕES (dashboard) ---
+export const useTodasInteracoes = () => {
+  const { data: empresas } = useEmpresas();
+  const ids = (empresas || []).map((e) => e.id_cliente);
+  const resultados = useQueries({
+    queries: ids.map((id: string) => ({
+      queryKey: ["interacoes", id],
+      queryFn: () => api<HistoricoInteracao[]>(`/interacoes/${id}`).catch(() => [] as HistoricoInteracao[]),
+    })),
+  });
+  const todas = resultados.flatMap((r) => r.data ?? []);
+  const carregando = resultados.some((r) => r.isLoading);
+  return { data: todas, isLoading: carregando };
+};
+
 // --- MÓDULO 7: FINANCEIRO (PAGAMENTOS) ---
 export const usePagamentosPorContrato = (idContrato?: UUID) => {
   const { searchTerm } = useSearch();
@@ -318,7 +330,6 @@ export const useEntregasPorContrato = (idContrato?: UUID) => {
 
 // --- AGREGADORES E MÚLTIPLOS (DASHBOARD) ---
 export const useTodosContratos = () => {
-  
   const empresas = useEmpresas();
   return useQuery({
     queryKey: ["contratos-all", empresas.data?.map((e: Empresa) => e.id_cliente).join(",")],
