@@ -5,12 +5,13 @@ import {
   DollarSign, Users, CheckCircle2, Activity, Target, Calendar,
   RefreshCw, AlertTriangle, Zap, Clock, Layers, BarChart3,
   PieChartIcon, Percent, ShieldAlert, TrendingUp, TrendingDown,
+  Star, TrendingDown as TrendingDownIcon,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell, Legend,
   ComposedChart, RadarChart, Radar, PolarGrid, PolarAngleAxis,
-  PolarRadiusAxis,
+  PolarRadiusAxis, LineChart, Line,
 } from "recharts";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -40,6 +41,9 @@ const fmtMoeda = (v: number) =>
 
 const fmtPct = (v: number) => `${Math.round(v)}%`;
 
+const fmtNota = (v: number) => v.toFixed(1);
+
+// ==================== COMPONENTE PRINCIPAL ====================
 export function DashboardExecutivo() {
   const { data: empresas, isLoading: empLoading } = useEmpresas();
   const { data: contratos, isLoading: contLoading } = useTodosContratos();
@@ -47,11 +51,9 @@ export function DashboardExecutivo() {
   const { data: interacoes, isLoading: intLoading } = useTodasInteracoes();
   const queryClient = useQueryClient();
 
-  // Estados interativos
   const [periodoAtivo, setPeriodoAtivo] = useState<"6m" | "12m">("6m");
   const [abaAtiva, setAbaAtiva] = useState<"financeiro" | "operacional" | "relacionamento">("financeiro");
 
-  // Atualização automática a cada 60s
   useEffect(() => {
     const interval = setInterval(() => {
       queryClient.invalidateQueries({ queryKey: ["empresas"] });
@@ -61,7 +63,6 @@ export function DashboardExecutivo() {
     return () => clearInterval(interval);
   }, [queryClient]);
 
-  // Cálculo pesado memoizado (depende de periodoAtivo)
   const metricas = useMemo(() => {
     if (!contratos || !empresas || !interacoes || !modelos) return null;
 
@@ -69,7 +70,6 @@ export function DashboardExecutivo() {
     const hoje = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate());
     const hojeMs = hoje.getTime();
 
-    // Mapeamento de periodicidade para normalizar MRR
     const periodicidadeMap: Record<string, number> = {};
     modelos.forEach((m: any) => {
       const p = (m.periodicidade_cobranca || "").toLowerCase();
@@ -91,11 +91,10 @@ export function DashboardExecutivo() {
       return acc + valor / divisor;
     }, 0);
 
-    // ARPU
     const clientesAtivos = new Set(contratosAtivos.map((c: any) => c.id_cliente)).size;
     const arpu = clientesAtivos > 0 ? mrr / clientesAtivos : 0;
 
-    // LTV (duração média * arpu)
+    // LTV
     let duracaoTotal = 0;
     contratosAtivos.forEach((c: any) => {
       if (c.data_inicio && c.data_fim) {
@@ -117,7 +116,7 @@ export function DashboardExecutivo() {
       ? encerradosRecentes / (contratosAtivos.length + encerradosRecentes)
       : 0;
 
-    // NRR simplificado
+    // NRR
     const valorEncerradosRecentes = contratos
       .filter((c: any) =>
         (c.status_contrato || "").toLowerCase() === "encerrado" &&
@@ -211,12 +210,10 @@ export function DashboardExecutivo() {
         ).length / totalEntregas) * 100)
       : 100;
 
-    // Pendências operacionais
     const pendEntregas = contratos.flatMap((c: any) =>
       (c.entregas || []).filter((e: any) => e.status_entrega !== "Concluído")
     ).length;
 
-    // Interações pagas pendentes
     const interPagasPend = interacoes.filter(
       (i: any) => i.status_financeiro === "Paga" && i.status_pagamento === "Pendente"
     );
@@ -243,7 +240,6 @@ export function DashboardExecutivo() {
       }
     });
 
-    // Mediana de dias sem interação (clientes ativos)
     const diasUltima: number[] = [];
     empresas.forEach((e: any) => {
       const conts = contratos.filter((c: any) => c.id_cliente === e.id_cliente);
@@ -316,6 +312,67 @@ export function DashboardExecutivo() {
       ? contratosRenovaveis / (contratosRenovaveis + totalEncerrados)
       : 0;
 
+    // NOVAS MÉTRICAS:
+
+    // Receita por segmento (usando segmento da empresa)
+    const receitaPorSegmento: Record<string, number> = {};
+    contratosAtivos.forEach((c: any) => {
+      const empresa = empresas.find((e: any) => e.id_cliente === c.id_cliente);
+      const seg = empresa?.segmento || "Não definido";
+      const mrrContrato = Number(c.valor_acordado) / (periodicidadeMap[c.id_modelo] || 1);
+      receitaPorSegmento[seg] = (receitaPorSegmento[seg] || 0) + mrrContrato;
+    });
+    const receitaSegmentoData = Object.entries(receitaPorSegmento).map(([segmento, valor]) => ({ segmento, valor }));
+
+    // Contratos por porte
+    const contratosPorPorte: Record<string, number> = {};
+    contratosAtivos.forEach((c: any) => {
+      const empresa = empresas.find((e: any) => e.id_cliente === c.id_cliente);
+      const porte = empresa?.porte || "Não definido";
+      contratosPorPorte[porte] = (contratosPorPorte[porte] || 0) + 1;
+    });
+    const porteData = Object.entries(contratosPorPorte).map(([porte, qtd]) => ({ porte, qtd }));
+
+    // Evolução de novos contratos por mês (usando data_inicio)
+    const contratosPorMes: Record<string, number> = {};
+    const mesesParaGrafico = 12;
+    for (let i = mesesParaGrafico - 1; i >= 0; i--) {
+      const d = new Date(agora.getFullYear(), agora.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      contratosPorMes[key] = 0;
+    }
+    contratos.forEach((c: any) => {
+      if (c.data_inicio) {
+        const data = new Date(c.data_inicio);
+        const key = `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, "0")}`;
+        if (contratosPorMes[key] !== undefined) contratosPorMes[key]++;
+      }
+    });
+    const evolucaoContratos = Object.entries(contratosPorMes)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([mes, qtd]) => ({
+        mes: new Date(mes + "-01").toLocaleDateString("pt-BR", { month: "short" }),
+        qtd,
+      }));
+
+    // Churn por motivo
+    const churnPorMotivo: Record<string, number> = {};
+    contratos.forEach((c: any) => {
+      if ((c.status_contrato || "").toLowerCase() === "encerrado" && c.motivo_encerramento) {
+        const motivo = c.motivo_encerramento;
+        churnPorMotivo[motivo] = (churnPorMotivo[motivo] || 0) + 1;
+      }
+    });
+    const churnMotivosData = Object.entries(churnPorMotivo).map(([motivo, qtd]) => ({ motivo, qtd }));
+
+    // NPS / Nota média
+    const notasValidas = interacoes
+      .filter((i: any) => i.nota !== null && i.nota !== undefined)
+      .map((i: any) => Number(i.nota));
+    const npsMedio = notasValidas.length > 0
+      ? notasValidas.reduce((a, b) => a + b, 0) / notasValidas.length
+      : null;
+
     return {
       mrr, arpu, ltv, churnRate, nrr,
       receitaRealizada, fluxoCaixa,
@@ -328,6 +385,11 @@ export function DashboardExecutivo() {
       totalEmpresas: empresas.length,
       contratosAtivos: contratosAtivos.length,
       clientesAtivos,
+      receitaSegmentoData,
+      porteData,
+      evolucaoContratos,
+      churnMotivosData,
+      npsMedio,
     };
   }, [contratos, empresas, interacoes, modelos, periodoAtivo]);
 
@@ -336,13 +398,18 @@ export function DashboardExecutivo() {
   const {
     mrr, arpu, ltv, churnRate, nrr,
     receitaRealizada, fluxoCaixa,
-    valorInadimplencia, faixasAtraso,
+    valorInadimplencia,
     sla, pendEntregas,
     qtdInterPagasPend, valorInteracoesPend,
     empresasRisco, medianaDiasInteracao,
     saudeClientes, concentracao, topClientes,
     taxaOcupacao, indiceRenovacao, statusData,
     totalEmpresas, contratosAtivos, clientesAtivos,
+    receitaSegmentoData,
+    porteData,
+    evolucaoContratos,
+    churnMotivosData,
+    npsMedio,
   } = metricas;
 
   const inadimplenciaData = [
@@ -378,7 +445,7 @@ export function DashboardExecutivo() {
         </div>
       </div>
 
-      {/* KPIs principais (animados) */}
+      {/* KPIs principais */}
       <div className="grid gap-4 md:grid-cols-4">
         {[
           { title: "MRR", value: fmtMoeda(mrr), icon: DollarSign, trend: { value: fmtPct(churnRate * 100), label: "churn", up: false }, color: THEME.secondary },
@@ -404,7 +471,8 @@ export function DashboardExecutivo() {
           { label: "Concentração", value: fmtPct(concentracao), icon: Layers, color: concentracao > 60 ? THEME.warning : THEME.success },
           { label: "Ocupação (30d)", value: fmtPct(taxaOcupacao), icon: BarChart3, color: taxaOcupacao >= 80 ? THEME.success : THEME.warning },
           { label: "Índ. Renovação", value: fmtPct(indiceRenovacao * 100), icon: Percent, color: indiceRenovacao >= 0.7 ? THEME.success : THEME.warning },
-        ].map((badge, i) => (
+          npsMedio !== null ? { label: "NPS Médio", value: fmtNota(npsMedio), icon: Star, color: npsMedio >= 8 ? THEME.success : npsMedio >= 6 ? THEME.warning : THEME.danger } : null,
+        ].filter(Boolean).map((badge: any, i) => (
           <div key={i} className="animate-zoom-in" style={{ animationDelay: `${i * 50}ms` }}>
             <MetricBadge {...badge} />
           </div>
@@ -428,7 +496,7 @@ export function DashboardExecutivo() {
         ))}
       </div>
 
-      {/* Conteúdo das abas com animação */}
+      {/* Conteúdo das abas */}
       <div key={abaAtiva} className="animate-fade-in-up" style={{ animationDelay: "500ms" }}>
         {abaAtiva === "financeiro" && (
           <div className="grid gap-6 md:grid-cols-2">
@@ -450,6 +518,18 @@ export function DashboardExecutivo() {
               </ResponsiveContainer>
             </ChartCard>
 
+            <ChartCard title="Receita por Segmento" icon={Layers} color={THEME.purple}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={receitaSegmentoData} layout="vertical" margin={{ left: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 10%)" />
+                  <XAxis type="number" stroke="oklch(0.7 0.015 210)" fontSize={12} tickFormatter={fmtMoeda} />
+                  <YAxis dataKey="segmento" type="category" stroke="oklch(0.7 0.015 210)" fontSize={12} width={100} />
+                  <Tooltip formatter={(value: number) => fmtMoeda(value)} contentStyle={tooltipStyle} />
+                  <Bar dataKey="valor" fill={THEME.purple} barSize={20} radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartCard>
+
             <ChartCard title="Fluxo de Caixa Projetado" icon={BarChart3} color={THEME.secondary}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={fluxoCaixa}>
@@ -458,6 +538,18 @@ export function DashboardExecutivo() {
                   <YAxis stroke="oklch(0.7 0.015 210)" fontSize={12} tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
                   <Tooltip formatter={(value: number) => fmtMoeda(value)} contentStyle={tooltipStyle} />
                   <Bar dataKey="valor" fill={THEME.secondary} barSize={40} radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartCard>
+
+            <ChartCard title="Inadimplência por Faixa" icon={AlertTriangle} color={THEME.danger}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={inadimplenciaData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 10%)" />
+                  <XAxis dataKey="faixa" stroke="oklch(0.7 0.015 210)" fontSize={12} />
+                  <YAxis stroke="oklch(0.7 0.015 210)" fontSize={12} tickFormatter={fmtMoeda} />
+                  <Tooltip formatter={(value: number) => fmtMoeda(value)} contentStyle={tooltipStyle} />
+                  <Bar dataKey="valor" fill={THEME.danger} barSize={50} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </ChartCard>
@@ -474,14 +566,14 @@ export function DashboardExecutivo() {
               </ResponsiveContainer>
             </ChartCard>
 
-            <ChartCard title="Inadimplência por Faixa" icon={AlertTriangle} color={THEME.danger}>
+            <ChartCard title="Contratos por Porte" icon={Users} color={THEME.primary}>
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={inadimplenciaData}>
+                <BarChart data={porteData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 10%)" />
-                  <XAxis dataKey="faixa" stroke="oklch(0.7 0.015 210)" fontSize={12} />
-                  <YAxis stroke="oklch(0.7 0.015 210)" fontSize={12} tickFormatter={fmtMoeda} />
-                  <Tooltip formatter={(value: number) => fmtMoeda(value)} contentStyle={tooltipStyle} />
-                  <Bar dataKey="valor" fill={THEME.danger} barSize={50} radius={[4, 4, 0, 0]} />
+                  <XAxis dataKey="porte" stroke="oklch(0.7 0.015 210)" fontSize={12} />
+                  <YAxis allowDecimals={false} stroke="oklch(0.7 0.015 210)" fontSize={12} />
+                  <Tooltip />
+                  <Bar dataKey="qtd" fill={THEME.secondary} barSize={40} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </ChartCard>
@@ -505,6 +597,18 @@ export function DashboardExecutivo() {
                   {sla >= 90 ? "Excelente" : sla >= 70 ? "Bom" : "Regular"} — {pendEntregas} pendentes
                 </p>
               </div>
+            </ChartCard>
+
+            <ChartCard title="Evolução de Novos Contratos" icon={TrendingUp} color={THEME.secondary}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={evolucaoContratos}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 10%)" />
+                  <XAxis dataKey="mes" stroke="oklch(0.7 0.015 210)" fontSize={12} />
+                  <YAxis allowDecimals={false} stroke="oklch(0.7 0.015 210)" fontSize={12} />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="qtd" stroke={THEME.secondary} strokeWidth={2} dot={{ r: 3 }} />
+                </LineChart>
+              </ResponsiveContainer>
             </ChartCard>
 
             <ChartCard title="Status dos Contratos" icon={PieChartIcon} color={THEME.primary}>
@@ -570,6 +674,48 @@ export function DashboardExecutivo() {
                 <p className="text-xs text-muted-foreground">Meta: ≤ 30 dias</p>
               </div>
             </ChartCard>
+
+            <ChartCard title="Churn por Motivo" icon={TrendingDownIcon} color={THEME.danger}>
+              {churnMotivosData.length === 0 ? (
+                <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
+                  Nenhum encerramento registrado com motivo.
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={churnMotivosData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={3} dataKey="qtd" nameKey="motivo">
+                      {churnMotivosData.map((_, i) => (
+                        <Cell key={i} fill={[THEME.danger, THEME.warning, THEME.purple, THEME.secondary][i % 4]} />
+                      ))}
+                    </Pie>
+                    <Tooltip contentStyle={tooltipStyle} />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              )}
+            </ChartCard>
+
+            {npsMedio !== null && (
+              <ChartCard title="NPS Médio (Nota 0-10)" icon={Star} color={THEME.success}>
+                <div className="flex flex-col items-center justify-center h-full gap-4">
+                  <div className="text-7xl font-bold" style={{ color: npsMedio >= 8 ? THEME.success : npsMedio >= 6 ? THEME.warning : THEME.danger }}>
+                    {fmtNota(npsMedio)}
+                  </div>
+                  <div className="w-full max-w-xs bg-muted rounded-full h-4 overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-1000"
+                      style={{
+                        width: `${(npsMedio / 10) * 100}%`,
+                        backgroundColor: npsMedio >= 8 ? THEME.success : npsMedio >= 6 ? THEME.warning : THEME.danger,
+                      }}
+                    />
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {npsMedio >= 8 ? "Excelente" : npsMedio >= 6 ? "Bom" : "Regular"}
+                  </p>
+                </div>
+              </ChartCard>
+            )}
           </div>
         )}
       </div>

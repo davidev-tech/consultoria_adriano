@@ -18,7 +18,8 @@ export interface Empresa {
   localizacao_estado?: string | null;
   localizacao_cidade?: string | null;
   localizacao_bairro?: string | null;
-  logradouro?: string | null;
+  segmento?: string | null;
+  porte?: string | null;
   
   // --- SERVIÇOS VINCULADOS ---
   servicos_contratados: ServicoDetalhe[];
@@ -94,6 +95,8 @@ export interface Contrato {
   status_contrato?: string | null;
   data_inicio: string; // YYYY-MM-DD
   data_fim?: string | null;
+  motivo_encerramento?: string | null;
+  data_criacao?: string | null;
   faturas?: any[];
   entregas?: any[];
 }
@@ -149,6 +152,7 @@ export interface HistoricoInteracao {
   status_financeiro?: StatusFinanceiro; // ✅ ADICIONADO
   valor_cobrado?: number | null
   status_pagamento?: string | null;
+  nota?: number | null;
 }
 
 // ✅ ATUALIZADO: HistoricoInteracaoCreate com status_financeiro
@@ -161,6 +165,7 @@ export interface HistoricoInteracaoCreate {
   status_financeiro?: StatusFinanceiro; // ✅ ADICIONADO
   valor_cobrado?: number | null
   status_pagamento?: string | null;
+  nota?: number | null;
 }
 
 // ✅ NOVO: Payload específico para atualização parcial (PUT)

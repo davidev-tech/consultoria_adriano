@@ -32,7 +32,7 @@ import {
 } from "@/lib/api/hooks";
 import type { StatusFinanceiro } from "@/lib/api/types";
 import { toast } from "sonner";
-import { useNavigate } from "@tanstack/react-router"; // 👈 Importado para navegação
+import { useNavigate } from "@tanstack/react-router";
 
 // Utilitários
 const getLocalDatetimeString = (date = new Date()) => {
@@ -101,7 +101,7 @@ function InteracoesPage() {
 function RegistrarTab() {
   const empresas = useEmpresas();
   const create = useCreateInteracao();
-  const navigate = useNavigate(); // 👈 Hook de navegação
+  const navigate = useNavigate();
 
   const [idCliente, setIdCliente] = useState<string>("");
   const [tipo, setTipo] = useState("Visita");
@@ -111,6 +111,7 @@ function RegistrarTab() {
   const [statusFinanceiro, setStatusFinanceiro] = useState<StatusFinanceiro>("Não Paga");
   const [valorCobrado, setValorCobrado] = useState<string>("");
   const [criacaoStatusPagamento, setCriacaoStatusPagamento] = useState("Pendente");
+  const [nota, setNota] = useState<string>(""); // 👈 NOVO
 
   useEffect(() => {
     if (statusFinanceiro === "Não Paga") {
@@ -125,6 +126,7 @@ function RegistrarTab() {
     setStatusFinanceiro("Não Paga");
     setValorCobrado("");
     setCriacaoStatusPagamento("Pendente");
+    setNota(""); // 👈 NOVO
     setDataHora(getLocalDatetimeString());
   };
 
@@ -151,11 +153,11 @@ function RegistrarTab() {
       status_financeiro: statusFinanceiro,
       valor_cobrado: statusFinanceiro === "Paga" ? parseFloat(valorCobrado) : null,
       status_pagamento: criacaoStatusPagamento,
+      nota: nota ? Number(nota) : null, // 👈 NOVO
     };
 
     try {
       await create.mutateAsync(payload);
-      // 👇 Toast com ação "Ver"
       toast.success("Interação registrada com sucesso!", {
         action: {
           label: "Ver",
@@ -272,6 +274,24 @@ function RegistrarTab() {
                     onChange={(e) => setDataHora(e.target.value)}
                   />
                 </div>
+                {/* 👇 NOVO CAMPO: Nota */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Nota (0-10)</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={10}
+                    step={1}
+                    value={nota}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === "" || (Number(val) >= 0 && Number(val) <= 10)) {
+                        setNota(val);
+                      }
+                    }}
+                    placeholder="0 a 10"
+                  />
+                </div>
               </div>
 
               <div className="space-y-1.5">
@@ -305,7 +325,7 @@ function HistoricoTab() {
   const empresas = useEmpresas();
   const update = useUpdateInteracao();
   const remove = useDeleteInteracao();
-  const navigate = useNavigate(); // 👈 Hook de navegação
+  const navigate = useNavigate();
 
   const [idCliente, setIdCliente] = useState<string>("");
   const [buscaLocal, setBuscaLocal] = useState("");
@@ -323,6 +343,7 @@ function HistoricoTab() {
   const [editStatusFinanceiro, setEditStatusFinanceiro] = useState<StatusFinanceiro>("Não Paga");
   const [editValorCobrado, setEditValorCobrado] = useState("");
   const [editStatusPagamento, setEditStatusPagamento] = useState("Pendente");
+  const [editNota, setEditNota] = useState<string>(""); // 👈 NOVO
 
   // Diálogo de confirmação de exclusão
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -351,6 +372,7 @@ function HistoricoTab() {
     setEditStatusFinanceiro(item.status_financeiro || "Não Paga");
     setEditValorCobrado(item.valor_cobrado ? String(item.valor_cobrado) : "");
     setEditStatusPagamento(item.status_pagamento || "Pendente");
+    setEditNota(item.nota != null ? String(item.nota) : ""); // 👈 NOVO
   };
 
   const handleSaveEdit = async () => {
@@ -365,10 +387,10 @@ function HistoricoTab() {
       valor_cobrado:
         editStatusFinanceiro === "Paga" ? parseFloat(editValorCobrado || "0") : null,
       status_pagamento: editStatusPagamento,
+      nota: editNota ? Number(editNota) : null, // 👈 NOVO
     };
     try {
       await update.mutateAsync({ id: editingItem.id_interacao, data: payload });
-      // 👇 Toast com ação "Ver"
       toast.success("Interação atualizada com sucesso!", {
         action: {
           label: "Ver",
@@ -463,6 +485,20 @@ function HistoricoTab() {
                             {item.status_pagamento === "Pago"
                               ? " ✓ Pago"
                               : " (Pendente)"}
+                          </span>
+                        )}
+                        {/* 👇 NOVO: exibir nota */}
+                        {item.nota != null && (
+                          <span
+                            className={`rounded px-2 py-0.5 text-xs font-semibold ${
+                              item.nota >= 8
+                                ? "bg-emerald-100 text-emerald-700"
+                                : item.nota >= 6
+                                ? "bg-yellow-100 text-yellow-700"
+                                : "bg-red-100 text-red-700"
+                            }`}
+                          >
+                            Nota: {item.nota}/10
                           </span>
                         )}
                         <span className="text-xs text-muted-foreground">
@@ -584,6 +620,24 @@ function HistoricoTab() {
                   </div>
                 </>
               )}
+              {/* 👇 NOVO CAMPO: Nota */}
+              <div className="space-y-1.5">
+                <Label className="text-xs">Nota (0-10)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={10}
+                  step={1}
+                  value={editNota}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === "" || (Number(val) >= 0 && Number(val) <= 10)) {
+                      setEditNota(val);
+                    }
+                  }}
+                  placeholder="0 a 10"
+                />
+              </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Data e Hora</Label>
                 <Input

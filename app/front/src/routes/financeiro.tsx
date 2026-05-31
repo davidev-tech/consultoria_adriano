@@ -109,7 +109,7 @@ function FinanceiroPage() {
 }
 
 // ==========================================
-// ABA 1: FATURAS E PARCELAS
+// ABA 1: FATURAS E PARCELAS (mantida integralmente)
 // ==========================================
 function FaturasTab() {
   const [mesFiltro, setMesFiltro] = useState<string>('');
@@ -393,7 +393,7 @@ function FaturasTab() {
 }
 
 // ==========================================
-// ABA 2: INTERAÇÕES PAGAS
+// ABA 2: INTERAÇÕES PAGAS (COM NOTA)
 // ==========================================
 function InteracoesPagasTab() {
   const empresas = useEmpresas();
@@ -416,6 +416,7 @@ function InteracoesPagasTab() {
   const [editStatus, setEditStatus] = useState<StatusFinanceiro>("Não Paga");
   const [editValor, setEditValor] = useState("");
   const [editStatusPagamento, setEditStatusPagamento] = useState("Pendente");
+  const [editNota, setEditNota] = useState<string>(""); // NOVO
 
   // Diálogo de confirmação de exclusão
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -447,6 +448,7 @@ function InteracoesPagasTab() {
     setEditStatus(item.status_financeiro || "Não Paga");
     setEditValor(item.valor_cobrado ? String(item.valor_cobrado) : "");
     setEditStatusPagamento(item.status_pagamento || "Pendente");
+    setEditNota(item.nota != null ? String(item.nota) : ""); // NOVO
   };
 
   const handleSaveEdit = async () => {
@@ -463,6 +465,7 @@ function InteracoesPagasTab() {
           status_financeiro: editStatus,
           valor_cobrado: editStatus === "Paga" ? parseFloat(editValor) : null,
           status_pagamento: editStatusPagamento,
+          nota: editNota ? Number(editNota) : null, // NOVO
         },
       });
       toast.success("Interação atualizada com sucesso!");
@@ -584,6 +587,7 @@ function InteracoesPagasTab() {
                   <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Urgência</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Valor</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status Pagamento</th>
+                  <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Nota</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Feedback</th>
                   <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[100px]">Ações</th>
                 </tr>
@@ -623,6 +627,23 @@ function InteracoesPagasTab() {
                         }`}>
                           {item.status_pagamento || 'Pendente'}
                         </span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {item.nota != null ? (
+                          <span
+                            className={`inline-flex rounded px-2 py-0.5 text-xs font-semibold ${
+                              item.nota >= 8
+                                ? "bg-emerald-100 text-emerald-700"
+                                : item.nota >= 6
+                                ? "bg-yellow-100 text-yellow-700"
+                                : "bg-red-100 text-red-700"
+                            }`}
+                          >
+                            {item.nota}/10
+                          </span>
+                        ) : (
+                          "—"
+                        )}
                       </td>
                       <td className="px-4 py-3 text-sm text-muted-foreground max-w-[250px] truncate">
                         {item.feedback_anotacoes || "—"}
@@ -736,6 +757,23 @@ function InteracoesPagasTab() {
                   </div>
                 </>
               )}
+              <div className="space-y-1.5">
+                <Label className="text-xs">Nota (0-10)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={10}
+                  step={1}
+                  value={editNota}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === "" || (Number(val) >= 0 && Number(val) <= 10)) {
+                      setEditNota(val);
+                    }
+                  }}
+                  placeholder="0 a 10"
+                />
+              </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Data e Hora</Label>
                 <Input

@@ -13,9 +13,16 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
   DialogTrigger, DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Breadcrumb } from "@/components/Breadcrumb"; // 👈 Breadcrumb adicionado
+import { Breadcrumb } from "@/components/Breadcrumb";
 import {
   useEmpresas, useCreateEmpresa, useUpdateEmpresa, useDeleteEmpresa,
   useInteracoesPorCliente, useContratosPorEmpresa, useModelos,
@@ -70,7 +77,6 @@ function EmpresasPage() {
         <div>
           <h2 className="text-lg font-medium tracking-tight mb-4">Diretório de Clientes</h2>
           
-          {/* ✅ 3 COLUNAS: removido xl:grid-cols-4 */}
           <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {isLoading && Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="h-[340px] rounded-xl border border-border skeleton-shimmer" />
@@ -95,7 +101,6 @@ function EmpresasPage() {
                   className="group relative flex flex-col justify-between rounded-xl border border-border bg-card p-5 shadow-sm transition-all hover:border-primary/50 hover:shadow-md card-hover animate-fade-in-up hover:scale-[1.03] hover:shadow-xl cursor-pointer"
                 >
                   <div>
-                    {/* CABEÇALHO COM ESPAÇO PARA OS BOTÕES */}
                     <div className="flex items-start gap-3 pr-14">
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary ring-1 ring-primary/20">
                         <Building2 className="h-5 w-5" />
@@ -111,7 +116,6 @@ function EmpresasPage() {
                       </div>
                     </div>
 
-                    {/* MÉTRICAS */}
                     <div className="mt-4 grid grid-cols-2 gap-3 rounded-lg bg-muted/40 p-3 text-left border border-border/40">
                       <div className="space-y-0.5"><span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1"><Calendar className="h-2.5 w-2.5 text-primary" /> Última Visita</span><p className="text-xs font-medium">{ultimaVisita ? formatarData(ultimaVisita.data_hora) : "—"}</p></div>
                       <div className="space-y-0.5"><span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1"><PackageCheck className="h-2.5 w-2.5 text-primary" /> Próxima Entrega</span><p className="text-xs font-medium">{proximaEntrega ? formatarData(proximaEntrega.data_fim) : "—"}</p></div>
@@ -120,7 +124,6 @@ function EmpresasPage() {
                     </div>
                   </div>
 
-                  {/* ÚLTIMAS INTERAÇÕES */}
                   <div className="mt-4 pt-3 border-t border-dashed border-border/60 space-y-2">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80 block">Últimas Interações</span>
                     <div className="space-y-2 max-h-36 overflow-y-auto pr-0.5">
@@ -136,7 +139,6 @@ function EmpresasPage() {
                     </div>
                   </div>
 
-                  {/* ✅ BOTÕES DE AÇÃO NO TOPO DIREITO */}
                   <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                     <Button
                       variant="ghost"
@@ -164,7 +166,6 @@ function EmpresasPage() {
         </div>
       </div>
 
-      {/* ========== MODAL DE DETALHES 360° ========== */}
       {empresaDetalhe && (
         <Dialog open={!!empresaDetalhe} onOpenChange={(op) => { if (!op) setEmpresaDetalhe(null); }}>
           <DialogContent className="max-w-5xl h-[90vh] overflow-y-auto">
@@ -202,7 +203,6 @@ function DetalhesEmpresa({ empresa, onClose }: { empresa: any; onClose: () => vo
 
   return (
     <div className="animate-fade-in-up">
-      {/* 👇 Breadcrumb adicionado aqui */}
       <Breadcrumb
         items={[
           { label: "Dashboard", to: "/" },
@@ -305,30 +305,112 @@ function KpiCard({ label, value, icon: Icon, variant = "default" }: any) {
 function SkeletonList() { return <div className="space-y-3">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-20 rounded skeleton-shimmer" />)}</div>; }
 
 function EmpresaDialogForm({ onClose, empresaInicial }: { onClose: () => void, empresaInicial: Empresa | null }) {
-  const create = useCreateEmpresa(); const update = useUpdateEmpresa();
-  const isEditing = !!empresaInicial; const isLoading = create.isPending || update.isPending;
-  const [form, setForm] = useState({ nome_empresa: empresaInicial?.nome_empresa || "", cnpj: empresaInicial?.cnpj || "", localizacao_estado: empresaInicial?.localizacao_estado || "", localizacao_cidade: empresaInicial?.localizacao_cidade || "", localizacao_bairro: empresaInicial?.localizacao_bairro || "" });
+  const create = useCreateEmpresa();
+  const update = useUpdateEmpresa();
+  const isEditing = !!empresaInicial;
+  const isLoading = create.isPending || update.isPending;
+
+  const [form, setForm] = useState({
+    nome_empresa: empresaInicial?.nome_empresa || "",
+    cnpj: empresaInicial?.cnpj || "",
+    localizacao_estado: empresaInicial?.localizacao_estado || "",
+    localizacao_cidade: empresaInicial?.localizacao_cidade || "",
+    localizacao_bairro: empresaInicial?.localizacao_bairro || "",
+    segmento: empresaInicial?.segmento || "",
+    porte: empresaInicial?.porte || "",
+  });
+
   const handleSubmit = async (ev: React.FormEvent) => {
-    ev.preventDefault(); if (!form.nome_empresa.trim()) return;
-    const payload: EmpresaCreate = { nome_empresa: form.nome_empresa.trim(), cnpj: form.cnpj || undefined, localizacao_estado: form.localizacao_estado || undefined, localizacao_cidade: form.localizacao_cidade || undefined, localizacao_bairro: form.localizacao_bairro || undefined };
-    if (isEditing && empresaInicial) await update.mutateAsync({ id: empresaInicial.id_cliente, data: payload }); else await create.mutateAsync(payload);
+    ev.preventDefault();
+    if (!form.nome_empresa.trim()) return;
+
+    const payload: EmpresaCreate = {
+      nome_empresa: form.nome_empresa.trim(),
+      cnpj: form.cnpj || undefined,
+      localizacao_estado: form.localizacao_estado || undefined,
+      localizacao_cidade: form.localizacao_cidade || undefined,
+      localizacao_bairro: form.localizacao_bairro || undefined,
+      segmento: form.segmento || undefined,
+      porte: form.porte || undefined,
+      ids_servicos_contratados: [], // campo obrigatório, mantenha como array vazio se não estiver usando
+    };
+
+    if (isEditing && empresaInicial) {
+      await update.mutateAsync({ id: empresaInicial.id_cliente, data: payload });
+    } else {
+      await create.mutateAsync(payload);
+    }
     onClose();
   };
+
   return (
     <>
-      <DialogHeader><DialogTitle>{isEditing ? "Editar empresa" : "Nova empresa"}</DialogTitle></DialogHeader>
+      <DialogHeader>
+        <DialogTitle>{isEditing ? "Editar empresa" : "Nova empresa"}</DialogTitle>
+      </DialogHeader>
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="space-y-1.5"><Label className="text-xs">Nome da empresa *</Label><Input value={form.nome_empresa} onChange={(e) => setForm({ ...form, nome_empresa: e.target.value })} required /></div>
-        <div className="space-y-1.5"><Label className="text-xs">CNPJ</Label><Input value={form.cnpj} onChange={(e) => setForm({ ...form, cnpj: e.target.value })} placeholder="00.000.000/0000-00" /></div>
-        <div className="grid grid-cols-3 gap-3">
-          <div className="space-y-1.5"><Label className="text-xs">Estado (UF)</Label><Input value={form.localizacao_estado} onChange={(e) => setForm({ ...form, localizacao_estado: e.target.value.toUpperCase() })} maxLength={2} placeholder="SP" /></div>
-          <div className="space-y-1.5"><Label className="text-xs">Cidade</Label><Input value={form.localizacao_cidade} onChange={(e) => setForm({ ...form, localizacao_cidade: e.target.value })} /></div>
-          <div className="space-y-1.5"><Label className="text-xs">Bairro</Label><Input value={form.localizacao_bairro} onChange={(e) => setForm({ ...form, localizacao_bairro: e.target.value })} /></div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">Nome da empresa *</Label>
+          <Input value={form.nome_empresa} onChange={(e) => setForm({ ...form, nome_empresa: e.target.value })} required />
         </div>
-        {(create.error || update.error) && <p className="text-xs text-destructive">{(create.error as any)?.message || (update.error as any)?.message}</p>}
+        <div className="space-y-1.5">
+          <Label className="text-xs">CNPJ</Label>
+          <Input value={form.cnpj} onChange={(e) => setForm({ ...form, cnpj: e.target.value })} placeholder="00.000.000/0000-00" />
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs">Estado (UF)</Label>
+            <Input value={form.localizacao_estado} onChange={(e) => setForm({ ...form, localizacao_estado: e.target.value.toUpperCase() })} maxLength={2} placeholder="SP" />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Cidade</Label>
+            <Input value={form.localizacao_cidade} onChange={(e) => setForm({ ...form, localizacao_cidade: e.target.value })} />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Bairro</Label>
+            <Input value={form.localizacao_bairro} onChange={(e) => setForm({ ...form, localizacao_bairro: e.target.value })} />
+          </div>
+        </div>
+
+        {/* NOVOS CAMPOS: Segmento e Porte */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs">Segmento</Label>
+            <Select value={form.segmento} onValueChange={(v) => setForm({ ...form, segmento: v })}>
+              <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Home Care">Home Care</SelectItem>
+                <SelectItem value="Clínica">Clínica</SelectItem>
+                <SelectItem value="ILPI">ILPI</SelectItem>
+                <SelectItem value="Hospital">Hospital</SelectItem>
+                <SelectItem value="Outro">Outro</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Porte</Label>
+            <Select value={form.porte} onValueChange={(v) => setForm({ ...form, porte: v })}>
+              <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Pequeno">Pequeno</SelectItem>
+                <SelectItem value="Médio">Médio</SelectItem>
+                <SelectItem value="Grande">Grande</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {(create.error || update.error) && (
+          <p className="text-xs text-destructive">
+            {(create.error as any)?.message || (update.error as any)?.message}
+          </p>
+        )}
         <DialogFooter>
           <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
-          <Button type="submit" disabled={isLoading} className="gap-2">{isLoading && <Loader2 className="h-4 w-4 animate-spin" />}{isEditing ? "Salvar" : "Criar"}</Button>
+          <Button type="submit" disabled={isLoading} className="gap-2">
+            {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+            {isEditing ? "Salvar" : "Criar"}
+          </Button>
         </DialogFooter>
       </form>
     </>

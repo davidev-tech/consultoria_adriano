@@ -174,6 +174,7 @@ function ContratosPage() {
                   <th className="px-4 py-3">Início</th>
                   <th className="px-4 py-3">Fim</th>
                   <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">Motivo</th>
                   <th className="px-4 py-3 text-right">Valor</th>
                   <th className="px-4 py-3 text-right">Ações</th>
                 </tr>
@@ -195,6 +196,9 @@ function ContratosPage() {
                         <span className={`rounded-md px-2 py-0.5 text-xs font-medium ${isContratoArquivado || isEncerrado ? "bg-muted text-muted-foreground border border-border" : "bg-primary/15 text-primary"}`}>
                           {c.status_contrato ?? "Ativo"}
                         </span>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground">
+                        {c.motivo_encerramento || "—"}
                       </td>
                       <td className="px-4 py-3 text-right font-semibold">
                         {Number(c.valor_acordado).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
@@ -243,7 +247,7 @@ function ContratosPage() {
   );
 }
 
-// --- DIALOGS DE NOVO MODELO E VINCULAR CONTRATO (mantidos iguais) ---
+// --- DIALOGS DE NOVO MODELO E VINCULAR CONTRATO ---
 function NovoModeloDialog({ onClose }: { onClose: () => void }) {
   const create = useCreateModelo();
   const [nome, setNome] = useState("");
@@ -285,12 +289,23 @@ function VincularContratoDialog({ onClose }: { onClose: () => void }) {
   const [diaVencimento, setDiaVencimento] = useState("5");
   const [cobraJuros, setCobraJuros] = useState(false);
   const [taxaJuros, setTaxaJuros] = useState("0");
+  const [motivoEncerramento, setMotivoEncerramento] = useState(""); // NOVO
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!idCliente || !idModelo || !dataInicio) return;
-    await create.mutateAsync({ id_cliente: idCliente, id_modelo: idModelo, data_inicio: dataInicio, data_fim: dataFim || undefined, status_contrato: status, valor_acordado: parseFloat(valorAcordado.replace(",", ".")) } as any);
+    await create.mutateAsync({
+      id_cliente: idCliente,
+      id_modelo: idModelo,
+      data_inicio: dataInicio,
+      data_fim: dataFim || undefined,
+      status_contrato: status,
+      valor_acordado: parseFloat(valorAcordado.replace(",", ".")),
+      motivo_encerramento: status === "Encerrado" ? motivoEncerramento || undefined : undefined,
+    } as any);
     onClose();
   };
+
   return (
     <DialogContent>
       <DialogHeader><DialogTitle>Vincular Contrato</DialogTitle></DialogHeader>
@@ -312,13 +327,38 @@ function VincularContratoDialog({ onClose }: { onClose: () => void }) {
           <div className="space-y-1.5"><Label className="text-xs">Data de Fim</Label><Input type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} /></div>
         </div>
         <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1.5"><Label className="text-xs">Valor Acordado (R$)</Label><Input type="number" step="0.01" value={valorAcordado} onChange={(e) => setValorAcordado(e.target.value)} /></div>
-          <div className="space-y-1.5"><Label className="text-xs">Status</Label>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Valor Acordado (R$)</Label>
+            <Input type="number" step="0.01" value={valorAcordado} onChange={(e) => setValorAcordado(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Status</Label>
             <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={status} onChange={(e) => setStatus(e.target.value)}>
-              <option value="Ativo">Ativo</option><option value="Encerrado">Encerrado</option><option value="Pendente">Pendente</option>
+              <option value="Ativo">Ativo</option>
+              <option value="Encerrado">Encerrado</option>
+              <option value="Pendente">Pendente</option>
             </select>
           </div>
         </div>
+
+        {status === "Encerrado" && (
+          <div className="space-y-1.5">
+            <Label className="text-xs">Motivo do Encerramento</Label>
+            <select
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              value={motivoEncerramento}
+              onChange={(e) => setMotivoEncerramento(e.target.value)}
+            >
+              <option value="">Selecione um motivo...</option>
+              <option value="Preço">Preço</option>
+              <option value="Mudança de fornecedor">Mudança de fornecedor</option>
+              <option value="Fim do projeto">Fim do projeto</option>
+              <option value="Insatisfação">Insatisfação</option>
+              <option value="Outro">Outro</option>
+            </select>
+          </div>
+        )}
+
         <div className="pt-2 border-t mt-2 space-y-4">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Configurações de Pagamento</p>
           <div className="space-y-1.5"><Label className="text-xs">Dia de Vencimento Padrão *</Label><Input type="number" min="1" max="31" value={diaVencimento} onChange={(e) => setDiaVencimento(e.target.value)} required /></div>
