@@ -113,7 +113,7 @@ def criar_empresa(empresa: schemas.EmpresaCreate, db: Session = Depends(get_db))
 @app.get("/empresas", response_model=List[schemas.EmpresaResponse], tags=["Empresas"])
 def listar_empresas(
     skip: int = Query(0, ge=0),
-    limit: int = Query(10, le=100),
+    limit: int = Query(1000, le=10000),
     busca: Optional[str] = Query(None, description="Busca por nome ou CNPJ"),
     db: Session = Depends(get_db)
 ):
@@ -280,7 +280,7 @@ def desarquivar_modelo(modelo_id: str, db: Session = Depends(get_db)):
     if not modelo:
         raise HTTPException(status_code=404, detail="Modelo não encontrado")
     
-    modelo.ativo = True
+    modelo.ativo = True  # type: ignore[assignment]
     db.commit()
     db.refresh(modelo)
     return {"mensagem": "Modelo desarquivado com sucesso!", "id_modelo": modelo_id}
@@ -347,7 +347,11 @@ def listar_todos_contratos(
 
 @app.get("/contratos/{id_cliente}", response_model=List[schemas.ContratoResponse], tags=["Contratos"])
 def listar_contratos_por_empresa(id_cliente: UUID, db: Session = Depends(get_db)):
-    return db.query(models.Contrato).filter(models.Contrato.id_cliente == id_cliente).all()
+    return db.query(models.Contrato).options(
+        joinedload(models.Contrato.pagamentos),
+        joinedload(models.Contrato.faturas),
+        joinedload(models.Contrato.entregas)
+    ).filter(models.Contrato.id_cliente == id_cliente).all()
 
 @app.patch("/contratos/{contrato_id}/arquivar", tags=["Contratos"])
 def arquivar_contrato(contrato_id: str, db: Session = Depends(get_db)):
@@ -355,7 +359,7 @@ def arquivar_contrato(contrato_id: str, db: Session = Depends(get_db)):
     if not contrato:
         raise HTTPException(status_code=404, detail="Contrato não encontrado no banco")
     
-    contrato.status_contrato = "Arquivado"
+    contrato.status_contrato = "Arquivado" # type: ignore[assignment]
     db.commit()
     db.refresh(contrato)
     return {"mensagem": "Contrato arquivado com sucesso!", "id_contrato": contrato_id}
@@ -366,7 +370,7 @@ def desarquivar_contrato(contrato_id: str, db: Session = Depends(get_db)):
     if not contrato:
         raise HTTPException(status_code=404, detail="Contrato não encontrado no banco")
     
-    contrato.status_contrato = "Ativo"
+    contrato.status_contrato = "Ativo" # type: ignore[assignment]
     db.commit()
     db.refresh(contrato)
     return {"mensagem": "Contrato desarquivado com sucesso!", "id_contrato": contrato_id}
@@ -459,7 +463,7 @@ def listar_pendencias(
                 "descricao": f"Fatura #{str(fatura.id_fatura)[:8]} – Vencimento: {fatura.data_vencimento.strftime('%d/%m/%Y')}",
                 "status": fatura.status,
                 "data_limite": fatura.data_vencimento,
-                "valor": float(fatura.valor_original) if fatura.valor_original else 0.0,
+                "valor": float(fatura.valor_original) if fatura.valor_original is not None else 0.0,  # type: ignore[arg-type]
                 "id_referencia": str(fatura.id_contrato)
             })
 
@@ -582,7 +586,8 @@ def total_interacoes_pagas(
             query = query.filter(models.HistoricoInteracoes.id_cliente == id_cliente)
         
         resultado = query.first()
-        
+        if resultado is None:
+            return {"total_interacoes": 0, "total_valor": 0.0}
         return {
             "total_interacoes": resultado.total_interacoes,
             "total_valor": float(resultado.total_valor)

@@ -18,6 +18,7 @@ import type {
   ResponsavelCreate,
   ResponsavelList,
   UUID,
+  EntregaCreate
 } from "./types";
 
 // --- MÓDULO 1: EMPRESAS ---
@@ -317,6 +318,7 @@ export const useEntregasPorContrato = (idContrato?: UUID) => {
 
 // --- AGREGADORES E MÚLTIPLOS (DASHBOARD) ---
 export const useTodosContratos = () => {
+  
   const empresas = useEmpresas();
   return useQuery({
     queryKey: ["contratos-all", empresas.data?.map((e: Empresa) => e.id_cliente).join(",")],
@@ -459,5 +461,12 @@ export const useDeleteFatura = () => {
     mutationFn: (id: string) =>
       api<{ mensagem: string }>(`/faturas/${id}`, { method: "DELETE" }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["faturas"] }),
+  });
+};
+
+export const useTodasEmpresas = () => {
+  return useQuery({
+    queryKey: ["empresas-all"],
+    queryFn: () => api<Empresa[]>("/empresas?limit=10000"),
   });
 };

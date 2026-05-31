@@ -192,11 +192,10 @@ class ContratoResponse(ContratoBase):
     id_contrato: UUID
     id_cliente: UUID
     id_modelo: UUID
-    entregas: List["EntregaResponse"] = []   # 👈 use string
-    faturas: List["FaturaResponse"] = []     # 👈 use string
-    
+    entregas: List["EntregaResponse"] = []
+    faturas: List["FaturaResponse"] = []
+    pagamentos: List["PagamentoResponse"] = []   # ← ADICIONE ESTA LINHA
     model_config = ConfigDict(from_attributes=True)
-
 # ==========================================
 # 5. MÓDULO: HISTÓRICO DE INTERAÇÕES
 # ==========================================
@@ -303,7 +302,7 @@ class PendenciaResponse(BaseModel):
 # ==========================================
 
 class PagamentoBase(BaseModel):
-    valor_pago: float
+    valor: float                # ✅ nome correto (igual ao banco)
     data_pagamento: datetime
     forma_pagamento: Optional[str] = None
     status_pagamento: Optional[str] = "Pendente"
@@ -312,13 +311,13 @@ class PagamentoBase(BaseModel):
 class PagamentoCreate(PagamentoBase):
     id_contrato: UUID
 
-    @field_validator("valor_pago", "valor_juros")
+    @field_validator("valor", "valor_juros")   # ✅ nome correto
     @classmethod
     def check_valor(cls, v):
         return validate_positive_value(v)
 
     @field_validator("status_pagamento")
-    @classmethod
+    @classmethod 
     def check_status(cls, v):
         if v: return validate_enum_choice(v.title(), ["Pendente", "Pago", "Cancelado"])
         return v
