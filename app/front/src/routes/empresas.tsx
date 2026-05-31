@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Breadcrumb } from "@/components/Breadcrumb"; // 👈 Breadcrumb adicionado
 import {
   useEmpresas, useCreateEmpresa, useUpdateEmpresa, useDeleteEmpresa,
   useInteracoesPorCliente, useContratosPorEmpresa, useModelos,
@@ -175,7 +176,7 @@ function EmpresasPage() {
   );
 }
 
-// ========== COMPONENTE INTERNO DO MODAL (mantido igual) ==========
+// ========== COMPONENTE INTERNO DO MODAL ==========
 function DetalhesEmpresa({ empresa, onClose }: { empresa: any; onClose: () => void }) {
   const { data: interacoes, isLoading: loadInt } = useInteracoesPorCliente(empresa.id_cliente);
   const { data: contratos, isLoading: loadCont } = useContratosPorEmpresa(empresa.id_cliente);
@@ -201,6 +202,15 @@ function DetalhesEmpresa({ empresa, onClose }: { empresa: any; onClose: () => vo
 
   return (
     <div className="animate-fade-in-up">
+      {/* 👇 Breadcrumb adicionado aqui */}
+      <Breadcrumb
+        items={[
+          { label: "Dashboard", to: "/" },
+          { label: "Empresas", to: "/empresas" },
+          { label: empresa.nome_empresa },
+        ]}
+      />
+
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/15 text-primary ring-1 ring-primary/30"><Building2 className="h-6 w-6" /></div>
