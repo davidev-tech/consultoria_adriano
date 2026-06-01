@@ -95,7 +95,7 @@ export interface Contrato {
   status_contrato?: string | null;
   data_inicio: string; // YYYY-MM-DD
   data_fim?: string | null;
-  motivo_encerramento?: string | null;
+  motivo_arquivamento?: string | null;
   data_criacao?: string | null;
   faturas?: any[];
   entregas?: any[];

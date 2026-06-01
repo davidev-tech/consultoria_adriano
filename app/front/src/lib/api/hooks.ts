@@ -369,26 +369,18 @@ export const useEntregasMulti = (ids: UUID[]) =>
     })),
   });
 
-// --- ARQUIVAR / DESARQUIVAR ---
+
+// --- ARQUIVAR / DESARQUIVAR (com motivo) ---
 export function useArquivarModelo() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) =>
-      api(`/modelos-contrato/${id}/arquivar`, { method: "PATCH" }),
+    mutationFn: ({ id, motivo }: { id: string; motivo?: string }) =>
+      api(`/modelos-contrato/${id}/arquivar`, {
+        method: "PATCH",
+        json: { motivo_arquivamento: motivo || null },
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["modelos"] });
-    },
-  });
-}
-
-export function useArquivarContrato() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) =>
-      api(`/contratos/${id}/arquivar`, { method: "PATCH" }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["contratos"] });
-      queryClient.invalidateQueries({ queryKey: ["contratos-all"] }); // 👈 Adicionado para atualizar a lista automaticamente
     },
   });
 }
@@ -404,6 +396,21 @@ export function useDesarquivarModelo() {
   });
 }
 
+export function useArquivarContrato() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, motivo }: { id: string; motivo?: string }) =>
+      api(`/contratos/${id}/arquivar`, {
+        method: "PATCH",
+        json: { motivo_arquivamento: motivo || null },
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["contratos"] });
+      queryClient.invalidateQueries({ queryKey: ["contratos-all"] });
+    },
+  });
+}
+
 export function useDesarquivarContrato() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -412,6 +419,37 @@ export function useDesarquivarContrato() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["contratos"] });
       queryClient.invalidateQueries({ queryKey: ["contratos-all"] });
+    },
+  });
+}
+
+// 👇 NOVO: hook para atualizar motivo de arquivamento (contrato)
+export function useUpdateMotivoArquivamentoContrato() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, motivo }: { id: string; motivo: string }) =>
+      api(`/contratos/${id}`, {
+        method: "PATCH",
+        json: { motivo_arquivamento: motivo },
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["contratos"] });
+      queryClient.invalidateQueries({ queryKey: ["contratos-all"] });
+    },
+  });
+}
+
+// 👇 NOVO: hook para atualizar motivo de arquivamento (modelo)
+export function useUpdateMotivoArquivamentoModelo() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, motivo }: { id: string; motivo: string }) =>
+      api(`/modelos-contrato/${id}`, {
+        method: "PATCH",
+        json: { motivo_arquivamento: motivo },
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["modelos"] });
     },
   });
 }

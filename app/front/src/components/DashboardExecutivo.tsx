@@ -358,8 +358,8 @@ export function DashboardExecutivo() {
     // Churn por motivo
     const churnPorMotivo: Record<string, number> = {};
     contratos.forEach((c: any) => {
-      if ((c.status_contrato || "").toLowerCase() === "encerrado" && c.motivo_encerramento) {
-        const motivo = c.motivo_encerramento;
+      if ((c.status_contrato || "").toLowerCase() === "encerrado" && c.motivo_arquivamento) {
+        const motivo = c.motivo_arquivamento;
         churnPorMotivo[motivo] = (churnPorMotivo[motivo] || 0) + 1;
       }
     });
@@ -678,7 +678,7 @@ export function DashboardExecutivo() {
             <ChartCard title="Churn por Motivo" icon={TrendingDownIcon} color={THEME.danger}>
               {churnMotivosData.length === 0 ? (
                 <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
-                  Nenhum encerramento registrado com motivo.
+                  Nenhum arquivamento registrado com motivo.
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
