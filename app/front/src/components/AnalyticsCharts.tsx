@@ -8,14 +8,14 @@ import { PieChartIcon } from "lucide-react"; // ou use outro ícone de sua prefe
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#A28DFF', '#FF6384', '#36A2EB'];
 const STATUS_COLORS: Record<string, string> = { Pago: '#22c55e', Pendente: '#f97316' };
 
-// Tooltip customizado para os gráficos de barras
-const CustomBarTooltip = ({ active, payload, label }: any) => {
+// ✅ Tooltip genérico para barras, linhas, radar
+export const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
-      <div className="rounded-lg border border-border bg-gray-900 p-3 shadow-lg">
-        <p className="text-white font-semibold text-sm mb-1">{label}</p>
+      <div className="rounded-lg border border-border bg-card text-card-foreground p-3 shadow-lg">
+        <p className="font-semibold text-sm mb-1">{label}</p>
         {payload.map((entry: any, index: number) => (
-          <p key={index} className="text-white text-xs flex items-center gap-1">
+          <p key={index} className="text-xs flex items-center gap-1">
             <span
               className="inline-block w-2 h-2 rounded-full"
               style={{ backgroundColor: entry.color }}
@@ -29,15 +29,15 @@ const CustomBarTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
-// Tooltip customizado para o gráfico de rosca
-const CustomPieTooltip = ({ active, payload }: any) => {
+// ✅ Tooltip específico para gráficos de pizza/rosca
+export const CustomPieTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
     const data = payload[0];
     return (
-      <div className="rounded-lg border border-border bg-gray-900 p-3 shadow-lg">
-        <p className="text-white font-semibold text-sm">{data.name}</p>
-        <p className="text-white text-xs">
-          Valor: <strong>{data.value}</strong> ({(data.percent * 100).toFixed(1)}%)
+      <div className="rounded-lg border border-border bg-card text-card-foreground p-3 shadow-lg">
+        <p className="font-semibold text-sm">{data.name}</p>
+        <p className="text-xs">
+          Valor: <strong>{data.value}</strong> ({((data.percent ?? 0) * 100).toFixed(1)}%)
         </p>
       </div>
     );
@@ -70,7 +70,7 @@ export function InteracoesPorEmpresa({ data }: { data: { name: string; total: nu
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
           <XAxis type="number" tick={{ fontSize: 12, fill: '#6b7280' }} />
           <YAxis type="category" dataKey="name" tick={{ fontSize: 12, fill: '#6b7280' }} width={110} />
-          <Tooltip content={<CustomBarTooltip />} cursor={{ fill: 'rgba(0,0,0,0.05)' }} />
+          <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0,0,0,0.05)' }} />
           <Bar dataKey="total" name="Total Interações" fill="#0088FE" radius={[0, 4, 4, 0]} />
         </BarChart>
       </ResponsiveContainer>
@@ -129,7 +129,7 @@ export function FinanceiroBarras({ data }: { data: { status: string; soma: numbe
           <XAxis dataKey="status" tick={{ fill: '#6b7280' }} />
           <YAxis yAxisId="left" orientation="left" stroke="#22c55e" tick={{ fill: '#6b7280' }} />
           <YAxis yAxisId="right" orientation="right" stroke="#a855f7" tick={{ fill: '#6b7280' }} />
-          <Tooltip content={<CustomBarTooltip />} cursor={{ fill: 'rgba(0,0,0,0.05)' }} />
+          <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0,0,0,0.05)' }} />
           <Legend />
           <Bar yAxisId="left" dataKey="soma" name="Soma Valor" fill="#22c55e" radius={[4, 4, 0, 0]} />
           <Bar yAxisId="right" dataKey="media" name="Média Valor" fill="#a855f7" radius={[4, 4, 0, 0]} />
@@ -148,7 +148,7 @@ export function StatusContratoColumnChart({ data }: { data: { status: string; co
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="status" tick={{ fill: '#6b7280' }} />
           <YAxis allowDecimals={false} tick={{ fill: '#6b7280' }} />
-          <Tooltip content={<CustomBarTooltip />} />
+          <Tooltip content={<CustomTooltip />} />
           <Bar dataKey="count" name="Quantidade" fill="#0088FE" radius={[4, 4, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>

@@ -20,6 +20,7 @@ import {
   useModelos,
   useTodasInteracoes,
 } from "@/lib/api/hooks";
+import { CustomTooltip, CustomPieTooltip } from "./AnalyticsCharts"; // ajuste o caminho conforme sua estrutura
 
 // ==================== TEMA ====================
 const THEME = {
@@ -512,7 +513,7 @@ export function DashboardExecutivo() {
                   <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 10%)" />
                   <XAxis dataKey="mes" stroke="oklch(0.7 0.015 210)" fontSize={12} />
                   <YAxis stroke="oklch(0.7 0.015 210)" fontSize={12} tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
-                  <Tooltip formatter={(value: number) => fmtMoeda(value)} contentStyle={tooltipStyle} />
+                  <Tooltip formatter={(value: number) => fmtMoeda(value)} content={<CustomTooltip />} />
                   <Bar dataKey="valor" fill="url(#receitaGrad)" barSize={30} radius={[4, 4, 0, 0]} />
                 </ComposedChart>
               </ResponsiveContainer>
@@ -524,7 +525,7 @@ export function DashboardExecutivo() {
                   <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 10%)" />
                   <XAxis type="number" stroke="oklch(0.7 0.015 210)" fontSize={12} tickFormatter={fmtMoeda} />
                   <YAxis dataKey="segmento" type="category" stroke="oklch(0.7 0.015 210)" fontSize={12} width={100} />
-                  <Tooltip formatter={(value: number) => fmtMoeda(value)} contentStyle={tooltipStyle} />
+                  <Tooltip formatter={(value: number) => fmtMoeda(value)} content={<CustomTooltip />} />
                   <Bar dataKey="valor" fill={THEME.purple} barSize={20} radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -536,7 +537,7 @@ export function DashboardExecutivo() {
                   <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 10%)" />
                   <XAxis dataKey="mes" stroke="oklch(0.7 0.015 210)" fontSize={12} />
                   <YAxis stroke="oklch(0.7 0.015 210)" fontSize={12} tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
-                  <Tooltip formatter={(value: number) => fmtMoeda(value)} contentStyle={tooltipStyle} />
+                  <Tooltip formatter={(value: number) => fmtMoeda(value)} content={<CustomTooltip />} />
                   <Bar dataKey="valor" fill={THEME.secondary} barSize={40} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -548,7 +549,7 @@ export function DashboardExecutivo() {
                   <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 10%)" />
                   <XAxis dataKey="faixa" stroke="oklch(0.7 0.015 210)" fontSize={12} />
                   <YAxis stroke="oklch(0.7 0.015 210)" fontSize={12} tickFormatter={fmtMoeda} />
-                  <Tooltip formatter={(value: number) => fmtMoeda(value)} contentStyle={tooltipStyle} />
+                 <Tooltip formatter={(value: number) => fmtMoeda(value)} content={<CustomTooltip />} />
                   <Bar dataKey="valor" fill={THEME.danger} barSize={50} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -560,7 +561,7 @@ export function DashboardExecutivo() {
                   <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 10%)" />
                   <XAxis type="number" stroke="oklch(0.7 0.015 210)" fontSize={12} tickFormatter={fmtMoeda} />
                   <YAxis dataKey="nome" type="category" stroke="oklch(0.7 0.015 210)" fontSize={12} width={130} />
-                  <Tooltip formatter={(value: number) => fmtMoeda(value)} contentStyle={tooltipStyle} />
+                  <Tooltip formatter={(value: number) => fmtMoeda(value)} content={<CustomTooltip />} />
                   <Bar dataKey="valor" fill={THEME.primary} barSize={20} radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -572,7 +573,7 @@ export function DashboardExecutivo() {
                   <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 10%)" />
                   <XAxis dataKey="porte" stroke="oklch(0.7 0.015 210)" fontSize={12} />
                   <YAxis allowDecimals={false} stroke="oklch(0.7 0.015 210)" fontSize={12} />
-                  <Tooltip />
+                  <Tooltip content={<CustomTooltip />} />
                   <Bar dataKey="qtd" fill={THEME.secondary} barSize={40} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -605,7 +606,7 @@ export function DashboardExecutivo() {
                   <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 10%)" />
                   <XAxis dataKey="mes" stroke="oklch(0.7 0.015 210)" fontSize={12} />
                   <YAxis allowDecimals={false} stroke="oklch(0.7 0.015 210)" fontSize={12} />
-                  <Tooltip />
+                  <Tooltip content={<CustomTooltip />} />
                   <Line type="monotone" dataKey="qtd" stroke={THEME.secondary} strokeWidth={2} dot={{ r: 3 }} />
                 </LineChart>
               </ResponsiveContainer>
@@ -619,7 +620,7 @@ export function DashboardExecutivo() {
                       <Cell key={i} fill={[THEME.success, THEME.warning, "#94a3b8", THEME.danger][i % 4]} />
                     ))}
                   </Pie>
-                  <Tooltip contentStyle={tooltipStyle} />
+                  <Tooltip content={<CustomPieTooltip />} />
                   <Legend />
                 </PieChart>
               </ResponsiveContainer>
@@ -632,7 +633,7 @@ export function DashboardExecutivo() {
                   <PolarAngleAxis dataKey="nome" fontSize={9} stroke="oklch(0.7 0.015 210)" />
                   <PolarRadiusAxis domain={[0, 100]} stroke="oklch(0.7 0.015 210)" fontSize={10} />
                   <Radar dataKey="score" stroke={THEME.secondary} fill={THEME.secondary} fillOpacity={0.2} />
-                  <Tooltip contentStyle={tooltipStyle} />
+                  <Tooltip content={<CustomTooltip />} />
                 </RadarChart>
               </ResponsiveContainer>
             </ChartCard>
@@ -688,7 +689,7 @@ export function DashboardExecutivo() {
                         <Cell key={i} fill={[THEME.danger, THEME.warning, THEME.purple, THEME.secondary][i % 4]} />
                       ))}
                     </Pie>
-                    <Tooltip contentStyle={tooltipStyle} />
+                    <Tooltip content={<CustomTooltip />} />
                     <Legend />
                   </PieChart>
                 </ResponsiveContainer>
