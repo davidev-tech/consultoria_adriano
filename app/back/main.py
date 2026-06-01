@@ -15,6 +15,7 @@ import jwt
 from fastapi import APIRouter
 from dateutil.relativedelta import relativedelta
 import calendar
+import requests  # 👈 NOVA IMPORTAÇÃO
 
 # 1. INICIALIZAÇÃO DO BANCO
 models.Base.metadata.create_all(bind=engine)
@@ -89,6 +90,28 @@ def criar_empresa(empresa: schemas.EmpresaCreate, db: Session = Depends(get_db))
         if existente:
             raise HTTPException(status_code=400, detail="Este CNPJ já está cadastrado.")
 
+    # 👇 NOVO: garantir que o CEP exista na tabela endereco
+    if empresa.cep:
+        endereco_existente = db.query(models.Endereco).filter(models.Endereco.cep == empresa.cep).first()
+        if not endereco_existente:
+            try:
+                response = requests.get(f"https://viacep.com.br/ws/{empresa.cep}/json/")
+                data = response.json()
+                if data.get("erro"):
+                    raise HTTPException(status_code=400, detail="CEP não encontrado.")
+                novo_endereco = models.Endereco(
+                    cep=empresa.cep,
+                    bairro=data.get("bairro", ""),
+                    cidade=data.get("localidade", ""),
+                    estado=data.get("uf", "")
+                )
+                db.add(novo_endereco)
+                db.flush()
+            except HTTPException:
+                raise
+            except Exception:
+                raise HTTPException(status_code=400, detail="Erro ao buscar dados do CEP. Verifique o formato (apenas números).")
+
     empresa_data = empresa.model_dump(exclude={"ids_servicos_contratados"}, exclude_none=True)
     db_obj = models.EmpresaCliente(**empresa_data)
 
@@ -158,6 +181,28 @@ def atualizar_empresa(id_cliente: UUID, empresa_atualizada: schemas.EmpresaCreat
         existente = db.query(models.EmpresaCliente).filter(models.EmpresaCliente.cnpj == empresa_atualizada.cnpj).first()
         if existente:
             raise HTTPException(status_code=400, detail="Este CNPJ já está sendo usado por outra empresa.")
+
+    # 👇 NOVO: garantir que o CEP exista na tabela endereco
+    if empresa_atualizada.cep:
+        endereco_existente = db.query(models.Endereco).filter(models.Endereco.cep == empresa_atualizada.cep).first()
+        if not endereco_existente:
+            try:
+                response = requests.get(f"https://viacep.com.br/ws/{empresa_atualizada.cep}/json/")
+                data = response.json()
+                if data.get("erro"):
+                    raise HTTPException(status_code=400, detail="CEP não encontrado.")
+                novo_endereco = models.Endereco(
+                    cep=empresa_atualizada.cep,
+                    bairro=data.get("bairro", ""),
+                    cidade=data.get("localidade", ""),
+                    estado=data.get("uf", "")
+                )
+                db.add(novo_endereco)
+                db.flush()
+            except HTTPException:
+                raise
+            except Exception:
+                raise HTTPException(status_code=400, detail="Erro ao buscar dados do CEP. Verifique o formato (apenas números).")
 
     empresa_data = empresa_atualizada.model_dump(exclude={"ids_servicos_contratados"}, exclude_unset=True)
     for var, value in empresa_data.items():
@@ -229,6 +274,7 @@ def listar_todos_responsaveis(
         }
         for r in resultados
     ]
+
 @app.delete("/responsaveis/{id_responsavel}", status_code=status.HTTP_204_NO_CONTENT, tags=["Responsáveis"])
 def deletar_responsavel(id_responsavel: UUID, db: Session = Depends(get_db)):
     responsavel = db.query(models.Responsavel).filter(
@@ -263,7 +309,6 @@ def atualizar_responsavel(id_responsavel: UUID, payload: dict, db: Session = Dep
     if "cargo" in payload:
         responsavel.cargo = payload["cargo"]
     if "id_cliente" in payload:
-        # Verificar se a nova empresa existe
         if not db.query(models.EmpresaCliente).filter(models.EmpresaCliente.id_cliente == payload["id_cliente"]).first():
             raise HTTPException(status_code=404, detail="Empresa não encontrada.")
         responsavel.id_cliente = payload["id_cliente"]

@@ -75,16 +75,22 @@ export const useCreateResponsavel = () => {
   return useMutation({
     mutationFn: (data: ResponsavelCreate) =>
       api<Responsavel>("/responsaveis", { method: "POST", json: data }),
-    onSuccess: (_d, vars) =>
-      qc.invalidateQueries({ queryKey: ["responsaveis", vars.id_cliente] }),
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: ["responsaveis", vars.id_cliente] });
+      qc.invalidateQueries({ queryKey: ["responsaveis-lista"] });   // 👈 adicionado
+    },
   });
 };
+
 export const useUpdateResponsavel = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (args: { id: string; data: any }) =>
       api<Responsavel>(`/responsaveis/${args.id}`, { method: "PUT", json: args.data }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["responsaveis-lista"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["responsaveis-lista"] });   // mantido
+      qc.invalidateQueries({ queryKey: ["responsaveis"] });         // 👈 adicionado (caso haja queries específicas)
+    },
   });
 };
 
@@ -93,7 +99,10 @@ export const useDeleteResponsavel = () => {
   return useMutation({
     mutationFn: (id: string) =>
       api(`/responsaveis/${id}`, { method: "DELETE" }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["responsaveis-lista"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["responsaveis-lista"] });   // mantido
+      qc.invalidateQueries({ queryKey: ["responsaveis"] });         // 👈 adicionado
+    },
   });
 };
 

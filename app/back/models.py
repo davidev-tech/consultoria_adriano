@@ -39,18 +39,24 @@ class EmpresaCliente(Base):
     id_cliente = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     nome_empresa = Column(String(255), nullable=False)
     cnpj = Column(String(20), unique=True)
-    
-    # Colunas conforme visualizado no vídeo
-    localizacao_estado = Column(String(2))
-    localizacao_cidade = Column(String(100))
-    localizacao_bairro = Column(String(100))
+    cep = Column(String(8), ForeignKey("endereco.cep"), nullable=True)  # 👈 novo
     segmento = Column(String(50))
     porte = Column(String(50))
+
+    endereco = relationship("Endereco")  # 👈 novo
 
     servicos_contratados = relationship("ServicoPrestado", back_populates="empresa", cascade="all, delete-orphan")
     responsaveis = relationship("Responsavel", back_populates="empresa", cascade="all, delete-orphan")
     contratos = relationship("Contrato", back_populates="empresa", cascade="all, delete-orphan")
     interacoes = relationship("HistoricoInteracoes", back_populates="empresa", cascade="all, delete-orphan")
+
+
+class Endereco(Base):
+    __tablename__ = "endereco"
+    cep = Column(String(8), primary_key=True)
+    bairro = Column(Text, nullable=False)
+    cidade = Column(Text, nullable=False)
+    estado = Column(String(2), nullable=False)
 
 class ModeloContrato(Base):
     __tablename__ = "modelo_contrato"

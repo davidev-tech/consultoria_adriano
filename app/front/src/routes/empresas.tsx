@@ -113,6 +113,14 @@ function EmpresasPage() {
                           {empresa.nome_empresa}
                         </button>
                         <p className="text-xs text-muted-foreground mt-0.5 truncate">{empresa.cnpj || "Sem CNPJ"}</p>
+                        {/* Informações adicionais no card */}
+                        <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-[11px] text-muted-foreground">
+                          {empresa.segmento && <span>Segmento: {empresa.segmento}</span>}
+                          {empresa.porte && <span>Porte: {empresa.porte}</span>}
+                          {empresa.endereco && (
+                            <span>{empresa.endereco.cidade}/{empresa.endereco.estado}</span>
+                          )}
+                        </div>
                       </div>
                     </div>
 
@@ -201,6 +209,9 @@ function DetalhesEmpresa({ empresa, onClose }: { empresa: any; onClose: () => vo
   const interFinPendentes = interacoesOrdenadas.filter(i => i.status_financeiro === "Paga" && i.status_pagamento === "Pendente").length;
   const totalPendencias = pendenciasContrato + faturasPendentes + interFinPendentes;
 
+  const cidade = empresa.endereco?.cidade || "—";
+  const estado = empresa.endereco?.estado || "—";
+
   return (
     <div className="animate-fade-in-up">
       <Breadcrumb
@@ -216,7 +227,28 @@ function DetalhesEmpresa({ empresa, onClose }: { empresa: any; onClose: () => vo
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/15 text-primary ring-1 ring-primary/30"><Building2 className="h-6 w-6" /></div>
           <div>
             <h2 className="text-xl font-bold">{empresa.nome_empresa}</h2>
-            <p className="text-sm text-muted-foreground">{empresa.cnpj || "CNPJ não informado"} • {empresa.localizacao_cidade || "—"}/{empresa.localizacao_estado || "—"}</p>
+            {/* 👇 Informações detalhadas no modal */}
+            <div className="text-sm text-muted-foreground space-y-1 mt-1">
+              <p>{empresa.cnpj || "CNPJ não informado"}</p>
+              {empresa.endereco && (
+                <p>
+                  {empresa.endereco.bairro && `${empresa.endereco.bairro} • `}
+                  {cidade}/{estado}
+                </p>
+              )}
+              <div className="flex flex-wrap gap-2 mt-1">
+                {empresa.segmento && (
+                  <span className="inline-flex items-center rounded bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                    {empresa.segmento}
+                  </span>
+                )}
+                {empresa.porte && (
+                  <span className="inline-flex items-center rounded bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                    Porte: {empresa.porte}
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -304,21 +336,46 @@ function KpiCard({ label, value, icon: Icon, variant = "default" }: any) {
 }
 function SkeletonList() { return <div className="space-y-3">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-20 rounded skeleton-shimmer" />)}</div>; }
 
+const opcoesSegmento = ["Home Care", "Clínica", "ILPI", "Hospital"];
+
 function EmpresaDialogForm({ onClose, empresaInicial }: { onClose: () => void, empresaInicial: Empresa | null }) {
   const create = useCreateEmpresa();
   const update = useUpdateEmpresa();
   const isEditing = !!empresaInicial;
   const isLoading = create.isPending || update.isPending;
 
+  const segmentoInicial = empresaInicial?.segmento || "";
+  const segmentoEhPredefinido = opcoesSegmento.includes(segmentoInicial);
+
   const [form, setForm] = useState({
     nome_empresa: empresaInicial?.nome_empresa || "",
     cnpj: empresaInicial?.cnpj || "",
-    localizacao_estado: empresaInicial?.localizacao_estado || "",
-    localizacao_cidade: empresaInicial?.localizacao_cidade || "",
-    localizacao_bairro: empresaInicial?.localizacao_bairro || "",
-    segmento: empresaInicial?.segmento || "",
+    cep: empresaInicial?.cep || "",
+    segmento: segmentoEhPredefinido ? segmentoInicial : "Outro",
+    segmentoCustomizado: segmentoEhPredefinido ? "" : segmentoInicial,
     porte: empresaInicial?.porte || "",
   });
+
+  // Endereço preenchido automaticamente (somente leitura)
+  const [endereco, setEndereco] = useState({
+    bairro: empresaInicial?.endereco?.bairro || "",
+    cidade: empresaInicial?.endereco?.cidade || "",
+    estado: empresaInicial?.endereco?.estado || "",
+  });
+
+  const buscarCep = async (cep: string) => {
+    if (cep.length === 8) {
+      try {
+        const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+        const data = await res.json();
+        if (!data.erro) {
+          setEndereco({ bairro: data.bairro, cidade: data.localidade, estado: data.uf });
+        }
+      } catch (error) {
+        console.error("Erro ao buscar CEP:", error);
+      }
+    }
+  };
 
   const handleSubmit = async (ev: React.FormEvent) => {
     ev.preventDefault();
@@ -327,12 +384,12 @@ function EmpresaDialogForm({ onClose, empresaInicial }: { onClose: () => void, e
     const payload: EmpresaCreate = {
       nome_empresa: form.nome_empresa.trim(),
       cnpj: form.cnpj || undefined,
-      localizacao_estado: form.localizacao_estado || undefined,
-      localizacao_cidade: form.localizacao_cidade || undefined,
-      localizacao_bairro: form.localizacao_bairro || undefined,
-      segmento: form.segmento || undefined,
+      cep: form.cep || undefined,
+      segmento: form.segmento === "Outro"
+        ? form.segmentoCustomizado || undefined
+        : form.segmento || undefined,
       porte: form.porte || undefined,
-      ids_servicos_contratados: [], // campo obrigatório, mantenha como array vazio se não estiver usando
+      ids_servicos_contratados: [],
     };
 
     if (isEditing && empresaInicial) {
@@ -357,26 +414,50 @@ function EmpresaDialogForm({ onClose, empresaInicial }: { onClose: () => void, e
           <Label className="text-xs">CNPJ</Label>
           <Input value={form.cnpj} onChange={(e) => setForm({ ...form, cnpj: e.target.value })} placeholder="00.000.000/0000-00" />
         </div>
-        <div className="grid grid-cols-3 gap-3">
-          <div className="space-y-1.5">
-            <Label className="text-xs">Estado (UF)</Label>
-            <Input value={form.localizacao_estado} onChange={(e) => setForm({ ...form, localizacao_estado: e.target.value.toUpperCase() })} maxLength={2} placeholder="SP" />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs">Cidade</Label>
-            <Input value={form.localizacao_cidade} onChange={(e) => setForm({ ...form, localizacao_cidade: e.target.value })} />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs">Bairro</Label>
-            <Input value={form.localizacao_bairro} onChange={(e) => setForm({ ...form, localizacao_bairro: e.target.value })} />
-          </div>
+
+        {/* CAMPO CEP */}
+        <div className="space-y-1.5">
+          <Label className="text-xs">CEP</Label>
+          <Input
+            value={form.cep}
+            onChange={(e) => {
+              const valor = e.target.value.replace(/\D/g, "");
+              setForm({ ...form, cep: valor });
+              if (valor.length === 8) buscarCep(valor);
+            }}
+            placeholder="00000000"
+            maxLength={8}
+          />
         </div>
+
+        {/* ENDEREÇO PREENCHIDO AUTOMATICAMENTE */}
+        {endereco.cidade && (
+          <div className="grid grid-cols-3 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Estado</Label>
+              <Input value={endereco.estado} disabled />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Cidade</Label>
+              <Input value={endereco.cidade} disabled />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Bairro</Label>
+              <Input value={endereco.bairro} disabled />
+            </div>
+          </div>
+        )}
 
         {/* NOVOS CAMPOS: Segmento e Porte */}
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label className="text-xs">Segmento</Label>
-            <Select value={form.segmento} onValueChange={(v) => setForm({ ...form, segmento: v })}>
+            <Select
+              value={form.segmento}
+              onValueChange={(v) => {
+                setForm({ ...form, segmento: v, segmentoCustomizado: "" });
+              }}
+            >
               <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="Home Care">Home Care</SelectItem>
@@ -386,6 +467,16 @@ function EmpresaDialogForm({ onClose, empresaInicial }: { onClose: () => void, e
                 <SelectItem value="Outro">Outro</SelectItem>
               </SelectContent>
             </Select>
+            {form.segmento === "Outro" && (
+              <Input
+                className="mt-1"
+                placeholder="Digite o segmento..."
+                value={form.segmentoCustomizado}
+                onChange={(e) =>
+                  setForm({ ...form, segmentoCustomizado: e.target.value })
+                }
+              />
+            )}
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs">Porte</Label>

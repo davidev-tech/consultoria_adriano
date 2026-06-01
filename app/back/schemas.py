@@ -36,17 +36,13 @@ class EmpresaBase(BaseModel):
     nome_empresa: str
     cnpj: Optional[str] = None
     email: Optional[str] = None
-    localizacao_estado: Optional[str] = None
-    localizacao_cidade: Optional[str] = None
-    localizacao_bairro: Optional[str] = None
+    cep: Optional[str] = None
     segmento: Optional[str] = None
     porte: Optional[str] = None
 
 class EmpresaCreate(EmpresaBase):
     ids_servicos_contratados: List[UUID] = []
-    localizacao_estado: Optional[str] = None
-    localizacao_cidade: Optional[str] = None
-    localizacao_bairro: Optional[str] = None
+
     @field_validator("cnpj")
     @classmethod
     def check_cnpj(cls, v):
@@ -59,17 +55,28 @@ class EmpresaCreate(EmpresaBase):
         if v: return validate_email(v)
         return v
 
-    @field_validator("nome_empresa", "localizacao_cidade", "localizacao_bairro")
+    @field_validator("nome_empresa")
     @classmethod
     def check_text(cls, v):
-        if v: return validate_string_content(v)
-        return v
+        return validate_string_content(v)
 
-    @field_validator("localizacao_estado")
-    @classmethod
-    def check_estado(cls, v):
-        if v: return validate_string_content(v, min_length=2, max_length=2)
-        return v
+class EnderecoResponse(BaseModel):
+    cep: str
+    bairro: str
+    cidade: str
+    estado: str
+    model_config = ConfigDict(from_attributes=True)
+
+class EmpresaResponse(EmpresaBase):
+    id_cliente: UUID
+    servicos_contratados: List[ServicoDetalhe] = []
+    localizacao: Optional[str] = None
+    servico_prestado: Optional[str] = None
+    interacoes: List["InteracaoResponse"] = []
+    contratos: List["ContratoResponse"] = []
+    endereco: Optional[EnderecoResponse] = None
+
+    model_config = ConfigDict(from_attributes=True)
 
 # ==========================================
 # 2. MÓDULO: RESPONSÁVEL (Contatos)
@@ -128,7 +135,7 @@ class ModeloContratoBase(BaseModel):
     periodicidade_cobranca: Optional[str] = None
     descricao_padrao: Optional[str] = None
     ativo: Optional[bool] = True
-    motivo_arquivamento: Optional[str] = None   # 👈 adicione esta linha
+    motivo_arquivamento: Optional[str] = None
 
 class ModeloContratoCreate(ModeloContratoBase):
     
@@ -200,13 +207,12 @@ class ContratoResponse(ContratoBase):
     id_modelo: UUID
     entregas: List["EntregaResponse"] = []
     faturas: List["FaturaResponse"] = []
-    pagamentos: List["PagamentoResponse"] = []   # ← ADICIONE ESTA LINHA
+    pagamentos: List["PagamentoResponse"] = []
     model_config = ConfigDict(from_attributes=True)
+
 # ==========================================
 # 5. MÓDULO: HISTÓRICO DE INTERAÇÕES
 # ==========================================
-
-# schemas.py
 
 class InteracaoBase(BaseModel):
     id_cliente: UUID
@@ -216,9 +222,8 @@ class InteracaoBase(BaseModel):
     grau_urgencia: Optional[str] = "Baixo"
     status_financeiro: Optional[str] = "Não Paga"
     valor_cobrado: Optional[float] = None
-    status_pagamento: Optional[str] = "Pendente"   # 👈 NOVO
+    status_pagamento: Optional[str] = "Pendente"
     nota: Optional[int] = None
-    
 
 class InteracaoCreate(InteracaoBase):
     id_cliente: UUID
@@ -227,7 +232,7 @@ class InteracaoCreate(InteracaoBase):
     @classmethod
     def check_status_financeiro(cls, v):
         if v is not None:
-            opcoes_validas = ["Não Paga", "Paga"]  # ✅ Padronizado
+            opcoes_validas = ["Não Paga", "Paga"]
             if v not in opcoes_validas:
                 raise ValueError(f"Status financeiro inválido. Use: {', '.join(opcoes_validas)}")
         return v
@@ -241,23 +246,11 @@ class InteracaoCreate(InteracaoBase):
         status = info.data.get('status_financeiro') if info.data else None
         if status == "Paga" and (v is None or v <= 0):
             raise ValueError("Valor cobrado é obrigatório quando status for 'Paga'")
-        
         return v
     
 class InteracaoResponse(InteracaoBase):
     id_interacao: UUID
     id_cliente: UUID
-    
-    model_config = ConfigDict(from_attributes=True)
-    
-    # ✅ Apenas UMA definição
-class EmpresaResponse(EmpresaBase):
-    id_cliente: UUID
-    servicos_contratados: List[ServicoDetalhe] = []
-    localizacao: Optional[str] = None
-    servico_prestado: Optional[str] = None
-    interacoes: List[InteracaoResponse] = []
-    contratos: List[ContratoResponse] = []
     
     model_config = ConfigDict(from_attributes=True)
 
@@ -290,11 +283,10 @@ class EntregaResponse(EntregaBase):
     data_conclusao: Optional[date] = None
     model_config = ConfigDict(from_attributes=True)
 
-
 # schemas.py – adicione no final
 class PendenciaResponse(BaseModel):
     id: str
-    tipo: str  # "financeira" ou "entrega"
+    tipo: str
     empresa_nome: str
     descricao: str
     status: str
@@ -309,7 +301,7 @@ class PendenciaResponse(BaseModel):
 # ==========================================
 
 class PagamentoBase(BaseModel):
-    valor: float                # ✅ nome correto (igual ao banco)
+    valor: float
     data_pagamento: datetime
     forma_pagamento: Optional[str] = None
     status_pagamento: Optional[str] = "Pendente"
@@ -318,7 +310,7 @@ class PagamentoBase(BaseModel):
 class PagamentoCreate(PagamentoBase):
     id_contrato: UUID
 
-    @field_validator("valor", "valor_juros")   # ✅ nome correto
+    @field_validator("valor", "valor_juros")
     @classmethod
     def check_valor(cls, v):
         return validate_positive_value(v)
@@ -344,8 +336,8 @@ class FaturaBase(BaseModel):
     data_vencimento: date
     status: Optional[str] = "Pendente"
     valor_juros_pago: Optional[float] = 0.00
-    data_pagamento: Optional[date] = None   # ← ADICIONE
-    valor_pago: Optional[float] = None 
+    data_pagamento: Optional[date] = None
+    valor_pago: Optional[float] = None
 
 class FaturaCreate(FaturaBase):
     id_contrato: UUID
@@ -367,6 +359,7 @@ class FaturaResponse(FaturaBase):
     created_at: datetime
     
     model_config = ConfigDict(from_attributes=True)
+
 # ==========================================
 # SUB-SCHEMAS DE SUPORTE PARA COMPATIBILIDADE FRONT-END
 # ==========================================
