@@ -875,6 +875,8 @@ function FaturaDialog({ id_contrato, fatura, onClose }: { id_contrato: string; f
 
   const isLoading = create.isPending || update.isPending;
 
+  const idContratoEfetivo = fatura?.id_contrato || id_contrato;
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!valor || !dataVencimento) {
@@ -883,7 +885,7 @@ function FaturaDialog({ id_contrato, fatura, onClose }: { id_contrato: string; f
     }
 
     const payload = {
-      id_contrato: id_contrato,
+      id_contrato: idContratoEfetivo,   // ✅ sempre o contrato correto
       valor_original: Number(valor),
       data_vencimento: dataVencimento,
       status: status,

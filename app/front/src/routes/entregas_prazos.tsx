@@ -82,12 +82,21 @@ function EntregasPrazosPage() {
   return map;
 }, [modelos]);
 const { data: entregas, isLoading } = useEntregas({
-  id_contrato: idContrato !== "todos" ? idContrato : undefined,
+  id_contrato: idContrato !== "todas" ? idContrato : undefined,
   status_entrega: statusFiltro !== "todas" ? statusFiltro : undefined,
 });
+const entregasFiltradasPorEmpresa = useMemo(() => {
+  if (!entregas) return [];
+  if (idEmpresa === "todas") return entregas;
+  return entregas.filter(e => {
+    const contrato = contratos?.find(c => c.id_contrato === e.id_contrato);
+    return contrato?.id_cliente === idEmpresa;
+  });
+}, [entregas, idEmpresa, contratos]);
   const create = useCreateEntrega();
   const update = useUpdateEntrega();
   const remove = useDeleteEntrega();
+
 
  const contratosDisponiveis = useMemo(() => {
   if (!contratos) return [];
@@ -157,16 +166,16 @@ const { data: entregas, isLoading } = useEntregas({
     }
   };
 
-  const entregasFiltradas = useMemo(() => {
-    if (!entregas) return [];
-    if (!buscaLocal) return entregas;
-    const termo = buscaLocal.toLowerCase();
-    return entregas.filter(
-      (e: any) =>
-        e.descricao_entrega?.toLowerCase().includes(termo) ||
-        e.status_entrega?.toLowerCase().includes(termo)
-    );
-  }, [entregas, buscaLocal]);
+    const entregasFiltradas = useMemo(() => {
+  if (!entregasFiltradasPorEmpresa) return [];
+  if (!buscaLocal) return entregasFiltradasPorEmpresa;
+  const termo = buscaLocal.toLowerCase();
+  return entregasFiltradasPorEmpresa.filter(
+    (e: any) =>
+      e.descricao_entrega?.toLowerCase().includes(termo) ||
+      e.status_entrega?.toLowerCase().includes(termo)
+  );
+}, [entregasFiltradasPorEmpresa, buscaLocal]);
 
   return (
     <DashboardLayout>
@@ -185,7 +194,7 @@ const { data: entregas, isLoading } = useEntregas({
 
         {/* FILTROS */}
         <div className="flex flex-col sm:flex-row gap-3">
-          <Select value={idEmpresa} onValueChange={(v) => { setIdEmpresa(v); setIdContrato("todos"); }}>
+          <Select value={idEmpresa} onValueChange={(v) => { setIdEmpresa(v); setIdContrato("todas"); }}>
             <SelectTrigger className="w-full sm:w-60">
               <SelectValue placeholder="Filtrar por empresa" />
             </SelectTrigger>
@@ -232,7 +241,7 @@ const { data: entregas, isLoading } = useEntregas({
               className="pl-9"
             />
           </div>
-          <Button variant="outline" onClick={() => { setIdEmpresa("todas"); setIdContrato(""); setStatusFiltro("todas"); setBuscaLocal(""); }}>
+          <Button variant="outline" onClick={() => { setIdEmpresa("todas"); setIdContrato("todas"); setStatusFiltro("todas"); setBuscaLocal(""); }}>
             <FilterX className="h-4 w-4 mr-2" /> Limpar
           </Button>
         </div>

@@ -80,14 +80,15 @@ class ResponsavelBase(BaseModel):
     telefone: Optional[str] = None
     email: Optional[str] = None
     cargo: Optional[str] = None
+    cpf: Optional[str] = None
 
 class ResponsavelCreate(ResponsavelBase):
     id_cliente: UUID
-
-    @field_validator("telefone")
+    
+    @field_validator("cpf")
     @classmethod
-    def check_phone(cls, v):
-        if v: return validate_phone_br(v)
+    def check_cpf(cls, v):
+        if v: return validate_cpf(v)
         return v
 
     @field_validator("email")
@@ -343,6 +344,8 @@ class FaturaBase(BaseModel):
     data_vencimento: date
     status: Optional[str] = "Pendente"
     valor_juros_pago: Optional[float] = 0.00
+    data_pagamento: Optional[date] = None   # ← ADICIONE
+    valor_pago: Optional[float] = None 
 
 class FaturaCreate(FaturaBase):
     id_contrato: UUID

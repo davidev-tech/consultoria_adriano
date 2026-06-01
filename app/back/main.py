@@ -229,6 +229,53 @@ def listar_todos_responsaveis(
         }
         for r in resultados
     ]
+@app.delete("/responsaveis/{id_responsavel}", status_code=status.HTTP_204_NO_CONTENT, tags=["Responsáveis"])
+def deletar_responsavel(id_responsavel: UUID, db: Session = Depends(get_db)):
+    responsavel = db.query(models.Responsavel).filter(
+        models.Responsavel.id_responsavel == id_responsavel
+    ).first()
+    if not responsavel:
+        raise HTTPException(status_code=404, detail="Responsável não encontrado.")
+    db.delete(responsavel)
+    db.commit()
+    return None
+
+@app.put("/responsaveis/{id_responsavel}", response_model=schemas.ResponsavelResponse, tags=["Responsáveis"])
+def atualizar_responsavel(id_responsavel: UUID, payload: dict, db: Session = Depends(get_db)):
+    responsavel = db.query(models.Responsavel).filter(
+        models.Responsavel.id_responsavel == id_responsavel
+    ).first()
+    if not responsavel:
+        raise HTTPException(status_code=404, detail="Responsável não encontrado.")
+
+    if "nome" in payload:
+        responsavel.nome = payload["nome"]
+    if "cpf" in payload:
+        novo_cpf = payload["cpf"]
+        if novo_cpf and novo_cpf != responsavel.cpf:
+            existente = db.query(models.Responsavel).filter(
+                models.Responsavel.cpf == novo_cpf,
+                models.Responsavel.id_responsavel != id_responsavel
+            ).first()
+            if existente:
+                raise HTTPException(status_code=400, detail="CPF já cadastrado para outro responsável.")
+        responsavel.cpf = novo_cpf or None
+    if "cargo" in payload:
+        responsavel.cargo = payload["cargo"]
+    if "id_cliente" in payload:
+        # Verificar se a nova empresa existe
+        if not db.query(models.EmpresaCliente).filter(models.EmpresaCliente.id_cliente == payload["id_cliente"]).first():
+            raise HTTPException(status_code=404, detail="Empresa não encontrada.")
+        responsavel.id_cliente = payload["id_cliente"]
+
+    try:
+        db.commit()
+        db.refresh(responsavel)
+        return responsavel
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Erro ao atualizar: {str(e)}")
+
 
 # --- MÓDULO 4: MODELOS DE CONTRATO ---
 @app.post("/modelos-contrato", response_model=schemas.ModeloContratoResponse, tags=["Modelos de Contrato"])
