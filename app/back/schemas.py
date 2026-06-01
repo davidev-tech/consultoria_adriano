@@ -39,6 +39,8 @@ class EmpresaBase(BaseModel):
     localizacao_estado: Optional[str] = None
     localizacao_cidade: Optional[str] = None
     localizacao_bairro: Optional[str] = None
+    segmento: Optional[str] = None
+    porte: Optional[str] = None
 
 class EmpresaCreate(EmpresaBase):
     ids_servicos_contratados: List[UUID] = []
@@ -125,6 +127,7 @@ class ModeloContratoBase(BaseModel):
     periodicidade_cobranca: Optional[str] = None
     descricao_padrao: Optional[str] = None
     ativo: Optional[bool] = True
+    motivo_arquivamento: Optional[str] = None   # 👈 adicione esta linha
 
 class ModeloContratoCreate(ModeloContratoBase):
     
@@ -160,6 +163,8 @@ class ContratoBase(BaseModel):
     data_fim: Optional[date] = None
     cobra_juros: Optional[bool] = False
     taxa_juros: Optional[float] = 0.00
+    motivo_arquivamento: Optional[str] = None
+    data_criacao: Optional[datetime] = None
 
 class ContratoCreate(ContratoBase):
     id_cliente: UUID
@@ -211,6 +216,7 @@ class InteracaoBase(BaseModel):
     status_financeiro: Optional[str] = "Não Paga"
     valor_cobrado: Optional[float] = None
     status_pagamento: Optional[str] = "Pendente"   # 👈 NOVO
+    nota: Optional[int] = None
     
 
 class InteracaoCreate(InteracaoBase):

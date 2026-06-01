@@ -44,7 +44,9 @@ class EmpresaCliente(Base):
     localizacao_estado = Column(String(2))
     localizacao_cidade = Column(String(100))
     localizacao_bairro = Column(String(100))
-    
+    segmento = Column(String(50))
+    porte = Column(String(50))
+
     servicos_contratados = relationship("ServicoPrestado", back_populates="empresa", cascade="all, delete-orphan")
     responsaveis = relationship("Responsavel", back_populates="empresa", cascade="all, delete-orphan")
     contratos = relationship("Contrato", back_populates="empresa", cascade="all, delete-orphan")
@@ -58,6 +60,7 @@ class ModeloContrato(Base):
     descricao_padrao = Column(Text)
     ativo = Column(Boolean, default=True) 
     contratos = relationship("Contrato", back_populates="modelo")
+    motivo_arquivamento = Column(String, nullable=True)
 
 # ==========================================
 # 2. PRIMEIRO NÍVEL DE DEPENDÊNCIA
@@ -84,6 +87,8 @@ class HistoricoInteracoes(Base):
     feedback_anotacoes = Column(Text)
     status_pagamento = Column(String(50), nullable=True, default="Pendente")
     empresa = relationship("EmpresaCliente", back_populates="interacoes")
+    nota = Column(INTEGER, nullable=True)
+    
     # ✅ Apenas UMA definição de cada campo
 
 class Contrato(Base):
@@ -97,6 +102,8 @@ class Contrato(Base):
     data_fim = Column(DATE)
     cobra_juros = Column(Boolean, default=False)
     taxa_juros = Column(Numeric(5, 2), default=0.00)
+    motivo_arquivamento = Column(String(100), nullable=True)
+    data_criacao = Column(TIMESTAMP(timezone=True), default=datetime.datetime.utcnow)
 
     empresa = relationship("EmpresaCliente", back_populates="contratos")
     modelo = relationship("ModeloContrato", back_populates="contratos")
