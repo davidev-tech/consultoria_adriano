@@ -369,16 +369,12 @@ export const useEntregasMulti = (ids: UUID[]) =>
     })),
   });
 
+// --- ARQUIVAR / DESARQUIVAR ---
 export function useArquivarModelo() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
-      const response = await fetch(`http://localhost:8000/modelos-contrato/${id}/arquivar`, {
-        method: "PATCH",
-      });
-      if (!response.ok) throw new Error("Erro ao arquivar modelo");
-      return response.json();
-    },
+    mutationFn: (id: string) =>
+      api(`/modelos-contrato/${id}/arquivar`, { method: "PATCH" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["modelos"] });
     },
@@ -388,28 +384,20 @@ export function useArquivarModelo() {
 export function useArquivarContrato() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
-      const response = await fetch(`http://localhost:8000/contratos/${id}/arquivar`, {
-        method: "PATCH",
-      });
-      if (!response.ok) throw new Error("Erro ao arquivar contrato");
-      return response.json();
-    },
+    mutationFn: (id: string) =>
+      api(`/contratos/${id}/arquivar`, { method: "PATCH" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["contratos"] });
+      queryClient.invalidateQueries({ queryKey: ["contratos-all"] }); // 👈 Adicionado para atualizar a lista automaticamente
     },
   });
 }
+
 export function useDesarquivarModelo() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
-      const response = await fetch(`http://localhost:8000/modelos-contrato/${id}/desarquivar`, {
-        method: "PATCH",
-      });
-      if (!response.ok) throw new Error("Erro ao desarquivar modelo");
-      return response.json();
-    },
+    mutationFn: (id: string) =>
+      api(`/modelos-contrato/${id}/desarquivar`, { method: "PATCH" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["modelos"] });
     },
@@ -419,13 +407,8 @@ export function useDesarquivarModelo() {
 export function useDesarquivarContrato() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
-      const response = await fetch(`http://localhost:8000/contratos/${id}/desarquivar`, {
-        method: "PATCH",
-      });
-      if (!response.ok) throw new Error("Erro ao desarquivar contrato");
-      return response.json();
-    },
+    mutationFn: (id: string) =>
+      api(`/contratos/${id}/desarquivar`, { method: "PATCH" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["contratos"] });
       queryClient.invalidateQueries({ queryKey: ["contratos-all"] });

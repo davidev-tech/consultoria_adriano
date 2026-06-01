@@ -49,7 +49,10 @@ function ContratosPage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmTitle, setConfirmTitle] = useState("");
   const [confirmDesc, setConfirmDesc] = useState("");
-  const [confirmAction, setConfirmAction] = useState<() => void>(() => {});
+  const [confirmActionType, setConfirmActionType] = useState<
+    "arquivar_modelo" | "desarquivar_modelo" | "arquivar_contrato" | "desarquivar_contrato" | null
+  >(null);
+  const [confirmTargetId, setConfirmTargetId] = useState<string | null>(null);
 
   const empresaNome = (id: string) =>
     empresas.data?.find((e) => e.id_cliente === id)?.nome_empresa ?? id.slice(0, 8);
@@ -128,7 +131,8 @@ function ContratosPage() {
                           onClick={() => {
                             setConfirmTitle("Desarquivar modelo?");
                             setConfirmDesc("O modelo voltará a ficar disponível para novos contratos.");
-                            setConfirmAction(() => desarquivarModelo.mutate(m.id_modelo));
+                            setConfirmActionType("desarquivar_modelo");
+                            setConfirmTargetId(m.id_modelo);
                             setConfirmOpen(true);
                           }}
                         ><ArchiveRestore className="h-4 w-4" /></Button>
@@ -138,7 +142,8 @@ function ContratosPage() {
                           onClick={() => {
                             setConfirmTitle("Arquivar modelo?");
                             setConfirmDesc("Ele não aparecerá mais para novos contratos.");
-                            setConfirmAction(() => arquivarModelo.mutate(m.id_modelo));
+                            setConfirmActionType("arquivar_modelo");
+                            setConfirmTargetId(m.id_modelo);
                             setConfirmOpen(true);
                           }}
                         ><Archive className="h-4 w-4" /></Button>
@@ -198,7 +203,7 @@ function ContratosPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-xs text-muted-foreground">
-                        {c.motivo_encerramento || "—"}
+                        {!isContratoArquivado && !isEncerrado ? "—" : (c.motivo_encerramento || "—")}
                       </td>
                       <td className="px-4 py-3 text-right font-semibold">
                         {Number(c.valor_acordado).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
@@ -210,7 +215,8 @@ function ContratosPage() {
                             onClick={() => {
                               setConfirmTitle("Desarquivar contrato?");
                               setConfirmDesc("O contrato voltará a ficar Ativo.");
-                              setConfirmAction(() => desarquivarContrato.mutate(c.id_contrato));
+                              setConfirmActionType("desarquivar_contrato");
+                              setConfirmTargetId(c.id_contrato);
                               setConfirmOpen(true);
                             }}
                           ><ArchiveRestore className="h-4 w-4" /></Button>
@@ -220,7 +226,8 @@ function ContratosPage() {
                             onClick={() => {
                               setConfirmTitle("Arquivar contrato?");
                               setConfirmDesc("O contrato passará para o status Arquivado.");
-                              setConfirmAction(() => arquivarContrato.mutate(c.id_contrato));
+                              setConfirmActionType("arquivar_contrato");
+                              setConfirmTargetId(c.id_contrato);
                               setConfirmOpen(true);
                             }}
                           ><Archive className="h-4 w-4" /></Button>
@@ -239,7 +246,23 @@ function ContratosPage() {
           onOpenChange={setConfirmOpen}
           title={confirmTitle}
           description={confirmDesc}
-          onConfirm={() => { confirmAction(); setConfirmOpen(false); }}
+          confirmLabel={
+            confirmActionType === "arquivar_modelo" || confirmActionType === "arquivar_contrato"
+              ? "Arquivar"
+              : "Desarquivar"
+          }
+          onConfirm={() => {
+            if (confirmActionType === "arquivar_modelo" && confirmTargetId) {
+              arquivarModelo.mutate(confirmTargetId);
+            } else if (confirmActionType === "desarquivar_modelo" && confirmTargetId) {
+              desarquivarModelo.mutate(confirmTargetId);
+            } else if (confirmActionType === "arquivar_contrato" && confirmTargetId) {
+              arquivarContrato.mutate(confirmTargetId);
+            } else if (confirmActionType === "desarquivar_contrato" && confirmTargetId) {
+              desarquivarContrato.mutate(confirmTargetId);
+            }
+            setConfirmOpen(false);
+          }}
           loading={arquivarModelo.isPending || desarquivarModelo.isPending || arquivarContrato.isPending || desarquivarContrato.isPending}
         />
       </div>
@@ -289,7 +312,7 @@ function VincularContratoDialog({ onClose }: { onClose: () => void }) {
   const [diaVencimento, setDiaVencimento] = useState("5");
   const [cobraJuros, setCobraJuros] = useState(false);
   const [taxaJuros, setTaxaJuros] = useState("0");
-  const [motivoEncerramento, setMotivoEncerramento] = useState(""); // NOVO
+  const [motivoEncerramento, setMotivoEncerramento] = useState("");
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
