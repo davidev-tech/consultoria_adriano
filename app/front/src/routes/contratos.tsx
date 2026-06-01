@@ -1,3 +1,10 @@
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { Archive, FileText, Loader2, Plus, Link, ArchiveRestore, Pencil, Info } from "lucide-react";;
@@ -49,6 +56,7 @@ function ContratosPage() {
   const [openModelo, setOpenModelo] = useState(false);
   const [openContrato, setOpenContrato] = useState(false);
   const [exibirArquivados, setExibirArquivados] = useState(false);
+  const [filtroStatus, setFiltroStatus] = useState<string>("todos");
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmTitle, setConfirmTitle] = useState("");
@@ -70,13 +78,23 @@ function ContratosPage() {
     modelos.data?.find((m) => m.id_modelo === id)?.nome_modelo ?? "—";
 
   const contratosFiltrados = contratos.data?.filter((c) => {
-    const status = c.status_contrato?.toString().trim().toLowerCase();
-    const statusAlt = c.status?.toString().trim().toLowerCase();
-    const isArquivado =
-      status === "arquivado" || statusAlt === "arquivado" ||
-      c.arquivado === true || c.ativo === false || c.ativo === "false" || c.ativo === 0;
-    return exibirArquivados ? isArquivado : !isArquivado;
-  });
+  const status = c.status_contrato?.toString().trim().toLowerCase();
+  const statusAlt = c.status?.toString().trim().toLowerCase();
+  const isArquivado =
+    status === "arquivado" || statusAlt === "arquivado" ||
+    c.arquivado === true || c.ativo === false || c.ativo === "false" || c.ativo === 0;
+
+  // Se estiver exibindo arquivados, mostra apenas eles
+  if (exibirArquivados) return isArquivado;
+
+  // Visão normal: oculta arquivados e aplica filtro de status
+  if (isArquivado) return false;
+
+  if (filtroStatus === "todos") return true;
+  if (filtroStatus === "ativo") return status === "ativo";
+  if (filtroStatus === "encerrado") return status === "encerrado";
+  return true;
+});
 
   const modelosFiltrados = modelos.data?.filter((m) => {
     const status = m.status_modelo?.toString().trim().toLowerCase() || m.status?.toString().trim().toLowerCase();
@@ -132,17 +150,29 @@ function ContratosPage() {
   return (
     <DashboardLayout>
       <div className="mx-auto flex max-w-7xl flex-col gap-8">
-        <div className="flex justify-end">
-          <Button
-            variant={exibirArquivados ? "default" : "outline"}
-            size="sm"
-            className="gap-2"
-            onClick={() => setExibirArquivados(!exibirArquivados)}
-          >
-            {exibirArquivados ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
-            {exibirArquivados ? "Ver Itens Ativos" : "Ver Itens Arquivados"}
-          </Button>
-        </div>
+        <div className="flex justify-end gap-3">
+            {!exibirArquivados && (
+            <Select value={filtroStatus} onValueChange={setFiltroStatus}>
+            <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Filtrar por status" />
+            </SelectTrigger>
+            <SelectContent>
+           <SelectItem value="todos">Todos os status</SelectItem>
+            <SelectItem value="ativo">Ativos</SelectItem>
+              <SelectItem value="encerrado">Encerrados</SelectItem>
+            </SelectContent>
+            </Select>
+              )}
+  <Button
+    variant={exibirArquivados ? "default" : "outline"}
+    size="sm"
+    className="gap-2"
+    onClick={() => setExibirArquivados(!exibirArquivados)}
+  >
+    {exibirArquivados ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+    {exibirArquivados ? "Ver Itens Ativos" : "Ver Itens Arquivados"}
+  </Button>
+</div>
 
         {/* MODELOS DE CONTRATO */}
         <section>
