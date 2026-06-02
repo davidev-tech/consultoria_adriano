@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from fastapi import FastAPI, Depends, HTTPException, status, Request, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session, joinedload
@@ -331,6 +331,21 @@ def criar_modelo(obj_in: schemas.ModeloContratoCreate, db: Session = Depends(get
     db.refresh(novo_obj)
     return novo_obj
 
+@app.put("/modelos-contrato/{id_modelo}", response_model=schemas.ModeloContratoResponse, tags=["Modelos de Contrato"])
+def atualizar_modelo_completo(id_modelo: UUID, modelo_atualizado: schemas.ModeloContratoCreate, db: Session = Depends(get_db)):
+    modelo_db = db.query(models.ModeloContrato).filter(models.ModeloContrato.id_modelo == id_modelo).first()
+    if not modelo_db:
+        raise HTTPException(status_code=404, detail="Modelo não encontrado")
+
+    update_data = modelo_atualizado.model_dump(exclude_unset=True)
+    for var, value in update_data.items():
+        setattr(modelo_db, var, value)
+
+    db.add(modelo_db)
+    db.commit()
+    db.refresh(modelo_db)
+    return modelo_db
+
 @app.get("/modelos-contrato", response_model=List[schemas.ModeloContratoResponse], tags=["Modelos de Contrato"])
 def listar_modelos(
     busca: Optional[str] = Query(None, description="Busca por nome do modelo"),
@@ -526,26 +541,25 @@ def atualizar_entrega(id_entrega: UUID, payload: dict, db: Session = Depends(get
     entrega = db.query(models.Entrega).filter(models.Entrega.id_entrega == id_entrega).first()
     if not entrega:
         raise HTTPException(status_code=404, detail="Entrega não encontrada")
-    
-    # Obter o contrato vinculado
-    contrato = db.query(models.Contrato).filter(models.Contrato.id_contrato == entrega.id_contrato).first()
-    
-    # ✅ Validação da data se estiver sendo alterada
-    if "data_prazo_limite" in payload:
-        nova_data = payload["data_prazo_limite"]
-        if contrato and contrato.data_inicio and nova_data < contrato.data_inicio:
-            raise HTTPException(status_code=400, detail="A data da entrega não pode ser anterior ao início do contrato.")
-        if contrato and contrato.data_fim and nova_data > contrato.data_fim:
-            raise HTTPException(status_code=400, detail="A data da entrega não pode ser posterior ao fim do contrato.")
-        entrega.data_prazo_limite = nova_data
-    
+
     if "descricao_entrega" in payload:
         entrega.descricao_entrega = payload["descricao_entrega"]
+    if "data_prazo_limite" in payload:
+        entrega.data_prazo_limite = payload["data_prazo_limite"]
     if "status_entrega" in payload:
         entrega.status_entrega = payload["status_entrega"]
-    if "data_conclusao" in payload:
-        entrega.data_conclusao = payload["data_conclusao"]
-    
+        if payload["status_entrega"] == "Concluído" and "data_conclusao" not in payload:
+            entrega.data_conclusao = date.today()
+    if "data_conclusao" in payload and payload["data_conclusao"]:
+        try:
+            # Aceita apenas a parte da data (YYYY-MM-DD)
+            data_str = payload["data_conclusao"]
+            if isinstance(data_str, str) and "T" in data_str:
+                data_str = data_str.split("T")[0]
+            entrega.data_conclusao = date.fromisoformat(data_str)
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Formato de data inválido. Use YYYY-MM-DD. Erro: {str(e)}")
+
     try:
         db.commit()
         db.refresh(entrega)
@@ -553,6 +567,7 @@ def atualizar_entrega(id_entrega: UUID, payload: dict, db: Session = Depends(get
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
+    
 
 @app.delete("/entregas/{id_entrega}", tags=["Entregas"])
 def deletar_entrega(id_entrega: UUID, db: Session = Depends(get_db)):

@@ -136,6 +136,18 @@ export const useCreateModelo = () => {
   });
 };
 
+export const useUpdateModelo = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (args: { id: string; data: ModeloContratoCreate }) =>
+      api<ModeloContrato>(`/modelos-contrato/${args.id}`, {
+        method: "PUT",
+        json: args.data,
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["modelos"] }),
+  });
+};
+
 // --- MÓDULO 4: CONTRATOS ---
 export const useContratosPorEmpresa = (idCliente?: UUID) => {
   const { searchTerm } = useSearch();

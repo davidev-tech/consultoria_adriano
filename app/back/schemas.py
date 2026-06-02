@@ -149,9 +149,9 @@ class ModeloContratoCreate(ModeloContratoBase):
     @classmethod
     def check_periodicidade(cls, v):
         opcoes_validas = [
-            "Semanal", "Quinzenal", "Mensal", "Bimestral",
-            "Trimestral", "Semestral", "Anual", "Única"
-        ]
+        "Semanal", "Quinzenal", "Mensal", "Bimestral",
+        "Trimestral", "Semestral", "Anual", "Única", "Por Visita", "Por Entrega"
+]
         if v: return validate_enum_choice(v.title(), opcoes_validas)
         return v
 
@@ -265,6 +265,7 @@ class EntregaBase(BaseModel):
 
 class EntregaCreate(EntregaBase):
     id_contrato: UUID
+    data_conclusao: Optional[date] = None
 
     @field_validator("descricao_entrega")
     @classmethod
@@ -280,7 +281,7 @@ class EntregaCreate(EntregaBase):
 class EntregaResponse(EntregaBase):
     id_entrega: UUID
     id_contrato: UUID
-    data_conclusao: Optional[date] = None
+    data_conclusao: Optional[date] = None   # 👈 altere para date
     model_config = ConfigDict(from_attributes=True)
 
 # schemas.py – adicione no final

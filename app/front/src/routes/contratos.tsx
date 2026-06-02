@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/select";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Archive, FileText, Loader2, Plus, Link, ArchiveRestore, Pencil, Info } from "lucide-react";;
+import { Archive, FileText, Loader2, Plus, Link, ArchiveRestore, Pencil, Info } from "lucide-react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +34,7 @@ import {
   useCreateContrato,
   useUpdateMotivoArquivamentoContrato,
   useUpdateMotivoArquivamentoModelo,
+  useUpdateModelo,
 } from "@/lib/api/hooks";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -52,11 +53,15 @@ function ContratosPage() {
   const desarquivarContrato = useDesarquivarContrato();
   const updateMotivoContrato = useUpdateMotivoArquivamentoContrato();
   const updateMotivoModelo = useUpdateMotivoArquivamentoModelo();
+  const updateModelo = useUpdateModelo();
 
   const [openModelo, setOpenModelo] = useState(false);
   const [openContrato, setOpenContrato] = useState(false);
   const [exibirArquivados, setExibirArquivados] = useState(false);
   const [filtroStatus, setFiltroStatus] = useState<string>("todos");
+
+  const [editModeloOpen, setEditModeloOpen] = useState(false);
+  const [modeloEditando, setModeloEditando] = useState<any>(null);
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmTitle, setConfirmTitle] = useState("");
@@ -68,7 +73,7 @@ function ContratosPage() {
 
   const [motivoOpen, setMotivoOpen] = useState(false);
   const [motivoSelecionado, setMotivoSelecionado] = useState("");
-  const [motivoCustomizado, setMotivoCustomizado] = useState("");   // 👈 NOVO
+  const [motivoCustomizado, setMotivoCustomizado] = useState("");
   const [idParaArquivar, setIdParaArquivar] = useState<string | null>(null);
   const [modoEdicao, setModoEdicao] = useState<{ id: string; tipo: "contrato" | "modelo" } | null>(null);
 
@@ -78,23 +83,20 @@ function ContratosPage() {
     modelos.data?.find((m) => m.id_modelo === id)?.nome_modelo ?? "—";
 
   const contratosFiltrados = contratos.data?.filter((c) => {
-  const status = c.status_contrato?.toString().trim().toLowerCase();
-  const statusAlt = c.status?.toString().trim().toLowerCase();
-  const isArquivado =
-    status === "arquivado" || statusAlt === "arquivado" ||
-    c.arquivado === true || c.ativo === false || c.ativo === "false" || c.ativo === 0;
+    const status = c.status_contrato?.toString().trim().toLowerCase();
+    const statusAlt = c.status?.toString().trim().toLowerCase();
+    const isArquivado =
+      status === "arquivado" || statusAlt === "arquivado" ||
+      c.arquivado === true || c.ativo === false || c.ativo === "false" || c.ativo === 0;
 
-  // Se estiver exibindo arquivados, mostra apenas eles
-  if (exibirArquivados) return isArquivado;
+    if (exibirArquivados) return isArquivado;
+    if (isArquivado) return false;
 
-  // Visão normal: oculta arquivados e aplica filtro de status
-  if (isArquivado) return false;
-
-  if (filtroStatus === "todos") return true;
-  if (filtroStatus === "ativo") return status === "ativo";
-  if (filtroStatus === "encerrado") return status === "encerrado";
-  return true;
-});
+    if (filtroStatus === "todos") return true;
+    if (filtroStatus === "ativo") return status === "ativo";
+    if (filtroStatus === "encerrado") return status === "encerrado";
+    return true;
+  });
 
   const modelosFiltrados = modelos.data?.filter((m) => {
     const status = m.status_modelo?.toString().trim().toLowerCase() || m.status?.toString().trim().toLowerCase();
@@ -108,13 +110,12 @@ function ContratosPage() {
     setIdParaArquivar(id);
     setModoEdicao(null);
     setMotivoSelecionado("");
-    setMotivoCustomizado("");   // 👈 NOVO
+    setMotivoCustomizado("");
     setMotivoOpen(true);
   };
 
   const solicitarEdicaoMotivo = (id: string, motivoAtual: string, tipo: "contrato" | "modelo") => {
     setModoEdicao({ id, tipo });
-    // Se o motivo atual não estiver na lista, assume "Outro" e preenche o campo
     const opcoes = ["Preço", "Mudança de fornecedor", "Fim do projeto", "Insatisfação"];
     if (opcoes.includes(motivoAtual)) {
       setMotivoSelecionado(motivoAtual);
@@ -151,28 +152,28 @@ function ContratosPage() {
     <DashboardLayout>
       <div className="mx-auto flex max-w-7xl flex-col gap-8">
         <div className="flex justify-end gap-3">
-            {!exibirArquivados && (
+          {!exibirArquivados && (
             <Select value={filtroStatus} onValueChange={setFiltroStatus}>
-            <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Filtrar por status" />
-            </SelectTrigger>
-            <SelectContent>
-           <SelectItem value="todos">Todos os status</SelectItem>
-            <SelectItem value="ativo">Ativos</SelectItem>
-              <SelectItem value="encerrado">Encerrados</SelectItem>
-            </SelectContent>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filtrar por status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos os status</SelectItem>
+                <SelectItem value="ativo">Ativos</SelectItem>
+                <SelectItem value="encerrado">Encerrados</SelectItem>
+              </SelectContent>
             </Select>
-              )}
-  <Button
-    variant={exibirArquivados ? "default" : "outline"}
-    size="sm"
-    className="gap-2"
-    onClick={() => setExibirArquivados(!exibirArquivados)}
-  >
-    {exibirArquivados ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
-    {exibirArquivados ? "Ver Itens Ativos" : "Ver Itens Arquivados"}
-  </Button>
-</div>
+          )}
+          <Button
+            variant={exibirArquivados ? "default" : "outline"}
+            size="sm"
+            className="gap-2"
+            onClick={() => setExibirArquivados(!exibirArquivados)}
+          >
+            {exibirArquivados ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+            {exibirArquivados ? "Ver Itens Ativos" : "Ver Itens Arquivados"}
+          </Button>
+        </div>
 
         {/* MODELOS DE CONTRATO */}
         <section>
@@ -223,7 +224,20 @@ function ContratosPage() {
                         )}
                       </div>
                     </div>
-                    <div className="shrink-0 ml-2">
+                    <div className="shrink-0 ml-2 flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setModeloEditando(m);
+                          setEditModeloOpen(true);
+                        }}
+                        title="Editar modelo"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
                       {isModeloArquivado ? (
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-primary hover:bg-primary/10" title="Desarquivar modelo"
                           disabled={desarquivarModelo.isPending}
@@ -415,6 +429,23 @@ function ContratosPage() {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Diálogo de edição de modelo */}
+        <Dialog open={editModeloOpen} onOpenChange={(open) => {
+          setEditModeloOpen(open);
+          if (!open) setModeloEditando(null);
+        }}>
+          {modeloEditando && (
+            <EditarModeloDialog
+              key={modeloEditando.id_modelo}
+              onClose={() => {
+                setEditModeloOpen(false);
+                setModeloEditando(null);
+              }}
+              modelo={modeloEditando}
+            />
+          )}
+        </Dialog>
       </div>
     </DashboardLayout>
   );
@@ -439,11 +470,48 @@ function NovoModeloDialog({ onClose }: { onClose: () => void }) {
         <div className="space-y-1.5"><Label className="text-xs">Nome do modelo *</Label><Input value={nome} onChange={(e) => setNome(e.target.value)} required /></div>
         <div className="space-y-1.5"><Label className="text-xs">Periodicidade de cobrança</Label>
           <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={periodicidade} onChange={(e) => setPeriodicidade(e.target.value)}>
-            <option value="Semanal">Semanal</option><option value="Quinzenal">Quinzenal</option><option value="Mensal">Mensal</option><option value="Bimestral">Bimestral</option><option value="Trimestral">Trimestral</option><option value="Semestral">Semestral</option><option value="Anual">Anual</option><option value="Por Visita">Por Visita</option>
+            <option value="Semanal">Semanal</option><option value="Quinzenal">Quinzenal</option><option value="Mensal">Mensal</option><option value="Bimestral">Bimestral</option><option value="Trimestral">Trimestral</option><option value="Semestral">Semestral</option><option value="Anual">Anual</option><option value="Por Visita">Por Visita</option><option value="Por Entrega">Por Entrega</option>
           </select>
         </div>
         <div className="space-y-1.5"><Label className="text-xs">Descrição padrão</Label><Textarea value={descricao} onChange={(e) => setDescricao(e.target.value)} rows={3} /></div>
         <DialogFooter><Button type="button" variant="outline" onClick={onClose}>Cancelar</Button><Button type="submit" disabled={create.isPending}>{create.isPending && <Loader2 className="h-4 w-4 animate-spin" />}Criar</Button></DialogFooter>
+      </form>
+    </DialogContent>
+  );
+}
+
+function EditarModeloDialog({ onClose, modelo }: { onClose: () => void; modelo: any }) {
+  const update = useUpdateModelo();
+  const [nome, setNome] = useState(modelo.nome_modelo || "");
+  const [periodicidade, setPeriodicidade] = useState(modelo.periodicidade_cobranca || "Mensal");
+  const [descricao, setDescricao] = useState(modelo.descricao_padrao || "");
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!nome.trim()) return;
+    await update.mutateAsync({
+      id: modelo.id_modelo,
+      data: {
+        nome_modelo: nome.trim(),
+        periodicidade_cobranca: periodicidade || null,
+        descricao_padrao: descricao || null,
+      },
+    });
+    onClose();
+  };
+
+  return (
+    <DialogContent>
+      <DialogHeader><DialogTitle>Editar modelo de contrato</DialogTitle></DialogHeader>
+      <form onSubmit={submit} className="space-y-4">
+        <div className="space-y-1.5"><Label className="text-xs">Nome do modelo *</Label><Input value={nome} onChange={(e) => setNome(e.target.value)} required /></div>
+        <div className="space-y-1.5"><Label className="text-xs">Periodicidade de cobrança</Label>
+          <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={periodicidade} onChange={(e) => setPeriodicidade(e.target.value)}>
+            <option value="Semanal">Semanal</option><option value="Quinzenal">Quinzenal</option><option value="Mensal">Mensal</option><option value="Bimestral">Bimestral</option><option value="Trimestral">Trimestral</option><option value="Semestral">Semestral</option><option value="Anual">Anual</option><option value="Por Visita">Por Visita</option><option value="Por Entrega">Por Entrega</option>
+          </select>
+        </div>
+        <div className="space-y-1.5"><Label className="text-xs">Descrição padrão</Label><Textarea value={descricao} onChange={(e) => setDescricao(e.target.value)} rows={3} /></div>
+        <DialogFooter><Button type="button" variant="outline" onClick={onClose}>Cancelar</Button><Button type="submit" disabled={update.isPending}>{update.isPending && <Loader2 className="h-4 w-4 animate-spin" />}Salvar</Button></DialogFooter>
       </form>
     </DialogContent>
   );
@@ -462,7 +530,6 @@ function VincularContratoDialog({ onClose }: { onClose: () => void }) {
   const [cobraJuros, setCobraJuros] = useState(false);
   const [taxaJuros, setTaxaJuros] = useState("0");
 
-  // 👇 NOVOS estados para modais de detalhes
   const [showEmpresaInfo, setShowEmpresaInfo] = useState(false);
   const [showModeloInfo, setShowModeloInfo] = useState(false);
 
@@ -487,7 +554,6 @@ function VincularContratoDialog({ onClose }: { onClose: () => void }) {
     <DialogContent>
       <DialogHeader><DialogTitle>Vincular Contrato</DialogTitle></DialogHeader>
       <form onSubmit={submit} className="space-y-4">
-        {/* EMPRESA */}
         <div className="space-y-1.5">
           <Label className="text-xs">Empresa *</Label>
           <div className="flex gap-2">
@@ -516,7 +582,6 @@ function VincularContratoDialog({ onClose }: { onClose: () => void }) {
           </div>
         </div>
 
-        {/* MODELO */}
         <div className="space-y-1.5">
           <Label className="text-xs">Modelo de Contrato *</Label>
           <div className="flex gap-2">
@@ -545,7 +610,6 @@ function VincularContratoDialog({ onClose }: { onClose: () => void }) {
           </div>
         </div>
 
-        {/* ... resto do formulário (datas, valor, etc.) permanece igual ... */}
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1.5"><Label className="text-xs">Data de Início *</Label><Input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} required /></div>
           <div className="space-y-1.5"><Label className="text-xs">Data de Fim</Label><Input type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} /></div>
@@ -563,7 +627,6 @@ function VincularContratoDialog({ onClose }: { onClose: () => void }) {
         <DialogFooter><Button type="button" variant="outline" onClick={onClose}>Cancelar</Button><Button type="submit" disabled={create.isPending}>{create.isPending && <Loader2 className="h-4 w-4 animate-spin" />}Vincular</Button></DialogFooter>
       </form>
 
-      {/* MODAL DE DETALHES DA EMPRESA */}
       <Dialog open={showEmpresaInfo} onOpenChange={setShowEmpresaInfo}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
@@ -582,7 +645,7 @@ function VincularContratoDialog({ onClose }: { onClose: () => void }) {
                 </div>
                 <div>
                   <span className="text-xs font-semibold text-muted-foreground uppercase">Cidade/UF</span>
-                  <p className="text-sm">{empresaSelecionada.localizacao_cidade || "—"} / {empresaSelecionada.localizacao_estado || "—"}</p>
+                  <p className="text-sm">{empresaSelecionada.endereco?.cidade || "—"} / {empresaSelecionada.endereco?.estado || "—"}</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -605,7 +668,6 @@ function VincularContratoDialog({ onClose }: { onClose: () => void }) {
         </DialogContent>
       </Dialog>
 
-      {/* MODAL DE DETALHES DO MODELO */}
       <Dialog open={showModeloInfo} onOpenChange={setShowModeloInfo}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>

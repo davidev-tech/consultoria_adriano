@@ -63,7 +63,7 @@ def validate_cep(v: str) -> str:
 # 3. TEXTO E SEGURANÇA (Refinado)
 # ==========================================
 
-def validate_string_content(v: Optional[str], min_length: int = 3, max_length: int = 255) -> Optional[str]:
+def validate_string_content(v: Optional[str], min_length: int = 3, max_length: int = 1000) -> Optional[str]:
     """Remove espaços, limpa tags HTML (XSS) e valida limites."""
     if v is None:
         return v

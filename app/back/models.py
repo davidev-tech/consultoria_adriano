@@ -129,7 +129,7 @@ class Entrega(Base):
     descricao_entrega = Column(Text, nullable=False)
     data_prazo_limite = Column(DATE, nullable=False)
     status_entrega = Column(String(50), default="Pendente")
-    data_conclusao = Column(DateTime, nullable=True)
+    data_conclusao = Column(DATE, nullable=True)
 
     contrato = relationship("Contrato", back_populates="entregas") # 👈 Agora `Date` está definido
 

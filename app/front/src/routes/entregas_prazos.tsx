@@ -31,7 +31,6 @@ import {
   useModelos,
 } from "@/lib/api/hooks";
 import { toast } from "sonner";
-import type { UUID } from "@/lib/api/types";
 
 export const Route = createFileRoute("/entregas_prazos")({
   head: () => ({ meta: [{ title: "Entregas e Prazos — Gestão do Cuidado" }] }),
@@ -68,50 +67,54 @@ function EntregasPrazosPage() {
   const [formDescricao, setFormDescricao] = useState("");
   const [formPrazo, setFormPrazo] = useState(new Date().toISOString().slice(0, 10));
   const [formStatus, setFormStatus] = useState("Pendente");
+  const [formDataConclusao, setFormDataConclusao] = useState<string>("");
 
   const empresas = useEmpresas();
-  const { data: contratos } = useTodosContratos();   // retorna TODOS os contratos (já com joins)
+  const { data: contratos } = useTodosContratos();
   const { data: modelos } = useModelos();
 
   const modelosMap = useMemo(() => {
-  if (!modelos) return {};
-  const map: Record<string, string> = {};
-  modelos.forEach((m: any) => {
-    map[m.id_modelo] = m.nome_modelo;
+    if (!modelos) return {};
+    const map: Record<string, string> = {};
+    modelos.forEach((m: any) => {
+      map[m.id_modelo] = m.nome_modelo;
+    });
+    return map;
+  }, [modelos]);
+
+  const { data: entregas, isLoading } = useEntregas({
+    id_contrato: idContrato !== "todas" ? idContrato : undefined,
+    status_entrega: statusFiltro !== "todas" ? statusFiltro : undefined,
   });
-  return map;
-}, [modelos]);
-const { data: entregas, isLoading } = useEntregas({
-  id_contrato: idContrato !== "todas" ? idContrato : undefined,
-  status_entrega: statusFiltro !== "todas" ? statusFiltro : undefined,
-});
-const entregasFiltradasPorEmpresa = useMemo(() => {
-  if (!entregas) return [];
-  if (idEmpresa === "todas") return entregas;
-  return entregas.filter(e => {
-    const contrato = contratos?.find(c => c.id_contrato === e.id_contrato);
-    return contrato?.id_cliente === idEmpresa;
-  });
-}, [entregas, idEmpresa, contratos]);
+
+  const entregasFiltradasPorEmpresa = useMemo(() => {
+    if (!entregas) return [];
+    if (idEmpresa === "todas") return entregas;
+    return entregas.filter((e) => {
+      const contrato = contratos?.find((c) => c.id_contrato === e.id_contrato);
+      return contrato?.id_cliente === idEmpresa;
+    });
+  }, [entregas, idEmpresa, contratos]);
+
   const create = useCreateEntrega();
   const update = useUpdateEntrega();
   const remove = useDeleteEntrega();
 
-
- const contratosDisponiveis = useMemo(() => {
-  if (!contratos) return [];
-  return contratos.filter((c: any) => {
-    if (c.status_contrato !== "Ativo") return false;
-    if (idEmpresa !== "todas" && c.id_cliente !== idEmpresa) return false;
-    return true;
-  });
-}, [contratos, idEmpresa]);
+  const contratosDisponiveis = useMemo(() => {
+    if (!contratos) return [];
+    return contratos.filter((c: any) => {
+      if (c.status_contrato !== "Ativo") return false;
+      if (idEmpresa !== "todas" && c.id_cliente !== idEmpresa) return false;
+      return true;
+    });
+  }, [contratos, idEmpresa]);
 
   const resetForm = () => {
     setFormContrato("");
     setFormDescricao("");
     setFormPrazo(new Date().toISOString().slice(0, 10));
     setFormStatus("Pendente");
+    setFormDataConclusao("");
   };
 
   const handleOpenNew = () => {
@@ -126,10 +129,10 @@ const entregasFiltradasPorEmpresa = useMemo(() => {
     setFormDescricao(entrega.descricao_entrega);
     setFormPrazo(entrega.data_prazo_limite);
     setFormStatus(entrega.status_entrega || "Pendente");
+    setFormDataConclusao(entrega.data_conclusao ? entrega.data_conclusao.slice(0, 10) : "");
     setDialogOpen(true);
   };
 
-  // ✅ Substituir window.confirm pelo ConfirmDialog
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
 
@@ -145,22 +148,13 @@ const entregasFiltradasPorEmpresa = useMemo(() => {
       return;
     }
 
-    // ✅ Validar data contra o contrato selecionado
     const contratoSelecionado = contratosDisponiveis.find(
       (c: any) => c.id_contrato === formContrato
     );
-    <Input 
-  type="date" 
-  value={formPrazo} 
-  onChange={(e) => setFormPrazo(e.target.value)} 
-  required 
-  min={contratoSelecionado?.data_inicio || undefined}
-  max={contratoSelecionado?.data_fim || undefined}
-/>
-    
+
     if (contratoSelecionado) {
       const dataEntrega = new Date(formPrazo + "T00:00:00");
-      
+
       if (contratoSelecionado.data_inicio) {
         const dataInicio = new Date(contratoSelecionado.data_inicio + "T00:00:00");
         if (dataEntrega < dataInicio) {
@@ -168,7 +162,7 @@ const entregasFiltradasPorEmpresa = useMemo(() => {
           return;
         }
       }
-      
+
       if (contratoSelecionado.data_fim) {
         const dataFim = new Date(contratoSelecionado.data_fim + "T00:00:00");
         if (dataEntrega > dataFim) {
@@ -178,12 +172,17 @@ const entregasFiltradasPorEmpresa = useMemo(() => {
       }
     }
 
-    const payload = {
+    const payload: any = {
       id_contrato: formContrato,
       descricao_entrega: formDescricao,
       data_prazo_limite: formPrazo,
       status_entrega: formStatus,
     };
+
+    // 👇 se status for Concluído, garante que a data de conclusão seja enviada
+    if (formStatus === "Concluído") {
+      payload.data_conclusao = formDataConclusao || new Date().toISOString().slice(0, 10);
+    }
 
     try {
       if (editingEntrega) {
@@ -195,22 +194,21 @@ const entregasFiltradasPorEmpresa = useMemo(() => {
       }
       setDialogOpen(false);
     } catch (err: any) {
-      // ✅ Exibir mensagem de erro do backend
       const mensagem = err?.message || err?.detail || "Erro ao salvar entrega.";
       toast.error(mensagem);
     }
   };
 
-    const entregasFiltradas = useMemo(() => {
-  if (!entregasFiltradasPorEmpresa) return [];
-  if (!buscaLocal) return entregasFiltradasPorEmpresa;
-  const termo = buscaLocal.toLowerCase();
-  return entregasFiltradasPorEmpresa.filter(
-    (e: any) =>
-      e.descricao_entrega?.toLowerCase().includes(termo) ||
-      e.status_entrega?.toLowerCase().includes(termo)
-  );
-}, [entregasFiltradasPorEmpresa, buscaLocal]);
+  const entregasFiltradas = useMemo(() => {
+    if (!entregasFiltradasPorEmpresa) return [];
+    if (!buscaLocal) return entregasFiltradasPorEmpresa;
+    const termo = buscaLocal.toLowerCase();
+    return entregasFiltradasPorEmpresa.filter(
+      (e: any) =>
+        e.descricao_entrega?.toLowerCase().includes(termo) ||
+        e.status_entrega?.toLowerCase().includes(termo)
+    );
+  }, [entregasFiltradasPorEmpresa, buscaLocal]);
 
   return (
     <DashboardLayout>
@@ -241,7 +239,7 @@ const entregasFiltradasPorEmpresa = useMemo(() => {
             </SelectContent>
           </Select>
 
-         <Select value={idContrato} onValueChange={setIdContrato}>
+          <Select value={idContrato} onValueChange={setIdContrato}>
             <SelectTrigger className="w-full sm:w-60">
               <SelectValue placeholder="Contrato" />
             </SelectTrigger>
@@ -300,6 +298,7 @@ const entregasFiltradasPorEmpresa = useMemo(() => {
                     <th className="text-left px-4 py-3 font-medium">Prazo Limite</th>
                     <th className="text-left px-4 py-3 font-medium">Status</th>
                     <th className="text-left px-4 py-3 font-medium">Dias</th>
+                    <th className="text-left px-4 py-3 font-medium">Conclusão</th>
                     <th className="w-[100px]"></th>
                   </tr>
                 </thead>
@@ -319,8 +318,8 @@ const entregasFiltradasPorEmpresa = useMemo(() => {
                       <tr key={entrega.id_entrega} className="hover-row">
                         <td className="px-4 py-3">{empresa?.nome_empresa || "—"}</td>
                         <td className="px-4 py-3 text-xs text-muted-foreground">
-                          {contrato && modelosMap[contrato.id_modelo] 
-                            ? modelosMap[contrato.id_modelo] 
+                          {contrato && modelosMap[contrato.id_modelo]
+                            ? modelosMap[contrato.id_modelo]
                             : "—"}
                         </td>
                         <td className="px-4 py-3 font-medium">{entrega.descricao_entrega}</td>
@@ -338,6 +337,11 @@ const entregasFiltradasPorEmpresa = useMemo(() => {
                           ) : (
                             <span className="text-muted-foreground">{dias}d</span>
                           )}
+                        </td>
+                        <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
+                          {entrega.status_entrega === "Concluído" && entrega.data_conclusao
+                            ? formatarData(entrega.data_conclusao)
+                            : "—"}
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex gap-2">
@@ -395,7 +399,16 @@ const entregasFiltradasPorEmpresa = useMemo(() => {
               </div>
               <div className="space-y-2">
                 <Label>Status</Label>
-                <Select value={formStatus} onValueChange={setFormStatus}>
+                <Select
+                  value={formStatus}
+                  onValueChange={(v) => {
+                    setFormStatus(v);
+                    // 👇 ao mudar para Concluído, preenche a data automaticamente se estiver vazia
+                    if (v === "Concluído" && !formDataConclusao) {
+                      setFormDataConclusao(new Date().toISOString().slice(0, 10));
+                    }
+                  }}
+                >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Pendente">Pendente</SelectItem>
@@ -405,6 +418,19 @@ const entregasFiltradasPorEmpresa = useMemo(() => {
                 </Select>
               </div>
             </div>
+
+            {/* 👇 campo de data de conclusão visível apenas quando status = Concluído */}
+            {formStatus === "Concluído" && (
+              <div className="space-y-2">
+                <Label>Data de Conclusão</Label>
+                <Input
+                  type="date"
+                  value={formDataConclusao}
+                  onChange={(e) => setFormDataConclusao(e.target.value)}
+                />
+              </div>
+            )}
+
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
               <Button type="submit" disabled={create.isPending || update.isPending}>
