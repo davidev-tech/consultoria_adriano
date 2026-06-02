@@ -145,6 +145,39 @@ const entregasFiltradasPorEmpresa = useMemo(() => {
       return;
     }
 
+    // ✅ Validar data contra o contrato selecionado
+    const contratoSelecionado = contratosDisponiveis.find(
+      (c: any) => c.id_contrato === formContrato
+    );
+    <Input 
+  type="date" 
+  value={formPrazo} 
+  onChange={(e) => setFormPrazo(e.target.value)} 
+  required 
+  min={contratoSelecionado?.data_inicio || undefined}
+  max={contratoSelecionado?.data_fim || undefined}
+/>
+    
+    if (contratoSelecionado) {
+      const dataEntrega = new Date(formPrazo + "T00:00:00");
+      
+      if (contratoSelecionado.data_inicio) {
+        const dataInicio = new Date(contratoSelecionado.data_inicio + "T00:00:00");
+        if (dataEntrega < dataInicio) {
+          toast.error(`A data da entrega não pode ser anterior ao início do contrato (${new Date(contratoSelecionado.data_inicio + "T00:00:00").toLocaleDateString("pt-BR")}).`);
+          return;
+        }
+      }
+      
+      if (contratoSelecionado.data_fim) {
+        const dataFim = new Date(contratoSelecionado.data_fim + "T00:00:00");
+        if (dataEntrega > dataFim) {
+          toast.error(`A data da entrega não pode ser posterior ao fim do contrato (${new Date(contratoSelecionado.data_fim + "T00:00:00").toLocaleDateString("pt-BR")}).`);
+          return;
+        }
+      }
+    }
+
     const payload = {
       id_contrato: formContrato,
       descricao_entrega: formDescricao,
@@ -161,8 +194,10 @@ const entregasFiltradasPorEmpresa = useMemo(() => {
         toast.success("Entrega agendada!");
       }
       setDialogOpen(false);
-    } catch {
-      toast.error("Erro ao salvar entrega.");
+    } catch (err: any) {
+      // ✅ Exibir mensagem de erro do backend
+      const mensagem = err?.message || err?.detail || "Erro ao salvar entrega.";
+      toast.error(mensagem);
     }
   };
 

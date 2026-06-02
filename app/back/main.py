@@ -486,8 +486,16 @@ def atualizar_contrato(contrato_id: UUID, payload: dict, db: Session = Depends(g
 # --- MÓDULO: ENTREGAS E PRAZOS ---
 @app.post("/entregas", response_model=schemas.EntregaResponse, tags=["Entregas"])
 def criar_entrega(obj_in: schemas.EntregaCreate, db: Session = Depends(get_db)):
-    if not db.query(models.Contrato).filter(models.Contrato.id_contrato == obj_in.id_contrato).first():
+    contrato = db.query(models.Contrato).filter(models.Contrato.id_contrato == obj_in.id_contrato).first()
+    if not contrato:
         raise HTTPException(status_code=404, detail="Contrato não encontrado.")
+    
+    # ✅ Validação da data
+    if contrato.data_inicio and obj_in.data_prazo_limite < contrato.data_inicio:
+        raise HTTPException(status_code=400, detail="A data da entrega não pode ser anterior ao início do contrato.")
+    if contrato.data_fim and obj_in.data_prazo_limite > contrato.data_fim:
+        raise HTTPException(status_code=400, detail="A data da entrega não pode ser posterior ao fim do contrato.")
+    
     nova = models.Entrega(**obj_in.model_dump())
     db.add(nova)
     db.commit()
@@ -518,14 +526,26 @@ def atualizar_entrega(id_entrega: UUID, payload: dict, db: Session = Depends(get
     entrega = db.query(models.Entrega).filter(models.Entrega.id_entrega == id_entrega).first()
     if not entrega:
         raise HTTPException(status_code=404, detail="Entrega não encontrada")
+    
+    # Obter o contrato vinculado
+    contrato = db.query(models.Contrato).filter(models.Contrato.id_contrato == entrega.id_contrato).first()
+    
+    # ✅ Validação da data se estiver sendo alterada
+    if "data_prazo_limite" in payload:
+        nova_data = payload["data_prazo_limite"]
+        if contrato and contrato.data_inicio and nova_data < contrato.data_inicio:
+            raise HTTPException(status_code=400, detail="A data da entrega não pode ser anterior ao início do contrato.")
+        if contrato and contrato.data_fim and nova_data > contrato.data_fim:
+            raise HTTPException(status_code=400, detail="A data da entrega não pode ser posterior ao fim do contrato.")
+        entrega.data_prazo_limite = nova_data
+    
     if "descricao_entrega" in payload:
         entrega.descricao_entrega = payload["descricao_entrega"]
-    if "data_prazo_limite" in payload:
-        entrega.data_prazo_limite = payload["data_prazo_limite"]
     if "status_entrega" in payload:
         entrega.status_entrega = payload["status_entrega"]
     if "data_conclusao" in payload:
         entrega.data_conclusao = payload["data_conclusao"]
+    
     try:
         db.commit()
         db.refresh(entrega)
