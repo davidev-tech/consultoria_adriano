@@ -1,10 +1,9 @@
-# consultoria_adriano/app/back/schemas.py
 from pydantic import BaseModel, ConfigDict, field_validator, ValidationInfo, model_validator
 from typing import Optional, List
 from uuid import UUID
 from datetime import date, datetime
 
-# Importação relativa das regras de validação
+# Importação das validações (ajuste o caminho se necessário)
 from validators import (
     validate_cpf,
     validate_cnpj,
@@ -19,13 +18,12 @@ from validators import (
 )
 
 # ==========================================
-# 0. CATÁLOGO DE SERVIÇOS E VINCULOS
+# 0. CATÁLOGO DE SERVIÇOS E VÍNCULOS
 # ==========================================
 
 class ServicoDetalhe(BaseModel):
     id_servico: Optional[UUID] = None
     tipo_servico: Optional[str] = None
-    
     model_config = ConfigDict(from_attributes=True)
 
 # ==========================================
@@ -35,7 +33,6 @@ class ServicoDetalhe(BaseModel):
 class EmpresaBase(BaseModel):
     nome_empresa: str
     cnpj: Optional[str] = None
-    email: Optional[str] = None
     cep: Optional[str] = None
     segmento: Optional[str] = None
     porte: Optional[str] = None
@@ -49,16 +46,17 @@ class EmpresaCreate(EmpresaBase):
         if v: return validate_cnpj(v)
         return v
 
-    @field_validator("email")
-    @classmethod
-    def check_email(cls, v):
-        if v: return validate_email(v)
-        return v
-
     @field_validator("nome_empresa")
     @classmethod
     def check_text(cls, v):
         return validate_string_content(v)
+
+    @field_validator("segmento", "porte")
+    @classmethod
+    def check_tamanho_max_50(cls, v):
+        if v and len(v) > 50:
+            raise ValueError("O campo deve ter no máximo 50 caracteres.")
+        return v
 
 class EnderecoResponse(BaseModel):
     cep: str
@@ -70,38 +68,27 @@ class EnderecoResponse(BaseModel):
 class EmpresaResponse(EmpresaBase):
     id_cliente: UUID
     servicos_contratados: List[ServicoDetalhe] = []
-    localizacao: Optional[str] = None
-    servico_prestado: Optional[str] = None
     interacoes: List["InteracaoResponse"] = []
     contratos: List["ContratoResponse"] = []
     endereco: Optional[EnderecoResponse] = None
-
     model_config = ConfigDict(from_attributes=True)
 
 # ==========================================
-# 2. MÓDULO: RESPONSÁVEL (Contatos)
+# 2. MÓDULO: RESPONSÁVEL
 # ==========================================
 
 class ResponsavelBase(BaseModel):
     nome: str
-    telefone: Optional[str] = None
-    email: Optional[str] = None
     cargo: Optional[str] = None
     cpf: Optional[str] = None
 
 class ResponsavelCreate(ResponsavelBase):
     id_cliente: UUID
-    
+
     @field_validator("cpf")
     @classmethod
     def check_cpf(cls, v):
         if v: return validate_cpf(v)
-        return v
-
-    @field_validator("email")
-    @classmethod
-    def check_email(cls, v):
-        if v: return validate_email(v)
         return v
 
     @field_validator("nome", "cargo")
@@ -113,7 +100,6 @@ class ResponsavelCreate(ResponsavelBase):
 class ResponsavelResponse(ResponsavelBase):
     id_responsavel: UUID
     id_cliente: UUID
-    
     model_config = ConfigDict(from_attributes=True)
 
 class ResponsavelListResponse(BaseModel):
@@ -123,7 +109,6 @@ class ResponsavelListResponse(BaseModel):
     cpf: Optional[str] = None
     cargo: Optional[str] = None
     empresa_nome: str
-    
     model_config = ConfigDict(from_attributes=True)
 
 # ==========================================
@@ -138,7 +123,7 @@ class ModeloContratoBase(BaseModel):
     motivo_arquivamento: Optional[str] = None
 
 class ModeloContratoCreate(ModeloContratoBase):
-    
+
     @field_validator("nome_modelo", "descricao_padrao")
     @classmethod
     def check_text(cls, v):
@@ -149,15 +134,14 @@ class ModeloContratoCreate(ModeloContratoBase):
     @classmethod
     def check_periodicidade(cls, v):
         opcoes_validas = [
-        "Semanal", "Quinzenal", "Mensal", "Bimestral",
-        "Trimestral", "Semestral", "Anual", "Única", "Por Visita", "Por Entrega"
-]
+            "Semanal", "Quinzenal", "Mensal", "Bimestral",
+            "Trimestral", "Semestral", "Anual", "Única", "Por Visita", "Por Entrega"
+        ]
         if v: return validate_enum_choice(v.title(), opcoes_validas)
         return v
 
 class ModeloContratoResponse(ModeloContratoBase):
     id_modelo: UUID
-    
     model_config = ConfigDict(from_attributes=True)
 
 # ==========================================
@@ -173,6 +157,7 @@ class ContratoBase(BaseModel):
     taxa_juros: Optional[float] = 0.00
     motivo_arquivamento: Optional[str] = None
     data_criacao: Optional[datetime] = None
+    dia_vencimento: Optional[int] = 5
 
 class ContratoCreate(ContratoBase):
     id_cliente: UUID
@@ -193,6 +178,13 @@ class ContratoCreate(ContratoBase):
     @classmethod
     def check_data_inicio(cls, v):
         return validate_not_past_date(v)
+
+    @field_validator("dia_vencimento")
+    @classmethod
+    def check_dia_vencimento(cls, v):
+        if v is not None and (v < 1 or v > 31):
+            raise ValueError("Dia de vencimento deve ser entre 1 e 31.")
+        return v
 
     @model_validator(mode='after')
     def check_data_fim(self) -> 'ContratoCreate':
@@ -219,8 +211,8 @@ class InteracaoBase(BaseModel):
     tipo_interacao: Optional[str] = "Visita"
     data_hora: Optional[datetime] = None
     feedback_anotacoes: Optional[str] = None
-    grau_urgencia: Optional[str] = "Baixo"
-    status_financeiro: Optional[str] = "Não Paga"
+    grau_urgencia: Optional[str] = ""
+    status_financeiro: Optional[str] = "Não Cobrado"
     valor_cobrado: Optional[float] = None
     status_pagamento: Optional[str] = "Pendente"
     nota: Optional[int] = None
@@ -232,7 +224,7 @@ class InteracaoCreate(InteracaoBase):
     @classmethod
     def check_status_financeiro(cls, v):
         if v is not None:
-            opcoes_validas = ["Não Paga", "Paga"]
+            opcoes_validas = ["Não Cobrado", "Paga"]
             if v not in opcoes_validas:
                 raise ValueError(f"Status financeiro inválido. Use: {', '.join(opcoes_validas)}")
         return v
@@ -242,16 +234,21 @@ class InteracaoCreate(InteracaoBase):
     def check_valor_cobrado(cls, v, info: ValidationInfo):
         if v is not None and v < 0:
             raise ValueError("Valor cobrado não pode ser negativo")
-        
         status = info.data.get('status_financeiro') if info.data else None
         if status == "Paga" and (v is None or v <= 0):
             raise ValueError("Valor cobrado é obrigatório quando status for 'Paga'")
         return v
-    
+
+    @field_validator("nota")
+    @classmethod
+    def check_nota(cls, v):
+        if v is not None and (v < 0 or v > 10):
+            raise ValueError("Nota deve ser entre 0 e 10.")
+        return v
+
 class InteracaoResponse(InteracaoBase):
     id_interacao: UUID
     id_cliente: UUID
-    
     model_config = ConfigDict(from_attributes=True)
 
 # ==========================================
@@ -260,7 +257,7 @@ class InteracaoResponse(InteracaoBase):
 
 class EntregaBase(BaseModel):
     descricao_entrega: str
-    data_prazo_limite: date
+    data_prazo_limite: Optional[date] = None
     status_entrega: Optional[str] = "Pendente"
 
 class EntregaCreate(EntregaBase):
@@ -281,10 +278,9 @@ class EntregaCreate(EntregaBase):
 class EntregaResponse(EntregaBase):
     id_entrega: UUID
     id_contrato: UUID
-    data_conclusao: Optional[date] = None   # 👈 altere para date
+    data_conclusao: Optional[date] = None
     model_config = ConfigDict(from_attributes=True)
 
-# schemas.py – adicione no final
 class PendenciaResponse(BaseModel):
     id: str
     tipo: str
@@ -294,7 +290,6 @@ class PendenciaResponse(BaseModel):
     data_limite: Optional[date] = None
     valor: Optional[float] = None
     id_referencia: str
-
     model_config = ConfigDict(from_attributes=True)
 
 # ==========================================
@@ -307,6 +302,7 @@ class PagamentoBase(BaseModel):
     forma_pagamento: Optional[str] = None
     status_pagamento: Optional[str] = "Pendente"
     valor_juros: Optional[float] = 0.00
+    id_fatura: Optional[UUID] = None
 
 class PagamentoCreate(PagamentoBase):
     id_contrato: UUID
@@ -317,7 +313,7 @@ class PagamentoCreate(PagamentoBase):
         return validate_positive_value(v)
 
     @field_validator("status_pagamento")
-    @classmethod 
+    @classmethod
     def check_status(cls, v):
         if v: return validate_enum_choice(v.title(), ["Pendente", "Pago", "Cancelado"])
         return v
@@ -325,7 +321,6 @@ class PagamentoCreate(PagamentoBase):
 class PagamentoResponse(PagamentoBase):
     id_pagamento: UUID
     id_contrato: UUID
-    
     model_config = ConfigDict(from_attributes=True)
 
 # ==========================================
@@ -358,12 +353,12 @@ class FaturaResponse(FaturaBase):
     id_fatura: UUID
     id_contrato: UUID
     created_at: datetime
-    
     model_config = ConfigDict(from_attributes=True)
 
 # ==========================================
 # SUB-SCHEMAS DE SUPORTE PARA COMPATIBILIDADE FRONT-END
 # ==========================================
+
 class InteracaoFront(BaseModel):
     data_interacao: Optional[datetime] = None
     tipo: Optional[str] = None
@@ -396,7 +391,5 @@ class FinanceiroFront(BaseModel):
     def map_fields(cls, v):
         if not isinstance(v, dict):
             status_val = getattr(v, "status_pagamento", "Pendente")
-            return {
-                "status": (status_val or "pendente").lower()
-            }
+            return {"status": (status_val or "pendente").lower()}
         return v

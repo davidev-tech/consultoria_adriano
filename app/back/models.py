@@ -1,9 +1,10 @@
 import uuid
-from sqlalchemy import Column, String, Text, ForeignKey, TIMESTAMP, DATE, Numeric, INTEGER, DateTime, Boolean
+import datetime
+from sqlalchemy import Column, String, Text, ForeignKey, TIMESTAMP, DATE, Numeric, Integer, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
+from sqlalchemy import func                     # ✅ já usado abaixo
 from database import Base
-import datetime
 
 # ==========================================
 # 0. CATÁLOGO E VÍNCULOS DE SERVIÇOS
@@ -12,17 +13,18 @@ import datetime
 class CatalogoServico(Base):
     __tablename__ = "catalogo_servico"
     id_servico = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tipo_servico = Column(Text)  # ✅ ALINHADO: text, não String(255)    descricao_servico = Column(Text)
-    created_at = Column(TIMESTAMP(timezone=True), default=datetime.datetime.utcnow)  # ✅ timestampt
+    tipo_servico = Column(Text)
+    descricao_servico = Column(Text)
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
     vinculos = relationship("ServicoPrestado", back_populates="servico_catalogo")
 
 class ServicoPrestado(Base):
     __tablename__ = "servico_prestado"
     id_vinculo = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    id_cliente = Column(UUID(as_uuid=True), ForeignKey("empresa_cliente.id_cliente", ondelete="CASCADE"))
-    id_servico = Column(UUID(as_uuid=True), ForeignKey("catalogo_servico.id_servico", ondelete="RESTRICT"))
-    data_inicio = Column(DATE, default=datetime.date.today)  # ✅ CORRIGIDO: DATE, não TIMESTAMP
-    
+    id_cliente = Column(UUID(as_uuid=True), ForeignKey("empresa_cliente.id_cliente", ondelete="CASCADE"), nullable=False)
+    id_servico = Column(UUID(as_uuid=True), ForeignKey("catalogo_servico.id_servico", ondelete="RESTRICT"), nullable=False)
+    data_inicio = Column(DATE, default=datetime.date.today, nullable=False)
+
     empresa = relationship("EmpresaCliente", back_populates="servicos_contratados")
     servico_catalogo = relationship("CatalogoServico", back_populates="vinculos")
 
@@ -39,11 +41,11 @@ class EmpresaCliente(Base):
     id_cliente = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     nome_empresa = Column(String(255), nullable=False)
     cnpj = Column(String(20), unique=True)
-    cep = Column(String(8), ForeignKey("endereco.cep"), nullable=True)  # 👈 novo
+    cep = Column(String(8), ForeignKey("endereco.cep"), nullable=True)
     segmento = Column(String(50))
     porte = Column(String(50))
 
-    endereco = relationship("Endereco")  # 👈 novo
+    endereco = relationship("Endereco")
 
     servicos_contratados = relationship("ServicoPrestado", back_populates="empresa", cascade="all, delete-orphan")
     responsaveis = relationship("Responsavel", back_populates="empresa", cascade="all, delete-orphan")
@@ -58,15 +60,17 @@ class Endereco(Base):
     cidade = Column(Text, nullable=False)
     estado = Column(String(2), nullable=False)
 
+
 class ModeloContrato(Base):
     __tablename__ = "modelo_contrato"
     id_modelo = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     nome_modelo = Column(String(255), nullable=False)
     periodicidade_cobranca = Column(String(50))
     descricao_padrao = Column(Text)
-    ativo = Column(Boolean, default=True) 
+    ativo = Column(Boolean, default=True)
+    motivo_arquivamento = Column(String, nullable=True)   # String sem tamanho = text no PG
     contratos = relationship("Contrato", back_populates="modelo")
-    motivo_arquivamento = Column(String, nullable=True)
+
 
 # ==========================================
 # 2. PRIMEIRO NÍVEL DE DEPENDÊNCIA
@@ -75,32 +79,32 @@ class ModeloContrato(Base):
 class Responsavel(Base):
     __tablename__ = "responsavel"
     id_responsavel = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    id_cliente = Column(UUID(as_uuid=True), ForeignKey("empresa_cliente.id_cliente", ondelete="CASCADE"))
+    id_cliente = Column(UUID(as_uuid=True), ForeignKey("empresa_cliente.id_cliente", ondelete="CASCADE"), nullable=False)
     nome = Column(String(255), nullable=False)
     cpf = Column(String(14), unique=True)
     cargo = Column(String(100))
     empresa = relationship("EmpresaCliente", back_populates="responsaveis")
 
+
 class HistoricoInteracoes(Base):
     __tablename__ = "historico_interacoes"
     id_interacao = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    id_cliente = Column(UUID(as_uuid=True), ForeignKey("empresa_cliente.id_cliente", ondelete="CASCADE"))
+    id_cliente = Column(UUID(as_uuid=True), ForeignKey("empresa_cliente.id_cliente", ondelete="CASCADE"), nullable=False)
     tipo_interacao = Column(String(100))
     data_hora = Column(TIMESTAMP)
-    grau_urgencia = Column(String(50))
-    status_financeiro = Column(String(50), default="Não Paga")
+    grau_urgencia = Column(String(50), default="")
+    status_financeiro = Column(String(50), default="Não Cobrado")
     valor_cobrado = Column(Numeric(15, 2), nullable=True)
     feedback_anotacoes = Column(Text)
     status_pagamento = Column(String(50), nullable=True, default="Pendente")
+    nota = Column(Integer, nullable=True)
     empresa = relationship("EmpresaCliente", back_populates="interacoes")
-    nota = Column(INTEGER, nullable=True)
-    
-    # ✅ Apenas UMA definição de cada campo
+
 
 class Contrato(Base):
     __tablename__ = "contrato"
     id_contrato = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    id_cliente = Column(UUID(as_uuid=True), ForeignKey("empresa_cliente.id_cliente", ondelete="CASCADE"))
+    id_cliente = Column(UUID(as_uuid=True), ForeignKey("empresa_cliente.id_cliente", ondelete="CASCADE"), nullable=False)
     id_modelo = Column(UUID(as_uuid=True), ForeignKey("modelo_contrato.id_modelo"))
     valor_acordado = Column(Numeric(15, 2))
     status_contrato = Column(String(50))
@@ -108,8 +112,9 @@ class Contrato(Base):
     data_fim = Column(DATE)
     cobra_juros = Column(Boolean, default=False)
     taxa_juros = Column(Numeric(5, 2), default=0.00)
-    motivo_arquivamento = Column(String(100), nullable=True)
-    data_criacao = Column(TIMESTAMP(timezone=True), default=datetime.datetime.utcnow)
+    motivo_arquivamento = Column(Text, nullable=True)                     # ✅ TEXT (igual ao banco)
+    data_criacao = Column(TIMESTAMP(timezone=True), server_default=func.now())   # ✅ timestamptz + now()
+    dia_vencimento = Column(Integer, default=5)
 
     empresa = relationship("EmpresaCliente", back_populates="contratos")
     modelo = relationship("ModeloContrato", back_populates="contratos")
@@ -117,46 +122,46 @@ class Contrato(Base):
     pagamentos = relationship("Pagamento", cascade="all, delete-orphan")
     faturas = relationship("Fatura", back_populates="contrato", cascade="all, delete-orphan")
 
+
 # ==========================================
 # 3. SEGUNDO E TERCEIRO NÍVEL
 # ==========================================
 
 class Entrega(Base):
     __tablename__ = "entregas_prazos"
-
     id_entrega = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    id_contrato = Column(UUID(as_uuid=True), ForeignKey("contrato.id_contrato"), nullable=False)
+    id_contrato = Column(UUID(as_uuid=True), ForeignKey("contrato.id_contrato", ondelete="CASCADE"), nullable=False)
     descricao_entrega = Column(Text, nullable=False)
-    data_prazo_limite = Column(DATE, nullable=False)
+    data_prazo_limite = Column(DATE, nullable=True)
     status_entrega = Column(String(50), default="Pendente")
     data_conclusao = Column(DATE, nullable=True)
-
-    contrato = relationship("Contrato", back_populates="entregas") # 👈 Agora `Date` está definido
+    contrato = relationship("Contrato", back_populates="entregas")
 
 
 class Pagamento(Base):
     __tablename__ = "pagamento"
     id_pagamento = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    id_contrato = Column(UUID(as_uuid=True), ForeignKey("contrato.id_contrato", ondelete="CASCADE"))
+    id_contrato = Column(UUID(as_uuid=True), ForeignKey("contrato.id_contrato", ondelete="CASCADE"), nullable=False)
     data_pagamento = Column(TIMESTAMP)
     valor = Column(Numeric(15, 2))
     forma_pagamento = Column(String(50))
     status_pagamento = Column(String(50))
-    data_vencimento = Column(DATE, nullable=True) 
-    valor_juros = Column(Numeric(15, 2), default=0.00) 
-
+    valor_juros = Column(Numeric(15, 2), default=0.00)
+    id_fatura = Column(UUID(as_uuid=True), ForeignKey("faturas.id_fatura", ondelete="SET NULL"), nullable=True)
     contrato = relationship("Contrato", back_populates="pagamentos")
+    fatura = relationship("Fatura", back_populates="pagamentos")
 
-class Fatura(Base): 
+
+class Fatura(Base):
     __tablename__ = "faturas"
-    id_fatura = Column(UUID(as_uuid=True),default=uuid.uuid4, primary_key=True, index=True)
-    id_contrato = Column(UUID(as_uuid=True), ForeignKey("contrato.id_contrato", ondelete="CASCADE"))
+    id_fatura = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    id_contrato = Column(UUID(as_uuid=True), ForeignKey("contrato.id_contrato", ondelete="CASCADE"), nullable=False)
     valor_original = Column(Numeric(15, 2), nullable=False)
     data_vencimento = Column(DATE, nullable=False)
     status = Column(String(20), default="Pendente")
     data_pagamento = Column(DATE, nullable=True)
     valor_pago = Column(Numeric(15, 2), nullable=True)
     valor_juros_pago = Column(Numeric(15, 2), default=0.00)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
-
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
     contrato = relationship("Contrato", back_populates="faturas")
+    pagamentos = relationship("Pagamento", back_populates="fatura")
