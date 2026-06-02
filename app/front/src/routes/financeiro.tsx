@@ -115,6 +115,7 @@ function FaturasTab() {
   const [mesFiltro, setMesFiltro] = useState<string>('');
   const empresas = useEmpresas();
   const contratos = useTodosContratos();
+  const [statusFiltro, setStatusFiltro] = useState<string>('todas'); 
   
   const [idContrato, setIdContrato] = useState("");
   const faturasQuery = useFaturasPorContrato(idContrato || undefined);
@@ -193,7 +194,7 @@ function FaturasTab() {
   const faturasProcessadas = useMemo(() => {
     const list = faturasQuery.data ?? [];
     
-    return list.map((fatura) => {
+    let filtered = list.map((fatura) => {
       const calculo = calcularFaturamento(fatura);
       return {
         ...fatura,
@@ -201,11 +202,25 @@ function FaturasTab() {
         valorAtualizado: calculo.valorAtualizado,
         cor: calculo.cor
       };
-    }).filter((fatura) => {
-      if (!mesFiltro) return true;
-      return fatura.data_vencimento.startsWith(mesFiltro);
     });
-  }, [faturasQuery.data, mesFiltro, contratoSelecionado]);
+
+    // ✅ Filtro por mês
+    if (mesFiltro) {
+      filtered = filtered.filter((fatura) => fatura.data_vencimento.startsWith(mesFiltro));
+    }
+
+    // ✅ Filtro por status
+    if (statusFiltro !== 'todas') {
+      filtered = filtered.filter((fatura) => {
+        if (statusFiltro === 'Pendente') return fatura.statusCalculado === 'Pendente';
+        if (statusFiltro === 'Pago') return fatura.status === 'Pago' || fatura.data_pagamento;
+        if (statusFiltro === 'Atrasado') return fatura.statusCalculado === 'Atrasado';
+        return true;
+      });
+    }
+
+    return filtered;
+  }, [faturasQuery.data, mesFiltro, statusFiltro, contratoSelecionado]); // ✅ Adicionar statusFiltro na dependência
 
   const totals = useMemo(() => {
     const list = faturasQuery.data ?? [];
@@ -288,23 +303,40 @@ function FaturasTab() {
           </div>
 
           <div className="flex items-center gap-4 mt-2">
-            <div className="flex flex-col gap-1.5">
-              <Label className="text-xs font-medium">Filtrar por Mês de Vencimento:</Label>
-              <div className="flex items-center gap-2">
-                <input 
-                  type="month" 
-                  className="border bg-background rounded px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-primary"
-                  value={mesFiltro}
-                  onChange={(e) => setMesFiltro(e.target.value)}
-                />
-                {mesFiltro && (
-                  <Button onClick={() => setMesFiltro('')} variant="ghost" size="sm" className="text-xs underline">
-                    Limpar Filtro
-                  </Button>
-                )}
-              </div>
-            </div>
-          </div>
+  {/* Filtro de Mês */}
+  <div className="flex flex-col gap-1.5">
+    <Label className="text-xs font-medium">Filtrar por Mês de Vencimento:</Label>
+    <div className="flex items-center gap-2">
+      <input 
+        type="month" 
+        className="border bg-background rounded px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-primary"
+        value={mesFiltro}
+        onChange={(e) => setMesFiltro(e.target.value)}
+      />
+      {mesFiltro && (
+        <Button onClick={() => setMesFiltro('')} variant="ghost" size="sm" className="text-xs underline">
+          Limpar
+        </Button>
+      )}
+    </div>
+  </div>
+
+  {/* ✅ NOVO: Filtro de Status */}
+  <div className="flex flex-col gap-1.5">
+    <Label className="text-xs font-medium">Status da Fatura:</Label>
+    <Select value={statusFiltro} onValueChange={setStatusFiltro}>
+      <SelectTrigger className="w-[160px]">
+        <SelectValue placeholder="Todos os status" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="todas">Todos</SelectItem>
+        <SelectItem value="Pendente">Pendente</SelectItem>
+        <SelectItem value="Pago">Pago</SelectItem>
+        <SelectItem value="Atrasado">Atrasado</SelectItem>
+      </SelectContent>
+    </Select>
+  </div>
+</div>
 
           <div className="overflow-hidden rounded-lg border border-border bg-card shadow-card">
             {faturasQuery.isLoading ? (
