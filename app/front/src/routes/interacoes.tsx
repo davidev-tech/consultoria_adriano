@@ -29,6 +29,7 @@ import {
   useUpdateInteracao,
   useEmpresas,
   useDeleteInteracao,
+  useTodasInteracoes,
 } from "@/lib/api/hooks";
 import type { StatusFinanceiro } from "@/lib/api/types";
 import { toast } from "sonner";
@@ -103,7 +104,7 @@ function RegistrarTab() {
   const create = useCreateInteracao();
   const navigate = useNavigate();
 
-  const [idCliente, setIdCliente] = useState<string>("");
+  const [idCliente, setIdCliente] = useState<string>(""); // ✅ Corrigido: vazio para obrigar seleção
   const [tipo, setTipo] = useState("Visita");
   const [dataHora, setDataHora] = useState(() => getLocalDatetimeString());
   const [feedback, setFeedback] = useState("");
@@ -111,7 +112,7 @@ function RegistrarTab() {
   const [statusFinanceiro, setStatusFinanceiro] = useState<StatusFinanceiro>("Não Paga");
   const [valorCobrado, setValorCobrado] = useState<string>("");
   const [criacaoStatusPagamento, setCriacaoStatusPagamento] = useState("Pendente");
-  const [nota, setNota] = useState<string>(""); // 👈 NOVO
+  const [nota, setNota] = useState<string>("");
 
   useEffect(() => {
     if (statusFinanceiro === "Não Paga") {
@@ -126,7 +127,7 @@ function RegistrarTab() {
     setStatusFinanceiro("Não Paga");
     setValorCobrado("");
     setCriacaoStatusPagamento("Pendente");
-    setNota(""); // 👈 NOVO
+    setNota("");
     setDataHora(getLocalDatetimeString());
   };
 
@@ -153,7 +154,7 @@ function RegistrarTab() {
       status_financeiro: statusFinanceiro,
       valor_cobrado: statusFinanceiro === "Paga" ? parseFloat(valorCobrado) : null,
       status_pagamento: criacaoStatusPagamento,
-      nota: nota ? Number(nota) : null, // 👈 NOVO
+      nota: nota ? Number(nota) : null,
     };
 
     try {
@@ -274,7 +275,6 @@ function RegistrarTab() {
                     onChange={(e) => setDataHora(e.target.value)}
                   />
                 </div>
-                {/* 👇 NOVO CAMPO: Nota */}
                 <div className="space-y-1.5">
                   <Label className="text-xs">Nota (0-10)</Label>
                   <Input
@@ -327,12 +327,16 @@ function HistoricoTab() {
   const remove = useDeleteInteracao();
   const navigate = useNavigate();
 
-  const [idCliente, setIdCliente] = useState<string>("");
+  const [idCliente, setIdCliente] = useState<string>("todas");
   const [buscaLocal, setBuscaLocal] = useState("");
 
-  const { data: listaInteracoes, isLoading } = useInteracoesPorCliente(
-    idCliente || undefined
+  const { data: interacoesEspecificas, isLoading: loadingEspecifico } = useInteracoesPorCliente(
+    idCliente && idCliente !== "todas" ? idCliente : undefined
   );
+  const { data: todasInteracoes, isLoading: loadingTodas } = useTodasInteracoes();
+
+  const listaInteracoes = idCliente === "todas" ? todasInteracoes : interacoesEspecificas;
+  const isLoading = idCliente === "todas" ? loadingTodas : loadingEspecifico;
 
   // Diálogo de edição
   const [editingItem, setEditingItem] = useState<any>(null);
@@ -343,7 +347,7 @@ function HistoricoTab() {
   const [editStatusFinanceiro, setEditStatusFinanceiro] = useState<StatusFinanceiro>("Não Paga");
   const [editValorCobrado, setEditValorCobrado] = useState("");
   const [editStatusPagamento, setEditStatusPagamento] = useState("Pendente");
-  const [editNota, setEditNota] = useState<string>(""); // 👈 NOVO
+  const [editNota, setEditNota] = useState<string>("");
 
   // Diálogo de confirmação de exclusão
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -372,7 +376,7 @@ function HistoricoTab() {
     setEditStatusFinanceiro(item.status_financeiro || "Não Paga");
     setEditValorCobrado(item.valor_cobrado ? String(item.valor_cobrado) : "");
     setEditStatusPagamento(item.status_pagamento || "Pendente");
-    setEditNota(item.nota != null ? String(item.nota) : ""); // 👈 NOVO
+    setEditNota(item.nota != null ? String(item.nota) : "");
   };
 
   const handleSaveEdit = async () => {
@@ -387,7 +391,7 @@ function HistoricoTab() {
       valor_cobrado:
         editStatusFinanceiro === "Paga" ? parseFloat(editValorCobrado || "0") : null,
       status_pagamento: editStatusPagamento,
-      nota: editNota ? Number(editNota) : null, // 👈 NOVO
+      nota: editNota ? Number(editNota) : null,
     };
     try {
       await update.mutateAsync({ id: editingItem.id_interacao, data: payload });
@@ -412,9 +416,9 @@ function HistoricoTab() {
     <div className="flex flex-col gap-4">
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="flex-1">
-          <Select value={idCliente} onValueChange={setIdCliente}>
+          <Select value={idCliente} onValueChange={(v) => setIdCliente(v)}>
             <SelectTrigger>
-              <SelectValue placeholder="Filtrar por empresa..." />
+              <SelectValue placeholder="Selecione uma empresa..." />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="todas">Todas as empresas</SelectItem>
@@ -487,7 +491,6 @@ function HistoricoTab() {
                               : " (Pendente)"}
                           </span>
                         )}
-                        {/* 👇 NOVO: exibir nota */}
                         {item.nota != null && (
                           <span
                             className={`rounded px-2 py-0.5 text-xs font-semibold ${
@@ -544,13 +547,15 @@ function HistoricoTab() {
               );
             })}
           </div>
-        ) : idCliente ? (
+        ) : idCliente && idCliente !== "todas" ? (
           <p className="text-sm text-muted-foreground italic p-4">
             Este cliente ainda não teve nenhum contato registrado.
           </p>
         ) : (
           <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-            Selecione uma empresa para visualizar o histórico.
+            {idCliente === "todas" 
+              ? "Nenhuma interação registrada no sistema." 
+              : "Selecione uma empresa para visualizar o histórico."}
           </div>
         )}
       </div>
@@ -620,7 +625,6 @@ function HistoricoTab() {
                   </div>
                 </>
               )}
-              {/* 👇 NOVO CAMPO: Nota */}
               <div className="space-y-1.5">
                 <Label className="text-xs">Nota (0-10)</Label>
                 <Input
