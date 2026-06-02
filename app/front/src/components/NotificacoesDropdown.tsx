@@ -1,6 +1,6 @@
 import React from "react";
 import { useState, useEffect, useMemo } from "react";
-import { Bell, Loader2, AlertTriangle, DollarSign, ClipboardList, MessageSquare, ExternalLink } from "lucide-react";
+import { Bell, Loader2, DollarSign, ClipboardList, MessageSquare, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -22,20 +22,21 @@ interface Notificacao {
   data_limite?: string;
   valor?: number;
   rota: string;
+  search?: Record<string, string>;   // parâmetros de busca (query string)
+  params?: Record<string, string>;   // parâmetros de rota (caso use rotas dinâmicas)
 }
 
 function useNotificacoes() {
   const [notificacoes, setNotificacoes] = useState<Notificacao[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Busca interações pagas com pagamento pendente (de todas as empresas)
   const { data: interacoesPagas } = useInteracoesPagas(undefined);
 
   useEffect(() => {
     async function fetchNotificacoes() {
       setLoading(true);
       try {
-        // 1. Pendências financeiras e entregas (do endpoint /pendencias)
+        // 1. Pendências do endpoint /pendencias (financeiras e entregas)
         const pendencias = await api<any[]>("/pendencias");
         const notifPendencias: Notificacao[] = pendencias.map((p: any) => ({
           id: p.id,
@@ -44,9 +45,14 @@ function useNotificacoes() {
           data_limite: p.data_limite,
           valor: p.valor,
           rota: p.tipo === "financeira" ? "/financeiro" : "/entregas_prazos",
+          // Inclui contrato e fatura para filtro automático
+          search: {
+            ...(p.id_contrato && { contrato: String(p.id_contrato) }),
+            ...(p.id_fatura && { fatura: String(p.id_fatura) }),
+          },
         }));
 
-        // 2. Interações pagas pendentes (pagamento ainda não realizado)
+        // 2. Interações pagas pendentes
         const interacoesPendentes = (interacoesPagas || [])
           .filter((i: any) => i.status_pagamento === "Pendente")
           .slice(0, 5)
@@ -57,9 +63,9 @@ function useNotificacoes() {
             data_limite: i.data_hora,
             valor: i.valor_cobrado,
             rota: "/interacoes",
+            search: { id_interacao: String(i.id_interacao) },
           }));
 
-        // Junta e ordena por data (mais recentes primeiro)
         const todas = [...notifPendencias, ...interacoesPendentes]
           .sort((a, b) => new Date(b.data_limite || 0).getTime() - new Date(a.data_limite || 0).getTime())
           .slice(0, 10);
@@ -73,7 +79,7 @@ function useNotificacoes() {
     }
 
     fetchNotificacoes();
-    const interval = setInterval(fetchNotificacoes, 60000); // atualiza a cada 60s
+    const interval = setInterval(fetchNotificacoes, 60000);
     return () => clearInterval(interval);
   }, [interacoesPagas]);
 
@@ -85,7 +91,6 @@ export function NotificacoesDropdown() {
   const [open, setOpen] = useState(false);
   const [visto, setVisto] = useState(false);
 
-  // Ao abrir, marca como visto
   const handleOpenChange = (newOpen: boolean) => {
     setOpen(newOpen);
     if (newOpen) setVisto(true);
@@ -93,7 +98,6 @@ export function NotificacoesDropdown() {
 
   const naoLidas = visto ? 0 : notificacoes.length;
 
-  // Agrupamento
   const financeiras = notificacoes.filter((n) => n.tipo === "financeira");
   const entregas = notificacoes.filter((n) => n.tipo === "entrega");
   const interacoes = notificacoes.filter((n) => n.tipo === "interacao");
@@ -118,7 +122,6 @@ export function NotificacoesDropdown() {
           {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
         </DropdownMenuLabel>
         
-        {/* Resumo rápido */}
         {notificacoes.length > 0 && (
           <>
             <div className="px-2 py-2 grid grid-cols-3 gap-2 text-xs">
@@ -152,7 +155,6 @@ export function NotificacoesDropdown() {
           </>
         )}
 
-        {/* Lista de notificações */}
         <div className="max-h-[400px] overflow-y-auto">
           {loading && notificacoes.length === 0 ? (
             <div className="flex justify-center py-8">
@@ -170,7 +172,12 @@ export function NotificacoesDropdown() {
               
               return (
                 <DropdownMenuItem key={n.id} className="flex items-start gap-3 p-3 cursor-pointer" asChild>
-                  <Link to={n.rota} className="w-full">
+                  <Link
+                    to={n.rota}
+                    params={n.params}
+                    search={n.search}
+                    className="w-full"
+                  >
                     <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-full", cor)}>
                       {React.createElement(icone, { className: "h-4 w-4" })}
                     </div>

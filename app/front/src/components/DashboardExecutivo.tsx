@@ -5,7 +5,7 @@ import {
   DollarSign, Users, CheckCircle2, Activity, Target, Calendar,
   RefreshCw, AlertTriangle, Zap, Clock, Layers, BarChart3,
   PieChartIcon, Percent, ShieldAlert, TrendingUp, TrendingDown,
-  Star, TrendingDown as TrendingDownIcon,
+  Star, TrendingDown as TrendingDownIcon, Maximize2, X,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -54,6 +54,7 @@ export function DashboardExecutivo() {
 
   const [periodoAtivo, setPeriodoAtivo] = useState<"6m" | "12m">("6m");
   const [abaAtiva, setAbaAtiva] = useState<"financeiro" | "operacional" | "relacionamento">("financeiro");
+  const [expandedChart, setExpandedChart] = useState<string | null>(null);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -63,6 +64,9 @@ export function DashboardExecutivo() {
     }, 60000);
     return () => clearInterval(interval);
   }, [queryClient]);
+
+  const handleExpand = (chartId: string) => setExpandedChart(chartId);
+  const handleClose = () => setExpandedChart(null);
 
   const metricas = useMemo(() => {
     if (!contratos || !empresas || !interacoes || !modelos) return null;
@@ -501,7 +505,7 @@ export function DashboardExecutivo() {
       <div key={abaAtiva} className="animate-fade-in-up" style={{ animationDelay: "500ms" }}>
         {abaAtiva === "financeiro" && (
           <div className="grid gap-6 md:grid-cols-2">
-            <ChartCard title="Receita Realizada" icon={DollarSign} color={THEME.success}>
+            <ChartCard title="Receita Realizada" icon={DollarSign} color={THEME.success} onExpand={() => handleExpand("receita-realizada")}>
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={receitaRealizada}>
                   <defs>
@@ -519,35 +523,51 @@ export function DashboardExecutivo() {
               </ResponsiveContainer>
             </ChartCard>
 
+            {/* Receita por Segmento */}
             <Card className="shadow-sm hover:shadow-md transition-all duration-300 border-border/60 overflow-hidden group">
-  <div className="h-1 w-full transition-all duration-500 group-hover:h-2" style={{ backgroundColor: THEME.purple }} />
-  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-    <CardTitle className="text-base font-semibold flex items-center gap-2">
-      <div className="p-1.5 rounded-md" style={{ backgroundColor: `${THEME.purple}15`, color: THEME.purple }}>
-        <Layers className="h-4 w-4" />
-      </div>
-      Receita por Segmento
-    </CardTitle>
-  </CardHeader>
-  <CardContent className="p-0">
-    <div 
-      className="overflow-y-auto scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent px-4 pb-4"
-      style={{ maxHeight: receitaSegmentoData.length > 6 ? "320px" : "none" }}
-    >
-      <ResponsiveContainer width="100%" height={receitaSegmentoData.length > 6 ? receitaSegmentoData.length * 50 : 300}>
-        <BarChart data={receitaSegmentoData} layout="vertical" margin={{ left: 20, top: 10, bottom: 10 }} barCategoryGap={8}>
-          <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 10%)" />
-          <XAxis type="number" stroke="oklch(0.7 0.015 210)" fontSize={12} tickFormatter={fmtMoeda} />
-          <YAxis dataKey="segmento" type="category" stroke="oklch(0.7 0.015 210)" fontSize={12} width={100} tickMargin={8} />
-          <Tooltip formatter={(value: number) => fmtMoeda(value)} content={<CustomTooltip />} />
-          <Bar dataKey="valor" fill={THEME.purple} barSize={24} radius={[0, 6, 6, 0]} />
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
-  </CardContent>
-</Card>
+              <div className="h-1 w-full transition-all duration-500 group-hover:h-2" style={{ backgroundColor: THEME.purple }} />
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-base font-semibold flex items-center gap-2">
+                  <div className="p-1.5 rounded-md" style={{ backgroundColor: `${THEME.purple}15`, color: THEME.purple }}>
+                    <Layers className="h-4 w-4" />
+                  </div>
+                  Receita por Segmento
+                </CardTitle>
+                <button
+                  onClick={() => handleExpand("receita-segmento")}
+                  className="p-1 rounded-md hover:bg-muted transition-colors"
+                  title="Expandir gráfico"
+                >
+                  <Maximize2 className="h-4 w-4 text-muted-foreground" />
+                </button>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div 
+                  className="overflow-y-auto scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent px-4 pb-4"
+                  style={{ maxHeight: receitaSegmentoData.length > 6 ? "320px" : "none" }}
+                >
+                  <ResponsiveContainer width="100%" height={receitaSegmentoData.length > 6 ? receitaSegmentoData.length * 55 : 300}>
+                    <BarChart data={receitaSegmentoData} layout="vertical" margin={{ left: 30, top: 10, bottom: 10 }} barCategoryGap={12}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 10%)" />
+                      <XAxis type="number" stroke="oklch(0.7 0.015 210)" fontSize={12} tickFormatter={fmtMoeda} />
+                      <YAxis
+                        dataKey="segmento"
+                        type="category"
+                        stroke="oklch(0.7 0.015 210)"
+                        fontSize={12}
+                        width={100}
+                        tickMargin={8}
+                        tickFormatter={(v: string) => v.length > 18 ? v.slice(0, 18) + "…" : v}
+                      />
+                      <Tooltip formatter={(value: number) => fmtMoeda(value)} content={<CustomTooltip />} />
+                      <Bar dataKey="valor" fill={THEME.purple} barSize={24} radius={[0, 6, 6, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
 
-            <ChartCard title="Fluxo de Caixa Projetado" icon={BarChart3} color={THEME.secondary}>
+            <ChartCard title="Fluxo de Caixa Projetado" icon={BarChart3} color={THEME.secondary} onExpand={() => handleExpand("fluxo-caixa")}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={fluxoCaixa}>
                   <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 10%)" />
@@ -559,47 +579,95 @@ export function DashboardExecutivo() {
               </ResponsiveContainer>
             </ChartCard>
 
-            <ChartCard title="Inadimplência por Faixa" icon={AlertTriangle} color={THEME.danger}>
+            <ChartCard title="Inadimplência por Faixa" icon={AlertTriangle} color={THEME.danger} onExpand={() => handleExpand("inadimplencia")}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={inadimplenciaData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 10%)" />
                   <XAxis dataKey="faixa" stroke="oklch(0.7 0.015 210)" fontSize={12} />
                   <YAxis stroke="oklch(0.7 0.015 210)" fontSize={12} tickFormatter={fmtMoeda} />
-                 <Tooltip formatter={(value: number) => fmtMoeda(value)} content={<CustomTooltip />} />
+                  <Tooltip formatter={(value: number) => fmtMoeda(value)} content={<CustomTooltip />} />
                   <Bar dataKey="valor" fill={THEME.danger} barSize={50} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </ChartCard>
 
-            <ChartCard title="Top 5 Clientes (MRR)" icon={Target} color={THEME.primary}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={topClientes} layout="vertical" margin={{ left: 10 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 10%)" />
-                  <XAxis type="number" stroke="oklch(0.7 0.015 210)" fontSize={12} tickFormatter={fmtMoeda} />
-                  <YAxis dataKey="nome" type="category" stroke="oklch(0.7 0.015 210)" fontSize={12} width={130} />
-                  <Tooltip formatter={(value: number) => fmtMoeda(value)} content={<CustomTooltip />} />
-                  <Bar dataKey="valor" fill={THEME.primary} barSize={20} radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </ChartCard>
+            {/* Top 5 Clientes (MRR) */}
+            <Card className="shadow-sm hover:shadow-md transition-all duration-300 border-border/60 overflow-hidden group">
+              <div className="h-1 w-full transition-all duration-500 group-hover:h-2" style={{ backgroundColor: THEME.primary }} />
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-base font-semibold flex items-center gap-2">
+                  <div className="p-1.5 rounded-md" style={{ backgroundColor: `${THEME.primary}15`, color: THEME.primary }}>
+                    <Target className="h-4 w-4" />
+                  </div>
+                  Top 5 Clientes (MRR)
+                </CardTitle>
+                <button
+                  onClick={() => handleExpand("top-clientes")}
+                  className="p-1 rounded-md hover:bg-muted transition-colors"
+                  title="Expandir gráfico"
+                >
+                  <Maximize2 className="h-4 w-4 text-muted-foreground" />
+                </button>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div 
+                  className="overflow-y-auto scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent px-4 pb-4"
+                  style={{ maxHeight: topClientes.length > 6 ? "320px" : "none" }}
+                >
+                  <ResponsiveContainer width="100%" height={topClientes.length > 6 ? topClientes.length * 50 : 300}>
+                    <BarChart data={topClientes} layout="vertical" margin={{ left: 20, top: 10, bottom: 10 }} barCategoryGap={8}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 10%)" />
+                      <XAxis type="number" stroke="oklch(0.7 0.015 210)" fontSize={12} tickFormatter={fmtMoeda} />
+                      <YAxis dataKey="nome" type="category" stroke="oklch(0.7 0.015 210)" fontSize={12} width={130} tickMargin={8} />
+                      <Tooltip formatter={(value: number) => fmtMoeda(value)} content={<CustomTooltip />} />
+                      <Bar dataKey="valor" fill={THEME.primary} barSize={20} radius={[0, 4, 4, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
 
-            <ChartCard title="Contratos por Porte" icon={Users} color={THEME.primary}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={porteData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 10%)" />
-                  <XAxis dataKey="porte" stroke="oklch(0.7 0.015 210)" fontSize={12} />
-                  <YAxis allowDecimals={false} stroke="oklch(0.7 0.015 210)" fontSize={12} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="qtd" fill={THEME.secondary} barSize={40} radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </ChartCard>
+            {/* Contratos por Porte */}
+            <Card className="shadow-sm hover:shadow-md transition-all duration-300 border-border/60 overflow-hidden group">
+              <div className="h-1 w-full transition-all duration-500 group-hover:h-2" style={{ backgroundColor: THEME.primary }} />
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-base font-semibold flex items-center gap-2">
+                  <div className="p-1.5 rounded-md" style={{ backgroundColor: `${THEME.primary}15`, color: THEME.primary }}>
+                    <Users className="h-4 w-4" />
+                  </div>
+                  Contratos por Porte
+                </CardTitle>
+                <button
+                  onClick={() => handleExpand("contratos-porte")}
+                  className="p-1 rounded-md hover:bg-muted transition-colors"
+                  title="Expandir gráfico"
+                >
+                  <Maximize2 className="h-4 w-4 text-muted-foreground" />
+                </button>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div 
+                  className="overflow-x-auto scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent px-4 pb-4"
+                  style={{ maxHeight: "360px" }}
+                >
+                  <ResponsiveContainer width={porteData.length > 6 ? porteData.length * 80 : "100%"} height={320}>
+                    <BarChart data={porteData} barCategoryGap="20%">
+                      <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 10%)" />
+                      <XAxis dataKey="porte" stroke="oklch(0.7 0.015 210)" fontSize={12} />
+                      <YAxis allowDecimals={false} stroke="oklch(0.7 0.015 210)" fontSize={12} />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Bar dataKey="qtd" fill={THEME.secondary} barSize={40} radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         )}
 
         {abaAtiva === "operacional" && (
           <div className="grid gap-6 md:grid-cols-2">
-            <ChartCard title="SLA de Entregas (30d)" icon={CheckCircle2} color={THEME.success}>
+            <ChartCard title="SLA de Entregas (30d)" icon={CheckCircle2} color={THEME.success} onExpand={() => handleExpand("sla")}>
               <div className="flex flex-col items-center justify-center h-full gap-4">
                 <div className="text-7xl font-bold" style={{ color: sla >= 80 ? THEME.success : THEME.warning }}>
                   {sla}%
@@ -616,7 +684,7 @@ export function DashboardExecutivo() {
               </div>
             </ChartCard>
 
-            <ChartCard title="Evolução de Novos Contratos" icon={TrendingUp} color={THEME.secondary}>
+            <ChartCard title="Evolução de Novos Contratos" icon={TrendingUp} color={THEME.secondary} onExpand={() => handleExpand("evolucao-contratos")}>
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={evolucaoContratos}>
                   <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 10%)" />
@@ -628,7 +696,7 @@ export function DashboardExecutivo() {
               </ResponsiveContainer>
             </ChartCard>
 
-            <ChartCard title="Status dos Contratos" icon={PieChartIcon} color={THEME.primary}>
+            <ChartCard title="Status dos Contratos" icon={PieChartIcon} color={THEME.primary} onExpand={() => handleExpand("status-contratos")}>
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie data={statusData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={3} dataKey="value">
@@ -642,7 +710,7 @@ export function DashboardExecutivo() {
               </ResponsiveContainer>
             </ChartCard>
 
-            <ChartCard title="Saúde dos Clientes" icon={Activity} color={THEME.success}>
+            <ChartCard title="Saúde dos Clientes" icon={Activity} color={THEME.success} onExpand={() => handleExpand("saude-clientes")}>
               <ResponsiveContainer width="100%" height="100%">
                 <RadarChart data={saudeClientes.slice(0, 6)}>
                   <PolarGrid stroke="oklch(0.7 0.015 210 / 30%)" />
@@ -658,7 +726,7 @@ export function DashboardExecutivo() {
 
         {abaAtiva === "relacionamento" && (
           <div className="grid gap-6 md:grid-cols-2">
-            <ChartCard title="Clientes em Risco" icon={ShieldAlert} color={THEME.danger}>
+            <ChartCard title="Clientes em Risco" icon={ShieldAlert} color={THEME.danger} onExpand={() => handleExpand("clientes-risco")}>
               <div className="max-h-[300px] overflow-y-auto space-y-2">
                 {empresasRisco.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-10">Nenhum cliente em risco.</p>
@@ -673,7 +741,7 @@ export function DashboardExecutivo() {
               </div>
             </ChartCard>
 
-            <ChartCard title="Mediana de Dias sem Interação" icon={Clock} color={THEME.warning}>
+            <ChartCard title="Mediana de Dias sem Interação" icon={Clock} color={THEME.warning} onExpand={() => handleExpand("mediana-dias")}>
               <div className="flex flex-col items-center justify-center h-full gap-4">
                 <div className="text-7xl font-bold" style={{ color: medianaDiasInteracao > 30 ? THEME.danger : THEME.success }}>
                   {medianaDiasInteracao}
@@ -692,28 +760,52 @@ export function DashboardExecutivo() {
               </div>
             </ChartCard>
 
-            <ChartCard title="Churn por Motivo" icon={TrendingDownIcon} color={THEME.danger}>
-              {churnMotivosData.length === 0 ? (
-                <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
-                  Nenhum arquivamento registrado com motivo.
-                </div>
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={churnMotivosData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={3} dataKey="qtd" nameKey="motivo">
-                      {churnMotivosData.map((_, i) => (
-                        <Cell key={i} fill={[THEME.danger, THEME.warning, THEME.purple, THEME.secondary][i % 4]} />
-                      ))}
-                    </Pie>
-                    <Tooltip content={<CustomTooltip />} />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
-              )}
-            </ChartCard>
+            {/* Churn por Motivo */}
+            <Card className="shadow-sm hover:shadow-md transition-all duration-300 border-border/60 overflow-hidden group">
+              <div className="h-1 w-full transition-all duration-500 group-hover:h-2" style={{ backgroundColor: THEME.danger }} />
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-base font-semibold flex items-center gap-2">
+                  <div className="p-1.5 rounded-md" style={{ backgroundColor: `${THEME.danger}15`, color: THEME.danger }}>
+                    <TrendingDownIcon className="h-4 w-4" />
+                  </div>
+                  Churn por Motivo
+                </CardTitle>
+                <button
+                  onClick={() => handleExpand("churn-motivo")}
+                  className="p-1 rounded-md hover:bg-muted transition-colors"
+                  title="Expandir gráfico"
+                >
+                  <Maximize2 className="h-4 w-4 text-muted-foreground" />
+                </button>
+              </CardHeader>
+              <CardContent className="p-0">
+                {churnMotivosData.length === 0 ? (
+                  <div className="flex items-center justify-center h-40 text-sm text-muted-foreground">
+                    Nenhum arquivamento registrado com motivo.
+                  </div>
+                ) : (
+                  <div 
+                    className="overflow-y-auto scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent px-4 pb-4"
+                    style={{ maxHeight: churnMotivosData.length > 4 ? "320px" : "none" }}
+                  >
+                    <ResponsiveContainer width="100%" height={churnMotivosData.length > 4 ? churnMotivosData.length * 60 : 300}>
+                      <PieChart>
+                        <Pie data={churnMotivosData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={3} dataKey="qtd" nameKey="motivo">
+                          {churnMotivosData.map((_, i) => (
+                            <Cell key={i} fill={[THEME.danger, THEME.warning, THEME.purple, THEME.secondary][i % 4]} />
+                          ))}
+                        </Pie>
+                        <Tooltip content={<CustomTooltip />} />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
             {npsMedio !== null && (
-              <ChartCard title="NPS Médio (Nota 0-10)" icon={Star} color={THEME.success}>
+              <ChartCard title="NPS Médio (Nota 0-10)" icon={Star} color={THEME.success} onExpand={() => handleExpand("nps-medio")}>
                 <div className="flex flex-col items-center justify-center h-full gap-4">
                   <div className="text-7xl font-bold" style={{ color: npsMedio >= 8 ? THEME.success : npsMedio >= 6 ? THEME.warning : THEME.danger }}>
                     {fmtNota(npsMedio)}
@@ -736,20 +828,333 @@ export function DashboardExecutivo() {
           </div>
         )}
       </div>
+
+      {/* Modal de expansão */}
+      {expandedChart && (
+        <ExpandModal
+          chartId={expandedChart}
+          onClose={handleClose}
+          data={{
+            receitaRealizada,
+            receitaSegmentoData,
+            fluxoCaixa,
+            inadimplenciaData,
+            topClientes,
+            porteData,
+            sla,
+            pendEntregas,
+            evolucaoContratos,
+            statusData,
+            saudeClientes,
+            empresasRisco,
+            medianaDiasInteracao,
+            churnMotivosData,
+            npsMedio,
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ==================== MODAL DE EXPANSÃO (CORRIGIDO) ====================
+function ExpandModal({ chartId, onClose, data }: { chartId: string; onClose: () => void; data: any }) {
+  const titles: Record<string, string> = {
+    "receita-realizada": "Receita Realizada",
+    "receita-segmento": "Receita por Segmento",
+    "fluxo-caixa": "Fluxo de Caixa Projetado",
+    "inadimplencia": "Inadimplência por Faixa",
+    "top-clientes": "Top 5 Clientes (MRR)",
+    "contratos-porte": "Contratos por Porte",
+    "sla": "SLA de Entregas (30d)",
+    "evolucao-contratos": "Evolução de Novos Contratos",
+    "status-contratos": "Status dos Contratos",
+    "saude-clientes": "Saúde dos Clientes",
+    "clientes-risco": "Clientes em Risco",
+    "mediana-dias": "Mediana de Dias sem Interação",
+    "churn-motivo": "Churn por Motivo",
+    "nps-medio": "NPS Médio",
+  };
+
+  const renderChart = () => {
+    switch (chartId) {
+      case "receita-realizada":
+        return (
+          <div style={{ width: "100%", height: "100%" }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={data.receitaRealizada}>
+                <defs>
+                  <linearGradient id="receitaGradExp" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={THEME.success} stopOpacity={0.9} />
+                    <stop offset="100%" stopColor={THEME.success} stopOpacity={0.3} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 10%)" />
+                <XAxis dataKey="mes" stroke="oklch(0.7 0.015 210)" fontSize={14} />
+                <YAxis stroke="oklch(0.7 0.015 210)" fontSize={14} tickFormatter={(v: number) => `R$${(v / 1000).toFixed(0)}k`} />
+                <Tooltip formatter={(value: number) => fmtMoeda(value)} content={<CustomTooltip />} />
+                <Bar dataKey="valor" fill="url(#receitaGradExp)" barSize={40} radius={[6, 6, 0, 0]} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        );
+
+      case "receita-segmento": {
+        const segmentos = data.receitaSegmentoData || [];
+        const needsScroll = segmentos.length > 8;
+        return (
+          <div style={{ width: "100%", height: needsScroll ? "65vh" : "100%", maxHeight: needsScroll ? "65vh" : "none", overflowY: needsScroll ? "auto" : "visible" }} className="scrollbar-thin scrollbar-thumb-muted-foreground/20">
+            <ResponsiveContainer width="100%" height={needsScroll ? segmentos.length * 60 : "100%"}>
+              <BarChart data={segmentos} layout="vertical" margin={{ left: 40, top: 20, bottom: 20 }} barCategoryGap={16}>
+                <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 10%)" />
+                <XAxis type="number" stroke="oklch(0.7 0.015 210)" fontSize={14} tickFormatter={fmtMoeda} />
+                <YAxis dataKey="segmento" type="category" stroke="oklch(0.7 0.015 210)" fontSize={14} width={150} tickMargin={12} />
+                <Tooltip formatter={(value: number) => fmtMoeda(value)} content={<CustomTooltip />} />
+                <Bar dataKey="valor" fill={THEME.purple} barSize={32} radius={[0, 8, 8, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        );
+      }
+
+      case "fluxo-caixa":
+        return (
+          <div style={{ width: "100%", height: "100%" }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data.fluxoCaixa}>
+                <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 10%)" />
+                <XAxis dataKey="mes" stroke="oklch(0.7 0.015 210)" fontSize={14} />
+                <YAxis stroke="oklch(0.7 0.015 210)" fontSize={14} tickFormatter={(v: number) => `R$${(v / 1000).toFixed(0)}k`} />
+                <Tooltip formatter={(value: number) => fmtMoeda(value)} content={<CustomTooltip />} />
+                <Bar dataKey="valor" fill={THEME.secondary} barSize={50} radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        );
+
+      case "inadimplencia":
+        return (
+          <div style={{ width: "100%", height: "100%" }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data.inadimplenciaData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 10%)" />
+                <XAxis dataKey="faixa" stroke="oklch(0.7 0.015 210)" fontSize={14} />
+                <YAxis stroke="oklch(0.7 0.015 210)" fontSize={14} tickFormatter={fmtMoeda} />
+                <Tooltip formatter={(value: number) => fmtMoeda(value)} content={<CustomTooltip />} />
+                <Bar dataKey="valor" fill={THEME.danger} barSize={60} radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        );
+
+      case "top-clientes": {
+        const clientes = data.topClientes || [];
+        const needsScroll = clientes.length > 10;
+        return (
+          <div style={{ width: "100%", height: needsScroll ? "65vh" : "100%", maxHeight: needsScroll ? "65vh" : "none", overflowY: needsScroll ? "auto" : "visible" }} className="scrollbar-thin scrollbar-thumb-muted-foreground/20">
+            <ResponsiveContainer width="100%" height={needsScroll ? clientes.length * 50 : "100%"}>
+              <BarChart data={clientes} layout="vertical" margin={{ left: 40, top: 20, bottom: 20 }} barCategoryGap={12}>
+                <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 10%)" />
+                <XAxis type="number" stroke="oklch(0.7 0.015 210)" fontSize={14} tickFormatter={fmtMoeda} />
+                <YAxis dataKey="nome" type="category" stroke="oklch(0.7 0.015 210)" fontSize={14} width={180} tickMargin={12} />
+                <Tooltip formatter={(value: number) => fmtMoeda(value)} content={<CustomTooltip />} />
+                <Bar dataKey="valor" fill={THEME.primary} barSize={28} radius={[0, 6, 6, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        );
+      }
+
+      case "contratos-porte": {
+        const portes = data.porteData || [];
+        const needsScroll = portes.length > 6;
+        return (
+          <div style={{ width: "100%", height: "100%" }}>
+            <div style={{ width: "100%", height: "100%", overflowX: needsScroll ? "auto" : "visible" }} className="scrollbar-thin scrollbar-thumb-muted-foreground/20">
+              <ResponsiveContainer width={needsScroll ? portes.length * 100 : "100%"} height="100%">
+                <BarChart data={portes} barCategoryGap="25%">
+                  <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 10%)" />
+                  <XAxis dataKey="porte" stroke="oklch(0.7 0.015 210)" fontSize={14} />
+                  <YAxis allowDecimals={false} stroke="oklch(0.7 0.015 210)" fontSize={14} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Bar dataKey="qtd" fill={THEME.secondary} barSize={50} radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        );
+      }
+
+      case "sla":
+        return (
+          <div className="flex flex-col items-center justify-center h-full gap-6">
+            <div className="text-8xl font-bold" style={{ color: data.sla >= 80 ? THEME.success : THEME.warning }}>
+              {data.sla}%
+            </div>
+            <div className="w-full max-w-md bg-muted rounded-full h-6 overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-1000"
+                style={{ width: `${data.sla}%`, backgroundColor: data.sla >= 80 ? THEME.success : THEME.warning }}
+              />
+            </div>
+            <p className="text-lg text-muted-foreground">
+              {data.sla >= 90 ? "Excelente" : data.sla >= 70 ? "Bom" : "Regular"} — {data.pendEntregas} pendentes
+            </p>
+          </div>
+        );
+
+      case "evolucao-contratos":
+        return (
+          <div style={{ width: "100%", height: "100%" }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={data.evolucaoContratos}>
+                <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 10%)" />
+                <XAxis dataKey="mes" stroke="oklch(0.7 0.015 210)" fontSize={14} />
+                <YAxis allowDecimals={false} stroke="oklch(0.7 0.015 210)" fontSize={14} />
+                <Tooltip content={<CustomTooltip />} />
+                <Line type="monotone" dataKey="qtd" stroke={THEME.secondary} strokeWidth={3} dot={{ r: 5 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        );
+
+      case "status-contratos":
+        return (
+          <div style={{ width: "100%", height: "100%" }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={data.statusData} cx="50%" cy="50%" innerRadius={80} outerRadius={130} paddingAngle={5} dataKey="value">
+                  {data.statusData.map((_: any, i: number) => (
+                    <Cell key={i} fill={[THEME.success, THEME.warning, "#94a3b8", THEME.danger][i % 4]} />
+                  ))}
+                </Pie>
+                <Tooltip content={<CustomPieTooltip />} />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        );
+
+      case "saude-clientes":
+        return (
+          <div style={{ width: "100%", height: "100%" }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <RadarChart data={data.saudeClientes.slice(0, 10)}>
+                <PolarGrid stroke="oklch(0.7 0.015 210 / 30%)" />
+                <PolarAngleAxis dataKey="nome" fontSize={12} stroke="oklch(0.7 0.015 210)" />
+                <PolarRadiusAxis domain={[0, 100]} stroke="oklch(0.7 0.015 210)" fontSize={12} />
+                <Radar dataKey="score" stroke={THEME.secondary} fill={THEME.secondary} fillOpacity={0.3} />
+                <Tooltip content={<CustomTooltip />} />
+              </RadarChart>
+            </ResponsiveContainer>
+          </div>
+        );
+
+      case "clientes-risco":
+        return (
+          <div className="max-h-[70vh] overflow-y-auto space-y-3 px-4">
+            {data.empresasRisco.length === 0 ? (
+              <p className="text-center text-muted-foreground py-10">Nenhum cliente em risco.</p>
+            ) : (
+              data.empresasRisco.map((e: any) => (
+                <div key={e.nome} className="flex justify-between items-center p-4 bg-muted/50 rounded-lg">
+                  <span className="font-medium">{e.nome}</span>
+                  <Badge variant="destructive" className="text-sm px-3 py-1">{e.dias}d sem contato</Badge>
+                </div>
+              ))
+            )}
+          </div>
+        );
+
+      case "mediana-dias":
+        return (
+          <div className="flex flex-col items-center justify-center h-full gap-6">
+            <div className="text-8xl font-bold" style={{ color: data.medianaDiasInteracao > 30 ? THEME.danger : THEME.success }}>
+              {data.medianaDiasInteracao}
+            </div>
+            <p className="text-lg text-muted-foreground">dias mediana</p>
+            <div className="w-full max-w-md bg-muted rounded-full h-6 overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-1000"
+                style={{
+                  width: `${Math.min(100, (data.medianaDiasInteracao / 90) * 100)}%`,
+                  backgroundColor: data.medianaDiasInteracao > 30 ? THEME.danger : THEME.success,
+                }}
+              />
+            </div>
+            <p className="text-sm text-muted-foreground">Meta: ≤ 30 dias</p>
+          </div>
+        );
+
+      case "churn-motivo": {
+        const motivos = data.churnMotivosData || [];
+        const needsScroll = motivos.length > 6;
+        return (
+          <div style={{ width: "100%", height: needsScroll ? "65vh" : "100%", maxHeight: needsScroll ? "65vh" : "none", overflowY: needsScroll ? "auto" : "visible" }} className="scrollbar-thin scrollbar-thumb-muted-foreground/20">
+            <ResponsiveContainer width="100%" height={needsScroll ? motivos.length * 80 : "100%"}>
+              <PieChart>
+                <Pie data={motivos} cx="50%" cy="50%" innerRadius={80} outerRadius={130} paddingAngle={5} dataKey="qtd" nameKey="motivo">
+                  {motivos.map((_: any, i: number) => (
+                    <Cell key={i} fill={[THEME.danger, THEME.warning, THEME.purple, THEME.secondary][i % 4]} />
+                  ))}
+                </Pie>
+                <Tooltip content={<CustomTooltip />} />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        );
+      }
+
+      case "nps-medio":
+        return (
+          <div className="flex flex-col items-center justify-center h-full gap-6">
+            <div className="text-8xl font-bold" style={{ color: data.npsMedio >= 8 ? THEME.success : data.npsMedio >= 6 ? THEME.warning : THEME.danger }}>
+              {fmtNota(data.npsMedio)}
+            </div>
+            <div className="w-full max-w-md bg-muted rounded-full h-6 overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-1000"
+                style={{
+                  width: `${(data.npsMedio / 10) * 100}%`,
+                  backgroundColor: data.npsMedio >= 8 ? THEME.success : data.npsMedio >= 6 ? THEME.warning : THEME.danger,
+                }}
+              />
+            </div>
+            <p className="text-lg text-muted-foreground">
+              {data.npsMedio >= 8 ? "Excelente" : data.npsMedio >= 6 ? "Bom" : "Regular"}
+            </p>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={onClose}>
+      <div className="relative w-[90vw] h-[85vh] bg-background rounded-xl shadow-2xl border border-border p-6 flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold">{titles[chartId] || "Gráfico"}</h2>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-lg hover:bg-muted transition-colors"
+            title="Fechar"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="flex-1 min-h-0">
+          {renderChart()}
+        </div>
+      </div>
     </div>
   );
 }
 
 // ============ COMPONENTES AUXILIARES ============
-const tooltipStyle = {
-  borderRadius: "8px",
-  border: "1px solid oklch(0.7 0.015 210 / 30%)",
-  background: "oklch(0.15 0.02 240 / 95%)",
-  color: "#fff",
-  fontSize: "13px",
-};
-
-function ChartCard({ title, icon: Icon, color, children }: any) {
+function ChartCard({ title, icon: Icon, color, children, onExpand }: any) {
   return (
     <Card className="shadow-sm hover:shadow-md transition-all duration-300 border-border/60 overflow-hidden group">
       <div className="h-1 w-full transition-all duration-500 group-hover:h-2" style={{ backgroundColor: color }} />
@@ -760,6 +1165,15 @@ function ChartCard({ title, icon: Icon, color, children }: any) {
           </div>
           {title}
         </CardTitle>
+        {onExpand && (
+          <button
+            onClick={onExpand}
+            className="p-1 rounded-md hover:bg-muted transition-colors"
+            title="Expandir gráfico"
+          >
+            <Maximize2 className="h-4 w-4 text-muted-foreground" />
+          </button>
+        )}
       </CardHeader>
       <CardContent className="h-80">{children}</CardContent>
     </Card>
