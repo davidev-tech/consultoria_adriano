@@ -519,17 +519,33 @@ export function DashboardExecutivo() {
               </ResponsiveContainer>
             </ChartCard>
 
-            <ChartCard title="Receita por Segmento" icon={Layers} color={THEME.purple}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={receitaSegmentoData} layout="vertical" margin={{ left: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 10%)" />
-                  <XAxis type="number" stroke="oklch(0.7 0.015 210)" fontSize={12} tickFormatter={fmtMoeda} />
-                  <YAxis dataKey="segmento" type="category" stroke="oklch(0.7 0.015 210)" fontSize={12} width={100} />
-                  <Tooltip formatter={(value: number) => fmtMoeda(value)} content={<CustomTooltip />} />
-                  <Bar dataKey="valor" fill={THEME.purple} barSize={20} radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </ChartCard>
+            <Card className="shadow-sm hover:shadow-md transition-all duration-300 border-border/60 overflow-hidden group">
+  <div className="h-1 w-full transition-all duration-500 group-hover:h-2" style={{ backgroundColor: THEME.purple }} />
+  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+    <CardTitle className="text-base font-semibold flex items-center gap-2">
+      <div className="p-1.5 rounded-md" style={{ backgroundColor: `${THEME.purple}15`, color: THEME.purple }}>
+        <Layers className="h-4 w-4" />
+      </div>
+      Receita por Segmento
+    </CardTitle>
+  </CardHeader>
+  <CardContent className="p-0">
+    <div 
+      className="overflow-y-auto scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent px-4 pb-4"
+      style={{ maxHeight: receitaSegmentoData.length > 6 ? "320px" : "none" }}
+    >
+      <ResponsiveContainer width="100%" height={receitaSegmentoData.length > 6 ? receitaSegmentoData.length * 50 : 300}>
+        <BarChart data={receitaSegmentoData} layout="vertical" margin={{ left: 20, top: 10, bottom: 10 }} barCategoryGap={8}>
+          <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 10%)" />
+          <XAxis type="number" stroke="oklch(0.7 0.015 210)" fontSize={12} tickFormatter={fmtMoeda} />
+          <YAxis dataKey="segmento" type="category" stroke="oklch(0.7 0.015 210)" fontSize={12} width={100} tickMargin={8} />
+          <Tooltip formatter={(value: number) => fmtMoeda(value)} content={<CustomTooltip />} />
+          <Bar dataKey="valor" fill={THEME.purple} barSize={24} radius={[0, 6, 6, 0]} />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  </CardContent>
+</Card>
 
             <ChartCard title="Fluxo de Caixa Projetado" icon={BarChart3} color={THEME.secondary}>
               <ResponsiveContainer width="100%" height="100%">
