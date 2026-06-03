@@ -24,7 +24,7 @@ consultoria_adriano/
 ├── back/                       # Backend FastAPI
 │   ├── main.py                 # Aplicação principal
 │   ├── core/                   # Configurações e banco de dados
-│   │   ├── config.py           # Settings via .env (pydantic)
+│   │   ├── config.py           # Settings (carrega .env da raiz)
 │   │   └── database.py         # Engine, SessionLocal, Base
 │   ├── models/                 # ORM SQLAlchemy (um arquivo por entidade)
 │   ├── schemas/                # Schemas Pydantic de entrada/saída
@@ -32,11 +32,11 @@ consultoria_adriano/
 │   ├── services/               # Lógica de negócio (ex.: ViaCEP)
 │   ├── validators/             # Funções de validação reutilizáveis
 │   ├── tests/                  # Testes automatizados (34 cenários)
-│   ├── .env                    # Variáveis de ambiente do backend
 │   └── requirements.txt
 ├── frontend/                   # Frontend React (isolado)
-│   ├── .env
-│   └── ... (src, public, etc.)
+│   ├── .env                    # Variáveis de ambiente do frontend
+│   └── ... (src, public, node_modules)
+├── .env                        # Variáveis de ambiente do backend
 └── README.md
 ```
 
@@ -75,17 +75,16 @@ consultoria_adriano/
    pip install -r back/requirements.txt
    ```
 
-4. **Configure o arquivo `.env` do backend** (já existente em `back/`):
+4. **Configure o arquivo `.env` do backend** – ele deve ficar na **raiz do projeto** (`consultoria_adriano/.env`):
    ```env
    DATABASE_URL="postgresql://postgres:YqErvrYQ4NjAvREU@db.erubhkiwdkotwmgqezca.supabase.co:5432/postgres"
    CORS_ALLOW_ORIGINS="http://localhost:8080,http://127.0.0.1:8080"
    ```
    > Substitua `DATABASE_URL` pela sua string de conexão.
 
-5. **Execute o servidor** (as tabelas são criadas automaticamente):
+5. **Execute o servidor** a partir da raiz (o `.env` é carregado automaticamente):
    ```bash
-   cd back
-   python -m uvicorn main:app --reload
+   python -m uvicorn back.main:app --reload
    ```
    O backend estará em `http://localhost:8000`.  
    Acesse a documentação interativa (Swagger) em [`http://localhost:8000/docs`](http://localhost:8000/docs).
@@ -118,13 +117,13 @@ consultoria_adriano/
 ## 🧪 Executando os Testes Automatizados
 
 Os testes estão localizados em `back/tests/`.  
-Com o ambiente virtual ativado, execute **a partir da raiz do projeto**:
+Com o ambiente virtual ativado, execute **a partir da raiz do projeto** (onde o `.env` está):
 
 ```bash
 python -m pytest back/tests/ -v
 ```
 
-Ou, se preferir, entre na pasta `back`:
+Ou, se preferir, entre na pasta `back` e execute de lá (o pytest encontrará o `.env` na raiz automaticamente):
 
 ```bash
 cd back
