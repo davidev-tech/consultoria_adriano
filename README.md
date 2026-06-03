@@ -74,6 +74,7 @@ consultoria_adriano/
    ```bash
    pip install -r back/requirements.txt
    ```
+   > Os pacotes de teste (`pytest`, `httpx`) já estão incluídos no `requirements.txt`.
 
 4. **Configure o arquivo `.env` do backend** – ele deve ficar na **raiz do projeto** (`consultoria_adriano/.env`):
    ```env

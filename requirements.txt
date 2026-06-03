@@ -1,13 +1,26 @@
+# Framework e servidor
 fastapi
 uvicorn[standard]
+
+# Banco de dados
 sqlalchemy
 psycopg2-binary
+
+# Validação de dados
 pydantic
 pydantic-settings
-python-multipart
-validate-docbr
-bleach
-watchfiles
-PyJWT
-python-dateutil
-requests
+
+# Utilidades
+python-multipart       # opcional: necessário para Form data (ex.: upload de arquivos)
+validate-docbr         # validação de CPF/CNPJ
+bleach                 # sanitização de texto (XSS)
+PyJWT                  # tokens JWT (Metabase e futura autenticação)
+python-dateutil        # cálculos de datas (relativedelta)
+requests               # chamadas HTTP (ViaCEP)
+
+# Desenvolvimento
+watchfiles             # hot reload (uvicorn --reload)
+
+# Testes
+pytest                 # framework de testes
+httpx                  # cliente HTTP para testes
