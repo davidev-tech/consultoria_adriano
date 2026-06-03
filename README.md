@@ -1,70 +1,187 @@
-# 🏥 Sistema de Gestão - Consultoria Adriano (Economia do Cuidado)
+```markdown
+# 🏥 Gestão do Cuidado (PSA)
 
-![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)
-![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)
-![PostgreSQL](https://img.shields.io/badge/postgresql-%23336791.svg?style=for-the-badge&logo=postgresql&logoColor=white)
-![Metabase](https://img.shields.io/badge/Metabase-509EE3?style=for-the-badge&logo=Metabase&logoColor=white)
-
-> Sistema completo de gestão focado na Economia do Cuidado, desenvolvido para otimizar a operação de consultoria, controle de contratos e visibilidade financeira.
-
-## 📌 Contexto do Projeto
-Este projeto foi desenvolvido para atender às dores específicas de um consultor de gestão que atua em instituições de cuidado (como lares de idosos e clínicas). O foco é resolver a ineficiência em anotações de visitas, bagunça na agenda e o esquecimento recorrente de baixas de pagamento.
+Sistema de consultoria B2B para gestão de clientes, contratos, entregas, financeiro e CRM.  
+Backend modularizado, testado e pronto para produção. Frontend React integrado.
 
 ---
 
-## 🛠️ Tecnologias Utilizadas
+## 🚀 Tecnologias
 
-- **Linguagem:** Python 3.11+
-- **Backend:** [FastAPI](https://fastapi.tiangolo.com/) (Performance e documentação automática)
-- **Banco de Dados:** PostgreSQL (Relacional e Robusto)
-- **ORM:** SQLAlchemy (Mapeamento Objeto-Relacional)
-- **BI & Analytics:** [Metabase](https://www.metabase.com/) (Visualização de dados Open Source)
-- **Validação de Dados:** Pydantic
-
----
-
-## 📊 Arquitetura de Dados
-
-O banco de dados foi modelado para garantir integridade referencial e escalabilidade. Os principais módulos incluem:
-- **CRM:** Cadastro de empresas, responsáveis e pacientes.
-- **Contratos:** Gestão de modelos (mensais/avulsos) e vigência.
-- **Financeiro:** Controle automático de faturamento e status de pagamento.
-
-
-
-[Image of database schema diagram]
-
+| Camada        | Tecnologias                                                                 |
+|---------------|-----------------------------------------------------------------------------|
+| Backend       | FastAPI (Python 3.11+), SQLAlchemy, PostgreSQL (Supabase)                   |
+| Frontend      | React + Vite + TanStack Router + shadcn/ui                                   |
+| Testes        | pytest + httpx (34 cenários automatizados)                                  |
+| Ferramentas   | Metabase (dashboards), ViaCEP (preenchimento automático de endereços)       |
 
 ---
 
-## 🚀 Como Rodar o Projeto (Local)
+## 📁 Estrutura do Projeto
 
-1. **Clone o repositório:**
-   ```bash
-   git clone https://github.com/davidev-tech/consultoria_adriano.git
-   pip install -r requirements.txt
-   ```
-
-2. **Configure o banco:** defina `DATABASE_URL` no `.env` antes de subir o backend.
-
-3. **Se precisar ajustar os endpoints locais:**
-   - `VITE_API_BASE` no frontend para trocar a URL da API.
-   - `CORS_ALLOW_ORIGINS` no backend para liberar uma ou mais origens separadas por vírgula.
-
-## 🧭 Estrutura prática do projeto
-
-- `app/back/`: API FastAPI, modelos SQLAlchemy, schemas Pydantic e validações.
-- `app/front/`: interface TanStack Start/React com hooks de API e dashboard.
-- `scripts/dev.sh`: cria/usa o `venv/` da raiz para o backend e prepara as dependências do frontend quando necessário.
-
-## ▶️ Inicialização rápida
-
-```bash
-chmod +x scripts/dev.sh
-./scripts/dev.sh
+```
+consultoria_adriano/
+├── back/                       # Backend FastAPI
+│   ├── main.py                 # Aplicação principal
+│   ├── core/                   # Configurações e banco de dados
+│   │   ├── config.py           # Settings via .env (pydantic)
+│   │   └── database.py         # Engine, SessionLocal, Base
+│   ├── models/                 # ORM SQLAlchemy (um arquivo por entidade)
+│   ├── schemas/                # Schemas Pydantic de entrada/saída
+│   ├── api/v1/                 # Rotas versionadas (prefixo /api/v1)
+│   ├── services/               # Lógica de negócio (ex.: ViaCEP)
+│   ├── validators/             # Funções de validação reutilizáveis
+│   ├── tests/                  # Testes automatizados (34 cenários)
+│   ├── .env                    # Variáveis de ambiente do backend
+│   └── requirements.txt
+├── frontend/                   # Frontend React (isolado)
+│   ├── .env
+│   └── ... (src, public, etc.)
+└── README.md
 ```
 
-- Na primeira execução, o script cria `venv/` na raiz, instala as dependências do backend e prepara o frontend se `node_modules` não existir.
-- O backend sobe em `http://localhost:8000` por padrão.
-- O frontend sobe em `http://localhost:8080` por padrão.
-- Se quiser mudar portas, use `BACKEND_PORT=...` e `FRONT_PORT=...`.
+---
+
+## ⚙️ Pré‑requisitos
+
+- **Python 3.11+** instalado
+- **Node.js 18+** e npm instalados
+- **Banco de dados PostgreSQL** (a URL de conexão será fornecida)
+- (Opcional) **Git** para clonar o repositório
+
+---
+
+## 🔧 Como Rodar o Projeto (Passo a Passo)
+
+### 1. Backend
+
+1. **Clone o repositório** e acesse a pasta raiz:
+   ```bash
+   git clone <url-do-repo> consultoria_adriano
+   cd consultoria_adriano
+   ```
+
+2. **Crie e ative um ambiente virtual** (recomendado):
+   ```bash
+   python -m venv .venv
+   # Windows:
+   .venv\Scripts\activate
+   # Linux/Mac:
+   source .venv/bin/activate
+   ```
+
+3. **Instale as dependências**:
+   ```bash
+   pip install -r back/requirements.txt
+   ```
+
+4. **Configure o arquivo `.env` do backend** (já existente em `back/`):
+   ```env
+   DATABASE_URL="postgresql://postgres:YqErvrYQ4NjAvREU@db.erubhkiwdkotwmgqezca.supabase.co:5432/postgres"
+   CORS_ALLOW_ORIGINS="http://localhost:8080,http://127.0.0.1:8080"
+   ```
+   > Substitua `DATABASE_URL` pela sua string de conexão.
+
+5. **Execute o servidor** (as tabelas são criadas automaticamente):
+   ```bash
+   cd back
+   python -m uvicorn main:app --reload
+   ```
+   O backend estará em `http://localhost:8000`.  
+   Acesse a documentação interativa (Swagger) em [`http://localhost:8000/docs`](http://localhost:8000/docs).
+
+### 2. Frontend
+
+1. **Navegue até a pasta do frontend**:
+   ```bash
+   cd frontend
+   ```
+
+2. **Instale as dependências**:
+   ```bash
+   npm install
+   ```
+
+3. **Configure o arquivo `.env` do frontend** (já existente):
+   ```env
+   VITE_API_BASE=http://localhost:8000/api/v1
+   ```
+
+4. **Inicie o servidor de desenvolvimento**:
+   ```bash
+   npm run dev
+   ```
+   O frontend abrirá em `http://localhost:8080` (ou outra porta configurada).
+
+---
+
+## 🧪 Executando os Testes Automatizados
+
+Os testes estão localizados em `back/tests/`.  
+Com o ambiente virtual ativado, execute **a partir da raiz do projeto**:
+
+```bash
+python -m pytest back/tests/ -v
+```
+
+Ou, se preferir, entre na pasta `back`:
+
+```bash
+cd back
+python -m pytest tests/ -v
+```
+
+Todos os 34 testes passam em cerca de 60 segundos.  
+Os testes são isolados e **não poluem o banco de dados** – cada teste cria seus próprios registros e os remove ao final.
+
+---
+
+## 📡 Principais Endpoints da API
+
+| Método   | Rota                              | Descrição                                     |
+|----------|-----------------------------------|-----------------------------------------------|
+| GET      | `/api/v1/empresas`                | Listar empresas (com busca e paginação)       |
+| POST     | `/api/v1/empresas`                | Criar nova empresa (preenche endereço via CEP)|
+| GET      | `/api/v1/empresas/{id}`           | Detalhes de uma empresa                       |
+| PUT      | `/api/v1/empresas/{id}`           | Atualizar dados da empresa                    |
+| DELETE   | `/api/v1/empresas/{id}`           | Excluir empresa                               |
+| POST     | `/api/v1/contratos`               | Criar contrato (gera faturas automaticamente) |
+| GET      | `/api/v1/contratos/{id_cliente}`  | Listar contratos de uma empresa               |
+| GET      | `/api/v1/faturas?id_contrato={id}`| Listar faturas de um contrato                 |
+| PUT      | `/api/v1/faturas/{id}`            | Atualizar status/valor de uma fatura          |
+| POST     | `/api/v1/pagamentos`              | Registrar pagamento (opcionalmente vincula fatura)|
+| GET      | `/api/v1/pagamentos/contrato/{id}`| Listar pagamentos de um contrato              |
+| GET      | `/api/v1/interacoes/{id_cliente}` | Histórico de interações com cliente           |
+| POST     | `/api/v1/interacoes`              | Registrar nova interação                      |
+| GET      | `/api/v1/interacoes/pagas`        | Listar interações pagas                       |
+| GET      | `/api/v1/dashboard/kpis`          | Indicadores principais (empresas, contratos, receita)|
+
+A lista completa de endpoints, com parâmetros e exemplos, está disponível no Swagger em [`/docs`](http://localhost:8000/docs).
+
+---
+
+## 📊 Status Atual do Projeto
+
+| Item                          | Situação         |
+|-------------------------------|------------------|
+| Banco de dados normalizado    | ✅ 1FN, 2FN, 3FN |
+| Integridade referencial        | ✅ FKs com CASCADE |
+| Backend modularizado          | ✅ /api/v1       |
+| Validações multicamada        | ✅ Banco, ORM, Pydantic |
+| Testes automatizados          | ✅ 34 testes (100% passando) |
+| Documentação OpenAPI          | ✅ Swagger enriquecido |
+| Preenchimento automático CEP  | ✅ ViaCEP        |
+| Autenticação                  | ⏳ Em planejamento |
+| CI/CD                         | ⏳ Em planejamento |
+
+---
+
+## 🤝 Contribuição
+
+1. Crie uma branch a partir de `main`.
+2. Execute `pytest` antes de abrir um Pull Request.
+3. Atualize os testes se adicionar novas funcionalidades.
+
+---
+
+**Desenvolvido com 💙 pela equipe Questify.**
