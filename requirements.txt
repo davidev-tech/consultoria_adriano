@@ -1,5 +1,5 @@
 fastapi
-uvicorn
+uvicorn[standard]
 sqlalchemy
 psycopg2-binary
 pydantic
@@ -9,4 +9,5 @@ validate-docbr
 bleach
 watchfiles
 PyJWT
-recharts
+python-dateutil
+requests

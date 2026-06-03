@@ -6,10 +6,26 @@
 // You can pass additional config via defineConfig({ vite: { ... } }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
-// Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
-// @cloudflare/vite-plugin builds from this — wrangler.jsonc main alone is insufficient.
+// Plugin customizado APENAS para servir o favicon (não interfere nos demais)
+function faviconPlugin() {
+  return {
+    name: "favicon",
+    configureServer(server: any) {
+      server.middlewares.use("/favicon.ico", (_req: any, res: any) => {
+        res.writeHead(200, { "Content-Type": "image/svg+xml" });
+        res.end(
+          `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#4f46e5"/><stop offset="100%" style="stop-color:#7c3aed"/></linearGradient></defs><circle cx="50" cy="50" r="45" fill="url(#g)"/><text x="50" y="68" font-family="Arial" font-size="40" font-weight="bold" fill="white" text-anchor="middle">PSA</text></svg>`
+        );
+      });
+    },
+  };
+}
+
 export default defineConfig({
   tanstackStart: {
     server: { entry: "server" },
+  },
+  vite: {
+    plugins: [faviconPlugin()],   // 👈 adicionado aqui, sem mexer nos plugins existentes
   },
 });

@@ -77,7 +77,7 @@ export const useCreateResponsavel = () => {
       api<Responsavel>("/responsaveis", { method: "POST", json: data }),
     onSuccess: (_d, vars) => {
       qc.invalidateQueries({ queryKey: ["responsaveis", vars.id_cliente] });
-      qc.invalidateQueries({ queryKey: ["responsaveis-lista"] });   // 👈 adicionado
+      qc.invalidateQueries({ queryKey: ["responsaveis-lista"] });
     },
   });
 };
@@ -88,8 +88,8 @@ export const useUpdateResponsavel = () => {
     mutationFn: (args: { id: string; data: any }) =>
       api<Responsavel>(`/responsaveis/${args.id}`, { method: "PUT", json: args.data }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["responsaveis-lista"] });   // mantido
-      qc.invalidateQueries({ queryKey: ["responsaveis"] });         // 👈 adicionado (caso haja queries específicas)
+      qc.invalidateQueries({ queryKey: ["responsaveis-lista"] });
+      qc.invalidateQueries({ queryKey: ["responsaveis"] });
     },
   });
 };
@@ -100,8 +100,8 @@ export const useDeleteResponsavel = () => {
     mutationFn: (id: string) =>
       api(`/responsaveis/${id}`, { method: "DELETE" }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["responsaveis-lista"] });   // mantido
-      qc.invalidateQueries({ queryKey: ["responsaveis"] });         // 👈 adicionado
+      qc.invalidateQueries({ queryKey: ["responsaveis-lista"] });
+      qc.invalidateQueries({ queryKey: ["responsaveis"] });
     },
   });
 };
@@ -257,6 +257,7 @@ export const useDeleteInteracao = () => {
   });
 };
 
+// ✅ CORRIGIDO: /interacoes-pagas → /interacoes/pagas
 export const useInteracoesPagas = (idCliente?: string) => {
   const clienteFiltro = idCliente && idCliente !== "todas" ? idCliente : undefined;
 
@@ -265,11 +266,12 @@ export const useInteracoesPagas = (idCliente?: string) => {
     queryFn: () => {
       const params = new URLSearchParams();
       if (clienteFiltro) params.append("id_cliente", clienteFiltro);
-      return api<HistoricoInteracao[]>(`/interacoes-pagas?${params.toString()}`);
+      return api<HistoricoInteracao[]>(`/interacoes/pagas?${params.toString()}`);
     },
   });
 };
 
+// ✅ CORRIGIDO: /interacoes-pagas/total → /interacoes/pagas/total
 export const useTotalInteracoesPagas = (idCliente?: string) => {
   const clienteFiltro = idCliente && idCliente !== "todas" ? idCliente : undefined;
 
@@ -278,7 +280,7 @@ export const useTotalInteracoesPagas = (idCliente?: string) => {
     queryFn: () => {
       const params = new URLSearchParams();
       if (clienteFiltro) params.append("id_cliente", clienteFiltro);
-      return api<InteracoesPagasResumo>(`/interacoes-pagas/total?${params.toString()}`);
+      return api<InteracoesPagasResumo>(`/interacoes/pagas/total?${params.toString()}`);
     },
   });
 };
@@ -339,12 +341,12 @@ export const useDeletePagamento = () => {
   });
 };
 
-// --- ENTREGAS ---
+// ✅ CORRIGIDO: /entregas/contrato/{id} → /entregas?id_contrato={id}
 export const useEntregasPorContrato = (idContrato?: UUID) => {
   const { searchTerm } = useSearch();
   return useQuery({
     queryKey: ["entregas", idContrato, searchTerm],
-    queryFn: () => api<Entrega[]>(`/entregas/contrato/${idContrato}${searchTerm ? `?busca=${searchTerm}` : ""}`),
+    queryFn: () => api<Entrega[]>(`/entregas?id_contrato=${idContrato}${searchTerm ? `&busca=${searchTerm}` : ""}`),
     enabled: !!idContrato,
   });
 };
@@ -382,11 +384,12 @@ export const useContratosMulti = (ids: UUID[]) =>
     })),
   });
 
+// ✅ CORRIGIDO: /entregas/contrato/{id} → /entregas?id_contrato={id}
 export const useEntregasMulti = (ids: UUID[]) =>
   useQueries({
     queries: ids.map((id) => ({
       queryKey: ["entregas", id],
-      queryFn: () => api<Entrega[]>(`/entregas/contrato/${id}`).catch(() => [] as Entrega[]),
+      queryFn: () => api<Entrega[]>(`/entregas?id_contrato=${id}`).catch(() => [] as Entrega[]),
     })),
   });
 

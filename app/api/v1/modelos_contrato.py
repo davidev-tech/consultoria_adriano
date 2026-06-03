@@ -1,0 +1,71 @@
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import Session
+from typing import List, Optional
+from uuid import UUID
+
+from app.core.database import get_db
+from app.models.modelo_contrato import ModeloContrato
+from app.schemas.modelo_contrato import ModeloContratoCreate, ModeloContratoResponse
+
+router = APIRouter(prefix="/modelos-contrato", tags=["Modelos de Contrato"])
+
+@router.post("", response_model=ModeloContratoResponse)
+def criar_modelo(obj_in: ModeloContratoCreate, db: Session = Depends(get_db)):
+    novo_obj = ModeloContrato(**obj_in.model_dump())
+    db.add(novo_obj)
+    db.commit()
+    db.refresh(novo_obj)
+    return novo_obj
+
+@router.put("/{id_modelo}", response_model=ModeloContratoResponse)
+def atualizar_modelo_completo(id_modelo: UUID, modelo_atualizado: ModeloContratoCreate, db: Session = Depends(get_db)):
+    modelo_db = db.query(ModeloContrato).filter(ModeloContrato.id_modelo == id_modelo).first()
+    if not modelo_db:
+        raise HTTPException(status_code=404, detail="Modelo não encontrado")
+    update_data = modelo_atualizado.model_dump(exclude_unset=True)
+    for var, value in update_data.items():
+        setattr(modelo_db, var, value)
+    db.add(modelo_db)
+    db.commit()
+    db.refresh(modelo_db)
+    return modelo_db
+
+@router.get("", response_model=List[ModeloContratoResponse])
+def listar_modelos(busca: Optional[str] = Query(None), db: Session = Depends(get_db)):
+    query = db.query(ModeloContrato)
+    if busca:
+        query = query.filter(ModeloContrato.nome_modelo.ilike(f"%{busca}%"))
+    return query.all()
+
+@router.patch("/{id_modelo}/arquivar")
+def arquivar_modelo(id_modelo: UUID, payload: dict = {}, db: Session = Depends(get_db)):
+    modelo = db.query(ModeloContrato).filter(ModeloContrato.id_modelo == id_modelo).first()
+    if not modelo:
+        raise HTTPException(status_code=404, detail="Modelo não encontrado")
+    modelo.ativo = False
+    if "motivo_arquivamento" in payload:
+        modelo.motivo_arquivamento = payload["motivo_arquivamento"]
+    db.commit()
+    db.refresh(modelo)
+    return {"mensagem": "Modelo arquivado com sucesso", "id_modelo": str(id_modelo)}
+
+@router.patch("/{id_modelo}/desarquivar")
+def desarquivar_modelo(id_modelo: UUID, db: Session = Depends(get_db)):
+    modelo = db.query(ModeloContrato).filter(ModeloContrato.id_modelo == id_modelo).first()
+    if not modelo:
+        raise HTTPException(status_code=404, detail="Modelo não encontrado")
+    modelo.ativo = True
+    db.commit()
+    db.refresh(modelo)
+    return {"mensagem": "Modelo desarquivado com sucesso!", "id_modelo": str(id_modelo)}
+
+@router.patch("/{id_modelo}")
+def atualizar_modelo(id_modelo: UUID, payload: dict, db: Session = Depends(get_db)):
+    modelo = db.query(ModeloContrato).filter(ModeloContrato.id_modelo == id_modelo).first()
+    if not modelo:
+        raise HTTPException(status_code=404, detail="Modelo não encontrado")
+    if "motivo_arquivamento" in payload:
+        modelo.motivo_arquivamento = payload["motivo_arquivamento"]
+        db.commit()
+        db.refresh(modelo)
+    return {"mensagem": "Modelo atualizado", "id_modelo": str(id_modelo)}
