@@ -37,6 +37,13 @@ def listar_modelos(busca: Optional[str] = Query(None), db: Session = Depends(get
         query = query.filter(ModeloContrato.nome_modelo.ilike(f"%{busca}%"))
     return query.all()
 
+@router.get("/{id_modelo}", response_model=ModeloContratoResponse)
+def obter_modelo(id_modelo: UUID, db: Session = Depends(get_db)):
+    modelo = db.query(ModeloContrato).filter(ModeloContrato.id_modelo == id_modelo).first()
+    if not modelo:
+        raise HTTPException(status_code=404, detail="Modelo não encontrado")
+    return modelo
+
 @router.patch("/{id_modelo}/arquivar")
 def arquivar_modelo(id_modelo: UUID, payload: dict = {}, db: Session = Depends(get_db)):
     modelo = db.query(ModeloContrato).filter(ModeloContrato.id_modelo == id_modelo).first()

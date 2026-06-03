@@ -37,6 +37,7 @@ def criar_novo_contrato(contrato_data: ContratoCreate, db: Session = Depends(get
             ultimo_dia_mes = calendar.monthrange(data_alvo.year, data_alvo.month)[1]
             dia_vencimento_real = min(dia_vencimento_escolhido, ultimo_dia_mes)
             vencimento_fatura = date(data_alvo.year, data_alvo.month, dia_vencimento_real)
+
             if vencimento_fatura >= novo_contrato.data_inicio:
                 nova_fatura = Fatura(
                     id_contrato=novo_contrato.id_contrato,
@@ -45,9 +46,12 @@ def criar_novo_contrato(contrato_data: ContratoCreate, db: Session = Depends(get
                     status="Pendente"
                 )
                 db.add(nova_fatura)
-        db.commit()
-        db.refresh(novo_contrato)
+
+    # ✅ COMMIT sempre, com ou sem faturas
+    db.commit()
+    db.refresh(novo_contrato)
     return novo_contrato
+
 
 @router.get("", response_model=List[ContratoResponse])
 def listar_todos_contratos(
@@ -62,6 +66,7 @@ def listar_todos_contratos(
         query = query.filter(Contrato.status_contrato == status)
     return query.all()
 
+
 @router.get("/{id_cliente}", response_model=List[ContratoResponse])
 def listar_contratos_por_empresa(id_cliente: UUID, db: Session = Depends(get_db)):
     return db.query(Contrato).options(
@@ -69,6 +74,7 @@ def listar_contratos_por_empresa(id_cliente: UUID, db: Session = Depends(get_db)
         joinedload(Contrato.faturas),
         joinedload(Contrato.entregas)
     ).filter(Contrato.id_cliente == id_cliente).all()
+
 
 @router.patch("/{contrato_id}/arquivar")
 def arquivar_contrato(contrato_id: UUID, payload: dict = {}, db: Session = Depends(get_db)):
@@ -81,6 +87,7 @@ def arquivar_contrato(contrato_id: UUID, payload: dict = {}, db: Session = Depen
     db.commit()
     db.refresh(contrato)
     return {"mensagem": "Contrato arquivado com sucesso!", "id_contrato": str(contrato_id)}
+
 
 @router.patch("/{contrato_id}/desarquivar")
 def desarquivar_contrato(contrato_id: UUID, db: Session = Depends(get_db)):
@@ -95,6 +102,7 @@ def desarquivar_contrato(contrato_id: UUID, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(contrato)
     return {"mensagem": "Contrato desarquivado com sucesso!", "id_contrato": str(contrato_id)}
+
 
 @router.patch("/{contrato_id}")
 def atualizar_contrato(contrato_id: UUID, payload: dict, db: Session = Depends(get_db)):

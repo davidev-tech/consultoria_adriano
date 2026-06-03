@@ -1,10 +1,9 @@
-from __future__ import annotations
 from pydantic import BaseModel, ConfigDict, field_validator
 from typing import Optional
 from uuid import UUID
 from datetime import date, datetime
 
-from app.validators.validators import validate_positive_value, validate_enum_choice
+from app.validators.validators import validate_positive_value, validate_enum_choice, validate_non_negative_value
 
 class FaturaBase(BaseModel):
     valor_original: float
@@ -17,10 +16,15 @@ class FaturaBase(BaseModel):
 class FaturaCreate(FaturaBase):
     id_contrato: UUID
 
-    @field_validator("valor_original", "valor_juros_pago")
+    @field_validator("valor_original")
     @classmethod
-    def check_valor(cls, v):
+    def check_valor_original(cls, v):
         return validate_positive_value(v)
+
+    @field_validator("valor_juros_pago")
+    @classmethod
+    def check_valor_juros(cls, v):
+        return validate_non_negative_value(v)
 
     @field_validator("status")
     @classmethod
