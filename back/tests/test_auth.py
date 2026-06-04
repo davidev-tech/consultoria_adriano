@@ -1,10 +1,12 @@
 from fastapi.testclient import TestClient
 from back.main import app
+import uuid
 
 client = TestClient(app)
 
-USERNAME = "Funcionario"
-PASSWORD = "Funcionario123"
+
+USERNAME = f"user_{uuid.uuid4().hex[:8]}"
+PASSWORD = "testpass123"
 
 
 def test_register_new_user():
