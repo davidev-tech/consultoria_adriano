@@ -2,8 +2,8 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-BACKEND_DIR="$ROOT_DIR/app/back"
-FRONT_DIR="$ROOT_DIR/app/front"
+BACKEND_DIR="$ROOT_DIR/back"          # ← era app/back
+FRONT_DIR="$ROOT_DIR/frontend"        # ← era app/front
 VENV_DIR="$ROOT_DIR/venv"
 VENV_PYTHON="$VENV_DIR/bin/python"
 
@@ -36,7 +36,8 @@ if ! command -v npm >/dev/null 2>&1; then
   exit 1
 fi
 
-"$VENV_PYTHON" -m pip install --quiet -r "$ROOT_DIR/requirements.txt"
+# Instala dependências do backend (requirements.txt agora está dentro de back/)
+"$VENV_PYTHON" -m pip install --quiet -r "$BACKEND_DIR/requirements.txt"
 
 if [[ ! -x "$FRONT_DIR/node_modules/.bin/vite" ]]; then
   (
@@ -69,5 +70,3 @@ FRONT_PID=$!
 wait -n "$BACKEND_PID" "$FRONT_PID"
 status=$?
 exit "$status"
-
-

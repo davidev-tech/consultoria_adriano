@@ -12,7 +12,7 @@ Backend modularizado, testado e pronto para produção. Frontend React integrado
 |---------------|-----------------------------------------------------------------------------|
 | Backend       | FastAPI (Python 3.11+), SQLAlchemy, PostgreSQL (Supabase)                   |
 | Frontend      | React + Vite + TanStack Router + shadcn/ui                                   |
-| Testes        | pytest + httpx (34 cenários automatizados)                                  |
+| Testes        | pytest + httpx (41 cenários automatizados)                                  |
 | Ferramentas   | Metabase (dashboards), ViaCEP (preenchimento automático de endereços)       |
 
 ---
@@ -25,13 +25,18 @@ consultoria_adriano/
 │   ├── main.py                 # Aplicação principal
 │   ├── core/                   # Configurações e banco de dados
 │   │   ├── config.py           # Settings (carrega .env da raiz)
-│   │   └── database.py         # Engine, SessionLocal, Base
+│   │   ├── database.py         # Engine, SessionLocal, Base
+│   │   ├── security.py         # Autenticação JWT + bcrypt
+│   │   └── logging_config.py   # Logging estruturado (JSON)
 │   ├── models/                 # ORM SQLAlchemy (um arquivo por entidade)
 │   ├── schemas/                # Schemas Pydantic de entrada/saída
 │   ├── api/v1/                 # Rotas versionadas (prefixo /api/v1)
+│   │   ├── auth.py             # Registro e login
+│   │   └── ...                 # Demais módulos (protegidos por JWT)
 │   ├── services/               # Lógica de negócio (ex.: ViaCEP)
 │   ├── validators/             # Funções de validação reutilizáveis
-│   ├── tests/                  # Testes automatizados (34 cenários)
+│   ├── tests/                  # Testes automatizados (41 cenários)
+│   ├── criar_admin.py          # Script para criação rápida de usuário admin
 │   └── requirements.txt
 ├── frontend/                   # Frontend React (isolado)
 │   ├── .env                    # Variáveis de ambiente do frontend
@@ -90,6 +95,35 @@ consultoria_adriano/
    O backend estará em `http://localhost:8000`.  
    Acesse a documentação interativa (Swagger) em [`http://localhost:8000/docs`](http://localhost:8000/docs).
 
+---
+
+## 🔐 Autenticação (JWT)
+
+A API exige autenticação para criar, editar ou excluir recursos. Rotas de leitura (GET) são públicas.
+
+### Criar usuário admin rapidamente
+
+Execute o script incluso no projeto:
+
+```bash
+python back/criar_admin.py
+```
+
+Isso criará o usuário:
+
+- **Login:** `admin`
+- **Senha:** `123456`
+
+### Usar no Swagger
+
+1. No Swagger (`/docs`), vá em `POST /api/v1/auth/login`.
+2. Envie `{"username": "admin", "password": "123456"}`.
+3. Copie o `access_token` retornado.
+4. Clique no botão **Authorize** 🔒 no topo da página e cole o token.
+5. Agora as rotas protegidas (POST, PUT, DELETE) estarão acessíveis.
+
+---
+
 ### 2. Frontend
 
 1. **Navegue até a pasta do frontend**:
@@ -131,30 +165,32 @@ cd back
 python -m pytest tests/ -v
 ```
 
-Todos os 34 testes passam em cerca de 60 segundos.  
+Todos os 41 testes passam em cerca de 67 segundos.  
 Os testes são isolados e **não poluem o banco de dados** – cada teste cria seus próprios registros e os remove ao final.
 
 ---
 
 ## 📡 Principais Endpoints da API
 
-| Método   | Rota                              | Descrição                                     |
-|----------|-----------------------------------|-----------------------------------------------|
-| GET      | `/api/v1/empresas`                | Listar empresas (com busca e paginação)       |
-| POST     | `/api/v1/empresas`                | Criar nova empresa (preenche endereço via CEP)|
-| GET      | `/api/v1/empresas/{id}`           | Detalhes de uma empresa                       |
-| PUT      | `/api/v1/empresas/{id}`           | Atualizar dados da empresa                    |
-| DELETE   | `/api/v1/empresas/{id}`           | Excluir empresa                               |
-| POST     | `/api/v1/contratos`               | Criar contrato (gera faturas automaticamente) |
-| GET      | `/api/v1/contratos/{id_cliente}`  | Listar contratos de uma empresa               |
-| GET      | `/api/v1/faturas?id_contrato={id}`| Listar faturas de um contrato                 |
-| PUT      | `/api/v1/faturas/{id}`            | Atualizar status/valor de uma fatura          |
-| POST     | `/api/v1/pagamentos`              | Registrar pagamento (opcionalmente vincula fatura)|
-| GET      | `/api/v1/pagamentos/contrato/{id}`| Listar pagamentos de um contrato              |
-| GET      | `/api/v1/interacoes/{id_cliente}` | Histórico de interações com cliente           |
-| POST     | `/api/v1/interacoes`              | Registrar nova interação                      |
-| GET      | `/api/v1/interacoes/pagas`        | Listar interações pagas                       |
-| GET      | `/api/v1/dashboard/kpis`          | Indicadores principais (empresas, contratos, receita)|
+| Método   | Rota                              | Protegida | Descrição                                     |
+|----------|-----------------------------------|-----------|-----------------------------------------------|
+| GET      | `/api/v1/empresas`                | ❌        | Listar empresas (com busca e paginação)       |
+| POST     | `/api/v1/empresas`                | ✅        | Criar nova empresa (preenche endereço via CEP)|
+| GET      | `/api/v1/empresas/{id}`           | ❌        | Detalhes de uma empresa                       |
+| PUT      | `/api/v1/empresas/{id}`           | ✅        | Atualizar dados da empresa                    |
+| DELETE   | `/api/v1/empresas/{id}`           | ✅        | Excluir empresa                               |
+| POST     | `/api/v1/contratos`               | ✅        | Criar contrato (gera faturas automaticamente) |
+| GET      | `/api/v1/contratos/{id_cliente}`  | ❌        | Listar contratos de uma empresa               |
+| GET      | `/api/v1/faturas?id_contrato={id}`| ❌        | Listar faturas de um contrato                 |
+| PUT      | `/api/v1/faturas/{id}`            | ✅        | Atualizar status/valor de uma fatura          |
+| POST     | `/api/v1/pagamentos`              | ✅        | Registrar pagamento (opcionalmente vincula fatura)|
+| GET      | `/api/v1/pagamentos/contrato/{id}`| ❌        | Listar pagamentos de um contrato              |
+| GET      | `/api/v1/interacoes/{id_cliente}` | ❌        | Histórico de interações com cliente           |
+| POST     | `/api/v1/interacoes`              | ✅        | Registrar nova interação                      |
+| GET      | `/api/v1/interacoes/pagas`        | ❌        | Listar interações pagas                       |
+| GET      | `/api/v1/dashboard/kpis`          | ❌        | Indicadores principais (empresas, contratos, receita)|
+| POST     | `/api/v1/auth/register`           | ❌        | Criar novo usuário                            |
+| POST     | `/api/v1/auth/login`              | ❌        | Fazer login e obter token                     |
 
 A lista completa de endpoints, com parâmetros e exemplos, está disponível no Swagger em [`/docs`](http://localhost:8000/docs).
 
@@ -168,10 +204,11 @@ A lista completa de endpoints, com parâmetros e exemplos, está disponível no 
 | Integridade referencial        | ✅ FKs com CASCADE |
 | Backend modularizado          | ✅ /api/v1       |
 | Validações multicamada        | ✅ Banco, ORM, Pydantic |
-| Testes automatizados          | ✅ 34 testes (100% passando) |
+| Testes automatizados          | ✅ 41 testes (100% passando) |
 | Documentação OpenAPI          | ✅ Swagger enriquecido |
 | Preenchimento automático CEP  | ✅ ViaCEP        |
-| Autenticação                  | ⏳ Em planejamento |
+| Autenticação JWT              | ✅ Registro, login, proteção de rotas |
+| Logging estruturado           | ✅ JSON em arquivo e console |
 | CI/CD                         | ⏳ Em planejamento |
 
 ---
