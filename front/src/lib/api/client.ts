@@ -1,7 +1,7 @@
 // API client para o backend FastAPI "Gestão do Cuidado" (Render)
 // Lida com cold-start emitindo eventos para um Spinner global.
 
-const DEFAULT_API_BASE = "http://localhost:8000";
+const DEFAULT_API_BASE = "http://localhost:8000/api/v1";
 
 function resolveApiBase() {
   const viteBase = import.meta.env.VITE_API_BASE?.trim();

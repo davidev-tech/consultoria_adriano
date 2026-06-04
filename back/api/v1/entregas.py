@@ -5,27 +5,13 @@ from typing import List, Optional
 from uuid import UUID
 
 from back.core.database import get_db
+from back.core.security import get_current_user
 from back.models.entrega import Entrega
 from back.models.contrato import Contrato
 from back.schemas.entrega import EntregaCreate, EntregaResponse
 
 router = APIRouter(prefix="/entregas", tags=["Entregas"])
 
-@router.post("", response_model=EntregaResponse)
-def criar_entrega(obj_in: EntregaCreate, db: Session = Depends(get_db)):
-    contrato = db.query(Contrato).filter(Contrato.id_contrato == obj_in.id_contrato).first()
-    if not contrato:
-        raise HTTPException(status_code=404, detail="Contrato não encontrado.")
-    if obj_in.data_prazo_limite:
-        if contrato.data_inicio and obj_in.data_prazo_limite < contrato.data_inicio:
-            raise HTTPException(status_code=400, detail="A data da entrega não pode ser anterior ao início do contrato.")
-        if contrato.data_fim and obj_in.data_prazo_limite > contrato.data_fim:
-            raise HTTPException(status_code=400, detail="A data da entrega não pode ser posterior ao fim do contrato.")
-    nova = Entrega(**obj_in.model_dump())
-    db.add(nova)
-    db.commit()
-    db.refresh(nova)
-    return nova
 
 @router.get("", response_model=List[EntregaResponse])
 def listar_entregas(
@@ -46,11 +32,41 @@ def listar_entregas(
         query = query.filter(Entrega.data_prazo_limite <= data_fim)
     return query.order_by(Entrega.data_prazo_limite.asc()).all()
 
+
+@router.post("", response_model=EntregaResponse)
+def criar_entrega(
+    obj_in: EntregaCreate,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    contrato = db.query(Contrato).filter(Contrato.id_contrato == obj_in.id_contrato).first()
+    if not contrato:
+        raise HTTPException(status_code=404, detail="Contrato não encontrado.")
+
+    if obj_in.data_prazo_limite:
+        if contrato.data_inicio and obj_in.data_prazo_limite < contrato.data_inicio:
+            raise HTTPException(status_code=400, detail="A data da entrega não pode ser anterior ao início do contrato.")
+        if contrato.data_fim and obj_in.data_prazo_limite > contrato.data_fim:
+            raise HTTPException(status_code=400, detail="A data da entrega não pode ser posterior ao fim do contrato.")
+
+    nova = Entrega(**obj_in.model_dump())
+    db.add(nova)
+    db.commit()
+    db.refresh(nova)
+    return nova
+
+
 @router.put("/{id_entrega}", response_model=EntregaResponse)
-def atualizar_entrega(id_entrega: UUID, payload: dict, db: Session = Depends(get_db)):
+def atualizar_entrega(
+    id_entrega: UUID,
+    payload: dict,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
     entrega = db.query(Entrega).filter(Entrega.id_entrega == id_entrega).first()
     if not entrega:
         raise HTTPException(status_code=404, detail="Entrega não encontrada")
+
     if "descricao_entrega" in payload:
         entrega.descricao_entrega = payload["descricao_entrega"]
     if "data_prazo_limite" in payload:
@@ -67,6 +83,7 @@ def atualizar_entrega(id_entrega: UUID, payload: dict, db: Session = Depends(get
             entrega.data_conclusao = date.fromisoformat(data_str)
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"Formato de data inválido. Use YYYY-MM-DD. Erro: {str(e)}")
+
     try:
         db.commit()
         db.refresh(entrega)
@@ -75,8 +92,13 @@ def atualizar_entrega(id_entrega: UUID, payload: dict, db: Session = Depends(get
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @router.delete("/{id_entrega}")
-def deletar_entrega(id_entrega: UUID, db: Session = Depends(get_db)):
+def deletar_entrega(
+    id_entrega: UUID,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
     entrega = db.query(Entrega).filter(Entrega.id_entrega == id_entrega).first()
     if not entrega:
         raise HTTPException(status_code=404, detail="Entrega não encontrada")

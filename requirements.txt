@@ -24,3 +24,8 @@ watchfiles             # hot reload (uvicorn --reload)
 # Testes
 pytest                 # framework de testes
 httpx                  # cliente HTTP para testes
+
+# Segurança 
+
+python-jose[cryptography]
+passlib[bcrypt]

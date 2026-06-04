@@ -2,7 +2,7 @@ from fastapi import APIRouter
 from . import (
     empresas, responsaveis, modelos_contrato, contratos,
     entregas, interacoes, pagamentos, faturas,
-    catalogo_servicos, dashboard, pendencias, metabase
+    catalogo_servicos, dashboard, pendencias, metabase, auth
 )
 
 router = APIRouter()
@@ -18,3 +18,4 @@ router.include_router(catalogo_servicos.router)
 router.include_router(dashboard.router)
 router.include_router(pendencias.router)
 router.include_router(metabase.router)
+router.include_router(auth.router)

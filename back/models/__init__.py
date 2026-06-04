@@ -1,3 +1,4 @@
+from .usuario import Usuario
 from .catalogo_servico import CatalogoServico
 from .servico_prestado import ServicoPrestado
 from .endereco import Endereco

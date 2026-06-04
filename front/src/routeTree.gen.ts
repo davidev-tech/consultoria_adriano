@@ -8,18 +8,18 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from './routes/__root.tsx'
-import { Route as ResponsaveisRouteImport } from './routes/responsaveis.tsx'
-import { Route as PendenciasRouteImport } from './routes/pendencias.tsx'
-import { Route as InteracoesRouteImport } from './routes/interacoes.tsx'
-import { Route as FinanceiroRouteImport } from './routes/financeiro.tsx'
-import { Route as Entregas_prazosRouteImport } from './routes/entregas_prazos.tsx'
-import { Route as EmpresasRouteImport } from './routes/empresas.tsx'
-import { Route as DashboardRouteImport } from './routes/dashboard.tsx'
-import { Route as ContratosRouteImport } from './routes/contratos.tsx'
-import { Route as ConfiguracoesRouteImport } from './routes/configuracoes.tsx'
+import { Route as rootRouteImport } from './routes/__root'
+import { Route as ResponsaveisRouteImport } from './routes/responsaveis'
+import { Route as PendenciasRouteImport } from './routes/pendencias'
+import { Route as InteracoesRouteImport } from './routes/interacoes'
+import { Route as FinanceiroRouteImport } from './routes/financeiro'
+import { Route as Entregas_prazosRouteImport } from './routes/entregas_prazos'
+import { Route as EmpresasRouteImport } from './routes/empresas'
+import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as ContratosRouteImport } from './routes/contratos'
+import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as EmpresasIdRouteImport } from './routes/empresas.$id.tsx'
+import { Route as EmpresasIdRouteImport } from './routes/empresas.$id'
 
 const ResponsaveisRoute = ResponsaveisRouteImport.update({
   id: '/responsaveis',

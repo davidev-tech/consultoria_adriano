@@ -4,6 +4,7 @@ from typing import List, Optional
 from uuid import UUID
 
 from back.core.database import get_db
+from back.core.security import get_current_user
 from back.models.empresa_cliente import EmpresaCliente
 from back.models.servico_prestado import ServicoPrestado
 from back.models.contrato import Contrato
@@ -57,13 +58,16 @@ def obter_empresa_por_id(id_cliente: UUID, db: Session = Depends(get_db)):
 
 
 @router.post("", response_model=EmpresaResponse, status_code=status.HTTP_201_CREATED)
-def criar_empresa(empresa: EmpresaCreate, db: Session = Depends(get_db)):
+def criar_empresa(
+    empresa: EmpresaCreate,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
     if empresa.cnpj:
         existente = db.query(EmpresaCliente).filter(EmpresaCliente.cnpj == empresa.cnpj).first()
         if existente:
             raise HTTPException(status_code=400, detail="Este CNPJ já está cadastrado.")
 
-    # garantir que o CEP exista na tabela endereco
     if empresa.cep:
         buscar_e_salvar_endereco(empresa.cep, db)
 
@@ -87,7 +91,12 @@ def criar_empresa(empresa: EmpresaCreate, db: Session = Depends(get_db)):
 
 
 @router.put("/{id_cliente}", response_model=EmpresaResponse)
-def atualizar_empresa(id_cliente: UUID, empresa_atualizada: EmpresaCreate, db: Session = Depends(get_db)):
+def atualizar_empresa(
+    id_cliente: UUID,
+    empresa_atualizada: EmpresaCreate,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
     empresa_db = db.query(EmpresaCliente).filter(EmpresaCliente.id_cliente == id_cliente).first()
     if not empresa_db:
         raise HTTPException(status_code=404, detail="Empresa não encontrada.")
@@ -97,7 +106,6 @@ def atualizar_empresa(id_cliente: UUID, empresa_atualizada: EmpresaCreate, db: S
         if existente:
             raise HTTPException(status_code=400, detail="Este CNPJ já está sendo usado por outra empresa.")
 
-    # garantir que o CEP exista na tabela endereco
     if empresa_atualizada.cep:
         buscar_e_salvar_endereco(empresa_atualizada.cep, db)
 
@@ -119,7 +127,11 @@ def atualizar_empresa(id_cliente: UUID, empresa_atualizada: EmpresaCreate, db: S
 
 
 @router.delete("/{id_cliente}", status_code=status.HTTP_204_NO_CONTENT)
-def excluir_empresa(id_cliente: UUID, db: Session = Depends(get_db)):
+def excluir_empresa(
+    id_cliente: UUID,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
     empresa_db = db.query(EmpresaCliente).filter(EmpresaCliente.id_cliente == id_cliente).first()
     if not empresa_db:
         raise HTTPException(status_code=404, detail="Empresa não encontrada.")
