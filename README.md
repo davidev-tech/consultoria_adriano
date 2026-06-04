@@ -41,6 +41,8 @@ consultoria_adriano/
 ├── frontend/                   # Frontend React (isolado)
 │   ├── .env                    # Variáveis de ambiente do frontend
 │   └── ... (src, public, node_modules)
+├── scripts/
+│   └── dev.sh                  # Script para subir back e front ao mesmo tempo
 ├── .env                        # Variáveis de ambiente do backend
 └── README.md
 ```
@@ -58,7 +60,17 @@ consultoria_adriano/
 
 ## 🔧 Como Rodar o Projeto (Passo a Passo)
 
-### 1. Backend
+### 🚀 Inicialização rápida (com script)
+
+Para subir backend e frontend com um único comando, execute:
+
+```bash
+./scripts/dev.sh
+```
+
+O script cria o ambiente virtual, instala dependências e inicia os dois servidores automaticamente.
+
+### 1. Backend (manual)
 
 1. **Clone o repositório** e acesse a pasta raiz:
    ```bash

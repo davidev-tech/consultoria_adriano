@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# O script está em scripts/, então a raiz é um nível acima
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-BACKEND_DIR="$ROOT_DIR/back"          # ← era app/back
-FRONT_DIR="$ROOT_DIR/frontend"        # ← era app/front
+BACKEND_DIR="$ROOT_DIR/back"
+FRONT_DIR="$ROOT_DIR/frontend"
 VENV_DIR="$ROOT_DIR/venv"
 VENV_PYTHON="$VENV_DIR/bin/python"
 
@@ -36,7 +37,6 @@ if ! command -v npm >/dev/null 2>&1; then
   exit 1
 fi
 
-# Instala dependências do backend (requirements.txt agora está dentro de back/)
 "$VENV_PYTHON" -m pip install --quiet -r "$BACKEND_DIR/requirements.txt"
 
 if [[ ! -x "$FRONT_DIR/node_modules/.bin/vite" ]]; then
