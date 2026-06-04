@@ -53,10 +53,12 @@ def empresa_teste(client, novo_cnpj, auth_headers):
     data = resp.json()
     yield data
     client.delete(f"/api/v1/empresas/{data['id_cliente']}", headers=auth_headers)
+    del_resp = client.delete(f"/api/v1/empresas/{data['id_cliente']}", headers=auth_headers)
+    assert del_resp.status_code == 204, f"Falha ao limpar empresa {data['id_cliente']}"
 
 @pytest.fixture
 def modelo_contrato_teste(client, auth_headers):
-    """Cria um modelo de contrato padrão para testes."""
+    """Cria um modelo de contrato padrão para testes e o remove após o uso."""
     payload = {
         "nome_modelo": "Modelo de Teste Automático",
         "periodicidade_cobranca": "Mensal"
@@ -65,3 +67,5 @@ def modelo_contrato_teste(client, auth_headers):
     assert resp.status_code == 200
     data = resp.json()
     yield data
+    # Remove o modelo ao final do teste
+    client.delete(f"/api/v1/modelos-contrato/{data['id_modelo']}", headers=auth_headers)
