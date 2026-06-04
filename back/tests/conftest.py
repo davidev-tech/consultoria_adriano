@@ -60,7 +60,10 @@ def empresa_teste(client, novo_cnpj, auth_headers):
 
 @pytest.fixture
 def modelo_contrato_teste(client, auth_headers):
-    """Cria um modelo de contrato padrão para testes. Remove ao final, ignorando erros."""
+    """Cria um modelo de contrato padrão para testes. Remove ao final via ORM."""
+    from back.models.modelo_contrato import ModeloContrato   # import local para evitar circular
+
+    # Cria via API (ou poderia criar diretamente no banco, mas manter o padrão)
     payload = {
         "nome_modelo": "Modelo de Teste Automático",
         "periodicidade_cobranca": "Mensal"
@@ -69,8 +72,15 @@ def modelo_contrato_teste(client, auth_headers):
     assert resp.status_code == 200
     data = resp.json()
     yield data
-    # Limpeza – ignora se já foi removido
+
+    # Remove diretamente do banco, garantindo a limpeza
+    db = SessionLocal()
     try:
-        client.delete(f"/api/v1/modelos-contrato/{data['id_modelo']}", headers=auth_headers)
+        modelo = db.query(ModeloContrato).filter(ModeloContrato.id_modelo == data["id_modelo"]).first()
+        if modelo:
+            db.delete(modelo)
+            db.commit()
     except Exception:
-        pass
+        db.rollback()
+    finally:
+        db.close()
