@@ -1,4 +1,3 @@
-```markdown
 # 🏥 Gestão do Cuidado (PSA)
 
 Sistema de consultoria B2B para gestão de clientes, contratos, entregas, financeiro e CRM.  
@@ -126,13 +125,28 @@ Isso criará o usuário:
 - **Login:** `admin`
 - **Senha:** `123456`
 
-### Usar no Swagger
+> **Nota:** Se ocorrer o erro `ModuleNotFoundError: No module named 'back'`, execute o comando a partir da raiz do projeto (é o local correto). O script já está preparado para funcionar dessa forma.
 
-1. No Swagger (`/docs`), vá em `POST /api/v1/auth/login`.
-2. Envie `{"username": "admin", "password": "123456"}`.
-3. Copie o `access_token` retornado.
-4. Clique no botão **Authorize** 🔒 no topo da página e cole o token.
-5. Agora as rotas protegidas (POST, PUT, DELETE) estarão acessíveis.
+### Usar no Swagger (passo a passo)
+
+1. Acesse [`http://localhost:8000/docs`](http://localhost:8000/docs).
+2. Vá até **`POST /api/v1/auth/login`** e clique em **"Try it out"**.
+3. No campo **"Request body"**, apague qualquer conteúdo e cole exatamente:
+   ```json
+   {
+     "username": "admin",
+     "password": "123456"
+   }
+   ```
+4. Clique em **"Execute"**. O servidor retornará um JSON com o campo `access_token`.
+5. Copie apenas o valor da chave `access_token` (uma string longa).
+6. No topo da página, clique no ícone de cadeado **Authorize** 🔒.
+7. Na janela que abrir, cole o token no campo **Value** (não é necessário digitar "Bearer").
+8. Clique em **"Authorize"** e depois em **"Close"**.
+
+Agora todas as rotas protegidas (marcadas com ✅ na tabela abaixo) estarão acessíveis.
+
+> **Problema comum:** Se o login retornar erro `422` com `JSON decode error`, certifique-se de que o corpo da requisição está exatamente como o JSON acima, sem caracteres extras. Basta limpar o campo e digitar novamente.
 
 ---
 
@@ -170,7 +184,7 @@ Com o ambiente virtual ativado, execute **a partir da raiz do projeto** (onde o 
 python -m pytest back/tests/ -v
 ```
 
-Ou, se preferir, entre na pasta `back` e execute de lá (o pytest encontrará o `.env` na raiz automaticamente):
+Ou, se preferir, entre na pasta `back` e execute de lá:
 
 ```bash
 cd back
@@ -179,6 +193,16 @@ python -m pytest tests/ -v
 
 Todos os 41 testes passam em cerca de 67 segundos.  
 Os testes são isolados e **não poluem o banco de dados** – cada teste cria seus próprios registros e os remove ao final.
+
+### ⚠️ Se algum teste falhar
+
+- Certifique-se de que o servidor **não** está rodando (os testes usam seu próprio cliente).
+- Caso apareçam erros de limpeza (ex.: `AssertionError` ao deletar), execute os testes novamente – a suíte foi projetada para suportar múltiplas execuções.
+- Se houver registros de execuções anteriores (empresas "Teste", modelos repetidos), você pode limpá-los manualmente com os comandos abaixo (no banco de dados):
+  ```sql
+  DELETE FROM empresa_cliente WHERE nome_empresa LIKE 'Empresa Teste%' OR nome_empresa IN ('Empresa Duplicada', 'Empresa Única', 'Para excluir', 'Sem CNPJ', 'Teste Protegido', 'Empresa Protegida');
+  DELETE FROM modelo_contrato WHERE nome_modelo IN ('Modelo de Teste Automático', 'Arquivar Teste', 'Modelo XYZ');
+  ```
 
 ---
 
